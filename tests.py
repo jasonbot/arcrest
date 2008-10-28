@@ -2,6 +2,10 @@ import arcrest
 import test.test_support
 import unittest
 
+class GeometryTests(unittest.TestCase):
+    def testCreatePoint(self):
+        pt = arcrest.geometry.Point(5.1, 5.5)
+
 class ReSTURLTests(unittest.TestCase):
     def testURLInstatiatesAtAll(self):
         url = arcrest.ReSTURL("http://flame6:8399/arcgis/rest/services?f=json")
@@ -14,10 +18,12 @@ class ServerTests(unittest.TestCase):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
     def testUrl(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
-        self.failUnless(server.url == 'http://flame6:8399/arcgis/rest/services/?f=json', "URL is not formed correctly")
+        self.failUnless(server.url == 'http://flame6:8399/arcgis/rest/services/?f=json', 
+                        "URL is not formed correctly")
     def testServiceList(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
-        self.failUnless(set(server.services) == set(["Geometry"]), "Services list does not match")
+        self.failUnless(set(server.services) == set(["Geometry"]),
+                        "Services list does not match")
     def testFolderList(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
         self.failUnless(set(server.folders) == 
@@ -45,12 +51,9 @@ class ServerTests(unittest.TestCase):
     def testGPServiceAmbiguity(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
         gp = server.GP
-        # Both a MapServer and GPServer by the same name; alert to ambiguity
-        def callable():
-            byreftools = gp.ByRefTools
-        self.assertRaises(AttributeError, callable)
+        byreftools = gp.ByRefTools.GPServer
         byreftools = gp.ByRefTools_GPServer
 
 if __name__ == '__main__':
     test.verbose = True
-    test.test_support.run_unittest(ReSTURLTests, ServerTests)
+    test.test_support.run_unittest(GeometryTests, ReSTURLTests, ServerTests)
