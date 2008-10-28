@@ -1,6 +1,7 @@
 """The ArcGIS Server REST API, short for Representational State Transfer, provides a simple, open Web interface to services hosted by ArcGIS Server. All resources and operations exposed by the REST API are accessible through a hierarchy of endpoints or Uniform Resource Locators (URLs) for each GIS service published with ArcGIS Server."""
 
-# json parsing is a third-party library until 2.6, jump through hoops to make it work
+# json parsing is a third-party library until 2.6, make some 
+# effort to import it
 try:
     import json
 except ImportError:
@@ -19,21 +20,43 @@ class ReSTURL(object):
     """Represents a top-level, base REST-style URL."""
     __caching__ = False # Fetch every time or just once?
     __urldata__ = Ellipsis
+    __lazy_fetch__ = True
     def __init__(self, url):
         if isinstance(url, basestring):
             url = urlparse.urlsplit(url)
+        # Ellipsis is used instead of None for the case where no data
+        # is returned from the server due to an error condition -- we
+        # need to differentiate between 'NULL' and 'UNDEFINED' and
+        # seriously, did you even know Ellipsis was a python construct?
+        # I didn't either.
         self.__urldata__ = Ellipsis
         # Pull out query, whatever it may be
         urllist = list(url)
         query_dict = cgi.parse_qs(urllist[3])
         # Set the f= flag to json (so we can interface with it)
         query_dict['f'] = 'json'
+        # Hack our modified query string back into URL components
         urllist[3] = urllib.urlencode(query_dict)
         self._url = urllist
-    def _get_subfolder(self, foldername, returntype=Ellipsis):
-        if returntype is Ellipsis:
-            returntype = self.__class__
-        rt = returntype(urlparse.urljoin(self.url, foldername, False))
+        if self.__lazy_fetch__ is False and self.__caching__ is True:
+            self._contents
+    def _get_subfolder(self, foldername, returntype, params={}):
+        newurl = urlparse.urljoin(self.url, foldername, False)
+        # Add the key-value pairs sent in params to query string
+        # as needed
+        if params:
+            url_tuple = urlparse.urlsplit(url)
+            urllist = list(url_tuple)
+            query_dict = cgi.parse_qs(urllist[3])
+            for key, val in params.iteritems():
+                # Stamp out null values
+                if val is not None:
+                    query_dict[key] = val
+            urllist[3] = urllib.urlencode(query_dict)
+            newurl = urllist
+        # Instantiate new ReSTURL or subclass
+        rt = returntype(newurl)
+        # Remind the resource where it came from
         rt.parent = self
         return rt
     @property
@@ -49,18 +72,43 @@ class ReSTURL(object):
     def _json_struct(self):
         return json.loads(self._contents)
 
+class Result(ReSTURL):
+    """Abstract class representing the result of an operation performed on a
+       ReST service"""
+    __caching__ = True # Only request the URL once
+    __lazy_fetch__ = False # Force-fetch immediately
+
 class Folder(ReSTURL):
     """Represents a folder path on an ArcGIS ReST server."""
     __caching__  = True
     @property
     def folders(self):
-        "Returns a list of folders available from this directory."
-        return set([folder.split('/')[-1] for folder in self._json_struct.get('folders', [])])
+        "Returns a list of folders available from this folder."
+        return [folder.split('/')[-1] for folder 
+                    in self._json_struct.get('folders', [])]
     @property
     def services(self):
-        "Give the list of services available in this diretory."
-        return set([service['name'].rstrip('/').split('/')[-1] for service in self._json_struct.get('services', [])])
+        "Give the list of services available in this folder."
+        services_found = {}
+        services = []
+        for service in self._json_struct.get('services', []):
+            servicename = service['name'].split('/')[-1]
+            servicetype = service['type']
+            if not servicename in services_found:
+                services_found[servicename] = []
+            services_found[servicename].append('%s_%s' % 
+                (servicename, servicetype))
+        # If multiple service names of the same type exist, 
+        # disambiguate with Name_Type instead of Name
+        for key, val in services_found.iteritems():
+            if len(val) > 1: # Multiple; use disambiguating string
+                services.extend(val)
+            else: # Use service name
+                services.append(key)
+        return services
     def __getattr__(self, attr):
+        return self[attr]
+    def __getitem__(self, attr):
         service_type_mapping = {
             'MapServer': MapService,
             'GeocodeServer': GeocodeService,
@@ -77,23 +125,29 @@ class Folder(ReSTURL):
             matchingservices = [svc for svc in self._json_struct['services'] 
                                     if svc['name'].rstrip('/').split('/')[-1] == attr]
             if len(matchingservices) > 1:
-                attrsuggestionstring = "%s or %s" % (', '.join('%s_%s' % (attr, service['type']) 
-                                                        for service in matchingservices[:-1]),
-                                                    "%s_%s" % (attr, matchingservices[-1]['type']))
+                # Create comma separated list with ' or ' separated last item
+                attrsuggestionstring = "%s or %s" % (
+                    ', '.join('%s_%s' % (attr, service['type']) 
+                   for service in matchingservices[:-1]),
+                   "%s_%s" % (attr, matchingservices[-1]['type']))
+                # Tell the user there are too many options to disambiguate
                 raise AttributeError(
                     "Ambiguous service %r: please use use more specific %s attributes." % 
                         (attr, attrsuggestionstring))
             elif len(matchingservices) == 1:
                 servicetype = matchingservices[0]['type']
-                return self._get_subfolder("%s/%s/" % (attr, servicetype), service_type_mapping.get(servicetype, Service))
+                return self._get_subfolder("%s/%s/" % (attr, servicetype), 
+                    service_type_mapping.get(servicetype, Service))
         elif '_' in attr:
             al = attr.rstrip('/').split('/')[-1].split('_')
             servicetype = al.pop()
             attr = '_'.join(al)
             matchingservices = [svc for svc in self._json_struct['services'] 
-                                    if svc['name'].rstrip('/').split('/')[-1] == attr and svc['type'] == servicetype]
+                                    if svc['name'].rstrip('/').split('/')[-1] == attr 
+                                    and svc['type'] == servicetype]
             if len(matchingservices) == 1: 
-                return self._get_subfolder("%s/%s/" % (attr, servicetype), service_type_mapping.get(servicetype, Service))
+                return self._get_subfolder("%s/%s/" % (attr, servicetype),
+                    service_type_mapping.get(servicetype, Service))
         raise AttributeError("No service or folder named %r found" % attr)
 
 class Catalog(Folder):
@@ -109,16 +163,16 @@ class Catalog(Folder):
         assert 'services' in json_struct, "No services section in catalog root"
 
 class Service(ReSTURL):
-    """Represents an ArcGIS ReST service. This is essentially an abstract base -- services derive from this."""
+    """Represents an ArcGIS ReST service. This is an abstract base -- services derive from this."""
     __caching__  = False
     def __init__(self, url):
         super(Service, self).__init__(url)
 
 class MapService(Service):
     """Map services offer access to map and layer content. Map services can either be cached or dynamic. A map service that fulfills requests with pre-created tiles from a cache instead of dynamically rendering part of the map is called a cached map service. A dynamic map service requires the server to render the map each time a request comes in. Map services using a tile cache can significantly improve performance while delivering maps, while dynamic map services offer more flexibility."""
-    def ExportMap(self):
+    def ExportMap(self, bbox, size=None, dpi=None, imageSR=None, bboxSR=None, format=None, layerDefs=None, layers=None, transparent=False):
         """The export operation is performed on a map service resource. The result of this operation is a map image resource. This resource provides information about the exported map image such as its URL, its width and height, extent and scale."""
-        pass
+        return self._get_subfolder()
     def Identify(self):
         """The identify operation is performed on a map service resource. The result of this operation is an identify results resource. Each identified result includes its name, layer ID, layer name, geometry and geometry type, and other attributes of that result as name-value pairs."""
         pass
