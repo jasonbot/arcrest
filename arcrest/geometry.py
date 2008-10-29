@@ -1,12 +1,14 @@
-"""This module implements the JSON geometry and spatial reference objects as returned by the REST API. The REST API supports 4 geometry types - points, polylines, polygons and envelopes."""
+"""This module implements the JSON geometry and spatial reference objects 
+   as returned by the REST API. The REST API supports 4 geometry types - 
+   points, polylines, polygons and envelopes."""
 
 class Geometry(object):
     """Represents an abstract base for geometries"""
     def __init__(self):
-        raise ImplementationError("Cannot instantiate abstract geometry type")
+        raise NotImplementedError("Cannot instantiate abstract geometry type")
     @property
     def _json_struct(self):
-        raise ImplementationError("Unimplemented serialize to JSON")
+        raise NotImplementedError("Unimplemented save to JSON")
     def __str__(self):
         try:
             import json
@@ -18,11 +20,18 @@ class Geometry(object):
                                   "from http://www.undefined.org/python/ "\
                                   "or use arcrest with Python 2.6")
         return json.dumps(self._json_struct)
+    @classmethod
+    def fromJsonStruct(cls, struct):
+        raise NotImplementedError("Unimplemented convert from JSON")
 
 class SpatialReference(Geometry):
-    """The REST API only supports spatial references that have well-known IDs associated with them. Given this constraint, a spatial reference object only contains one field - wkid (i.e. the well-known ID of the spatial reference).
+    """The REST API only supports spatial references that have well-known 
+       IDs associated with them. Given this constraint, a spatial reference
+       object only contains one field - wkid (i.e. the well-known ID of the
+       spatial reference).
 
-For a list of valid WKID values, see projections.Projected and projections.Graphic in this package."""
+       For a list of valid WKID values, see projections.Projected and 
+       projections.Graphic in this package."""
     def __init__(self, wkid):
         self.wkid = wkid
     @property
@@ -32,6 +41,9 @@ For a list of valid WKID values, see projections.Projected and projections.Graph
         if isinstance(other, SpatialReference):
             return self.wkid == other.wkid
         return self.wkid == other
+    @classmethod
+    def fromJsonStruct(cls, struct):
+        return cls(int(struct['wkid']))
 
 class Point(Geometry):
     """A point contains x and y fields along with a spatialReference field."""
@@ -39,13 +51,25 @@ class Point(Geometry):
     def __init__(self, x, y, spatialReference=SpatialReference(4326)):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
+        x, y = float(x), float(y)
         self.x, self.y, self.spatialReference = x, y, spatialReference
     @property
     def _json_struct(self):
-        return {'x': self.x, 'y': self.y, 'spatialReference': self.spatialReference._json_struct}
+        return {'x': self.x,
+                'y': self.y,
+                'spatialReference': self.spatialReference._json_struct}
+    @classmethod
+    def fromJsonStruct(cls, struct):
+        if isinstance(struct, (list, tuple)) and len(struct) == 2:
+            return cls(*struct)
+        else:
+            return cls(**struct)
 
 class Polyline(Geometry):
-    """A polyline contains an array of paths and a spatialReference. Each path is represented as an array of points. And each point in the path is represented as a 2-element array. The 0-index is the x-coordinate and the 1-index is the y-coordinate."""
+    """A polyline contains an array of paths and a spatialReference. Each 
+       path is represented as an array of points. And each point in the path is
+       represented as a 2-element array. The 0-index is the x-coordinate and the
+       1-index is the y-coordinate."""
     __geometry_type__ = "esriGeometryPolyline"
     def __init__(self, paths=[], spatialReference=SpatialReference(4326)):
         if not isinstance(spatialReference, SpatialReference):
@@ -66,10 +90,18 @@ class Polyline(Geometry):
         return [list(fixpath(path)) for path in self.paths]
     @property
     def _json_struct(self):
-        return {'paths': self._json_paths, 'spatialReference': self.spatialReference._json_struct}
+        return {'paths': self._json_paths,
+                'spatialReference': self.spatialReference._json_struct}
+    @classmethod
+    def fromJsonStruct(cls, struct):
+        return cls(**struct)
 
 class Polygon(Polyline):
-    """A polygon contains an array of rings and a spatialReference. Each ring is represented as an array of points. The first point of each ring is always the same as the last point. And each point in the ring is represented as a 2-element array. The 0-index is the x-coordinate and the 1-index is the y-coordinate."""
+    """A polygon contains an array of rings and a spatialReference. Each ring is
+       represented as an array of points. The first point of each ring is always
+       the same as the last point. And each point in the ring is represented as a
+       2-element array. The 0-index is the x-coordinate and the 1-index is the 
+       y-coordinate."""
     __geometry_type__ = "esriGeometryPolygon"
     def __init__(self, rings=[], spatialReference=SpatialReference(4326)):
         if not isinstance(spatialReference, SpatialReference):
@@ -90,10 +122,16 @@ class Polygon(Polyline):
         return [list(fixring(ring)) for ring in self.rings]
     @property
     def _json_struct(self):
-        return {'rings': self._json_rings, 'spatialReference': self.spatialReference._json_struct}
+        return {'rings': self._json_rings,
+                'spatialReference': self.spatialReference._json_struct}
+    @classmethod
+    def fromJsonStruct(cls, struct):
+        return cls(**struct)
 
 class Multipoint(Geometry):
-    """A multipoint contains an array of points and a spatialReference. Each point is represented as a 2-element array. The 0-index is the x-coordinate and the 1-index is the y-coordinate."""
+    """A multipoint contains an array of points and a spatialReference. Each point is
+       represented as a 2-element array. The 0-index is the x-coordinate and the 1-index
+       is the y-coordinate."""
     def __init__(self, points=[], spatialReference=SpatialReference(4326)):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
@@ -113,10 +151,15 @@ class Multipoint(Geometry):
         return list(fixpoints(self.points))
     @property
     def _json_struct(self):
-        return {'points': self._json_points, 'spatialReference': self.spatialReference._json_struct}
+        return {'points': self._json_points,
+                'spatialReference': self.spatialReference._json_struct}
+    @classmethod
+    def fromJsonStruct(cls, struct):
+        return cls(**struct)
 
 class Envelope(Geometry):
-    """An envelope contains the corner points of an extent and is represented by xmin, ymin, xmax, and ymax, along with a spatialReference."""
+    """An envelope contains the corner points of an extent and is represented by 
+       xmin, ymin, xmax, and ymax, along with a spatialReference."""
     __geometry_type__ = "esriGeometryEnvelope"
     def __init__(self, xmin, ymin, xmax, ymax, spatialReference=SpatialReference(4326)):
         if not isinstance(spatialReference, SpatialReference):
@@ -125,4 +168,25 @@ class Envelope(Geometry):
         self.xmin, self.ymin, self.xmax, self.ymax = xmin, ymin, xmax, ymax
     @property
     def _json_struct(self):
-        return {'xmin': self.xmin, 'ymin': self.ymin, 'xmax': self.xmax, 'ymax': self.ymax, 'spatialReference': self.spatialReference._json_struct}
+        return {'xmin': self.xmin, 
+                'ymin': self.ymin,
+                'xmax': self.xmax,
+                'ymax': self.ymax,
+                'spatialReference': self.spatialReference._json_struct}
+    @classmethod
+    def fromJsonStruct(cls, struct):
+        return cls(*struct)
+
+def convert_from_json(struct):
+    "Convert a JSON struct to a Geometry of some sort"
+    attrlist = {
+        'wkid': SpatialReference,
+        'paths': PolyLine,
+        'rings': Polygon,
+        'points': Multipoint,
+        'xmin': Envelope
+    }
+    for key, cls in attrlist:
+        if key in struct:
+            return cls.fromJsonStruct(struct)
+    raise ValueError("Unconvertible to geometry")

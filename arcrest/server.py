@@ -27,6 +27,7 @@ class ReSTURL(object):
     """Represents a top-level, base REST-style URL."""
     __cache_request__ = False # Fetch every time or just once?
     __urldata__ = Ellipsis
+    __json_struct__ = Ellipsis
     __lazy_fetch__ = True
     def __init__(self, url):
         if isinstance(url, basestring):
@@ -39,7 +40,9 @@ class ReSTURL(object):
         self.__urldata__ = Ellipsis
         # Pull out query, whatever it may be
         urllist = list(url)
-        query_dict = cgi.parse_qs(urllist[3])
+        query_dict = {}
+        for k, v in cgi.parse_qs(urllist[3]).iteritems():
+            query_dict[k] = v[0]
         # Set the f= flag to json (so we can interface with it)
         query_dict['f'] = 'json'
         # Hack our modified query string back into URL components
@@ -48,26 +51,22 @@ class ReSTURL(object):
         if self.__lazy_fetch__ is False and self.__cache_request__ is True:
             self._contents
     def _get_subfolder(self, foldername, returntype, params={}):
-        "Return an object of the requested type with the path relative
-         to the current object's URL. Optionally, query parameters
-         may be set."
+        """Return an object of the requested type with the path relative
+           to the current object's URL. Optionally, query parameters
+           may be set."""
         newurl = urlparse.urljoin(self.url, foldername, False)
         # Add the key-value pairs sent in params to query string
-        # as needed
         if params:
-            url_tuple = urlparse.urlsplit(url)
+            url_tuple = urlparse.urlsplit(newurl)
             urllist = list(url_tuple)
             query_dict = cgi.parse_qs(urllist[3])
             for key, val in params.iteritems():
-                # Special case for geometries
-                if isinstance(val, geometry.Geometry):
-                    query_dict[key] = json.dumps(val._json_struct)
                 # Lowercase bool string
-                elif isinstance(val, bool):
+                if isinstance(val, bool):
                     query_dict[key] = str(val).lower()
-                # Stamp out null values
+                # Ignore null values, coerce strings
                 elif val is not None:
-                    query_dict[key] = val
+                    query_dict[key] = str(val)
             urllist[3] = urllib.urlencode(query_dict)
             newurl = urllist
         # Instantiate new ReSTURL or subclass
@@ -82,11 +81,25 @@ class ReSTURL(object):
     def _contents(self):
         if self.__urldata__ is Ellipsis or self.__cache_request__ is False:
             handle = urllib2.urlopen(self.url)
+            # Handle the special case where we are redirected (only follow once)
+            # note that only the first three components (protocol, hostname, path)
+            # are altered as component 4 is the query string, which can get
+            # clobbered by the server.
+            fetched_url = list(urlparse.urlsplit(handle.url)[:3])
+            if fetched_url != list(self._url[:3]):
+                self._url[:3] = fetched_url
+                return self._contents
+            # No redirect, proceed as usual.
             self.__urldata__ = handle.read()
         return self.__urldata__
     @property
     def _json_struct(self):
-        return json.loads(self._contents)
+        if self.__cache_request__:
+            if self.__json_struct__ is Ellipsis:
+                self.__json_struct__ = json.loads(self._contents)
+            return self.__json_struct__
+        else:
+            return json.loads(self._contents)
 
 # On top of a URL, the ArcGIS Server folder structure lists subfolders
 # and services.
@@ -171,13 +184,12 @@ class Catalog(Folder):
         super(Catalog, self).__init__(url_)
         # Basically a Folder, but do some really, really rudimentary sanity
         # checking (look for folders/services, make sure format is JSON) so we
-        # can verify this URL behaves like a Folder -- catch errors easly before
+        # can verify this URL behaves like a Folder -- catch errors early before
         # any other manipulations go on.
-        json_struct = self._json_struct
-        assert 'folders' in json_struct, "No folders section in catalog root"
-        assert 'services' in json_struct, "No services section in catalog root"
+        assert 'folders' in self._json_struct, "No folders section in catalog root"
+        assert 'services' in self._json_struct, "No services section in catalog root"
 
-# Definitions for classes pertaining to manipulating services
+# Definitions for classes calling/manipulating services
 
 class Service(ReSTURL):
     """Represents an ArcGIS ReST service. This is an abstract base -- services 
@@ -186,11 +198,20 @@ class Service(ReSTURL):
     def __init__(self, url):
         super(Service, self).__init__(url)
 
+class ServerError(Exception):
+    """Exception for server-side error responses"""
+    pass
+
 class Result(ReSTURL):
     """Abstract class representing the result of an operation performed on a
        ReST service"""
     __cache_request__ = True # Only request the URL once
     __lazy_fetch__ = False # Force-fetch immediately
+    def __init__(self, url):
+        super(Result, self).__init__(url)
+        if 'error' in self._json_struct:
+            raise ServerError("ERROR %i: %s" % (self._json_struct['error']['code'], 
+                                             self._json_struct['error']['message']))
 
 # Service implementations -- mostly simple conversion wrappers for the
 # functionality handled up above, wrapper types for results, etc.
@@ -230,13 +251,15 @@ class MapService(Service):
            pairs."""
         assert hasattr(geometry, '__geometry_type__'), "Invalid geometry"
         return self._get_subfolder('identify/', Result, {'geometry': geometry,
-                                                        'geometryType': geometry.__geometry_type__,
+                                                        'geometryType': 
+                                                            geometry.__geometry_type__,
                                                         'sr': sr,
                                                         'layers': layers,
                                                         'tolerance': tolerance, 
                                                         'mapExtent': mapExtent, 
                                                         'imageDisplay': imageDisplay,
-                                                        'returnGeometry': returnGeometry})
+                                                        'returnGeometry':
+                                                            returnGeometry})
     def Find(self, searchText, contains=True, searchFields=None, sr=None, 
              layers=None, returnGeometry=True):
         """The find operation is performed on a map service resource. The result
@@ -248,7 +271,8 @@ class MapService(Service):
                                                      'searchFields': searchFields,
                                                      'sr': sr, 
                                                      'layers': layers,
-                                                     'returnGeometry': returnGeometry})
+                                                     'returnGeometry':
+                                                        returnGeometry})
     def GenerateKML(self, docName, layers, layerOptions='composite'):
         """The generateKml operation is performed on a map service resource.
            The result of this operation is a KML document wrapped in a KMZ file.
@@ -263,7 +287,8 @@ class MapService(Service):
                                images."""
         return self._get_subfolder('generateKml/', Result, {'docName': docName, 
                                                             'layers': layers,
-                                                            'layerOptions': layerOptions})
+                                                            'layerOptions':
+                                                                layerOptions})
 
 class GeocodeService(Service):
     """Geocoding is the process of assigning a location, usually in the form of
@@ -276,19 +301,30 @@ class GeocodeService(Service):
     @property
     def GeocodeServer(self):
         return self
-    def FindAddressCandidates(self):
+    def FindAddressCandidates(self, outFields=[], **fields):
         """The findAddressCandidates operation is performed on a geocode service
            resource. The result of this operation is a resource representing the 
            list of address candidates. This resource provides information about
            candidates including the address, location, and score."""
-        pass
-    def ReverseGeocode(self):
+        required_unset_fields = []
+        for field in self._json_struct['addressFields']:
+            if field['required'] and field['name'] not in fields:
+                required_unset_fields.append(field['name'])
+        if required_unset_fields:
+            raise ValueError("Required field%s not set for Geocode search: %s" % 
+                                ('' if len(required_unset_fields) == 1 
+                                        else 's', ', '.join(required_unset_fields)))
+        query = fields.copy()
+        query['outFields'] = outFields
+        return self._get_subfolder('findAddressCandidates/', Result, query) 
+    def ReverseGeocode(self, location, distance):
         """The reverseGeocode operation is performed on a geocode service resource.
            The result of this operation is a reverse geocoded address resource.
            This resource provides information about all the address fields
            pertaining to the reverse geocoded address as well as its exact
            location."""
-        pass
+        return self._get_subfolder('reverseGeocode/', Result, {'location': location, 
+                                                               'distance': distance})
 
 class GPTask(Folder):
     """The GP task resource represents a single task in a GP service published
