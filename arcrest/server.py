@@ -1,8 +1,8 @@
-"""The ArcGIS Server REST API, short for Representational State Transfer, provides
-   a simple, open Web interface to services hosted by ArcGIS Server. All resources
-   and operations exposed by the REST API are accessible through a hierarchy of
-   endpoints or Uniform Resource Locators (URLs) for each GIS service published
-   with ArcGIS Server."""
+"""The ArcGIS Server REST API, short for Representational State Transfer, 
+   provides a simple, open Web interface to services hosted by ArcGIS Server.
+   All resources and operations exposed by the REST API are accessible through
+   a hierarchy of endpoints or Uniform Resource Locators (URLs) for each GIS 
+   service published with ArcGIS Server."""
 
 # json parsing is a third-party library until 2.6, make some 
 # effort to import it
@@ -81,8 +81,8 @@ class ReSTURL(object):
     def _contents(self):
         if self.__urldata__ is Ellipsis or self.__cache_request__ is False:
             handle = urllib2.urlopen(self.url)
-            # Handle the special case where we are redirected (only follow once)
-            # note that only the first three components (protocol, hostname, path)
+            # Handle the special case of a redirect (only follow once) --
+            # Note that only the first 3 components (protocol, hostname, path)
             # are altered as component 4 is the query string, which can get
             # clobbered by the server.
             fetched_url = list(urlparse.urlsplit(handle.url)[:3])
@@ -144,11 +144,13 @@ class Folder(ReSTURL):
                                         == untyped_attr
                                     and svc['type'] == servicetype]
             if len(matchingservices) == 1: 
-                return self._get_subfolder("%s/%s/" % (untyped_attr, servicetype),
+                return self._get_subfolder("%s/%s/" % 
+                    (untyped_attr, servicetype),
                     service_type_mapping.get(servicetype, Service))
         # Then match by service name
-        matchingservices = [svc for svc in self._json_struct['services'] 
-                                if svc['name'].rstrip('/').split('/')[-1] == attr]
+        matchingservices = [svc
+                            for svc in self._json_struct['services'] 
+                            if svc['name'].rstrip('/').split('/')[-1] == attr]
         # Found more than one match, there is ambiguity so return an
         # object holding .ServiceType attributes representing each service.
         if len(matchingservices) > 1:
@@ -173,9 +175,9 @@ class Folder(ReSTURL):
 # special case of Folder
 
 class Catalog(Folder):
-    """The catalog resource is the root node and initial entry point into an ArcGIS
-       Server host. This resource represents a catalog of folders and services
-       published on the host."""
+    """The catalog resource is the root node and initial entry point into an 
+       ArcGIS Server host. This resource represents a catalog of folders and 
+       services published on the host."""
     __cache_request__  = True
     def __init__(self, url):
         url_ = list(urlparse.urlsplit(url))
@@ -184,15 +186,15 @@ class Catalog(Folder):
         super(Catalog, self).__init__(url_)
         # Basically a Folder, but do some really, really rudimentary sanity
         # checking (look for folders/services, make sure format is JSON) so we
-        # can verify this URL behaves like a Folder -- catch errors early before
-        # any other manipulations go on.
-        assert 'folders' in self._json_struct, "No folders section in catalog root"
-        assert 'services' in self._json_struct, "No services section in catalog root"
+        # can verify this URL behaves like a Folder -- catch errors early 
+        # before any other manipulations go on.
+        assert 'folders' in self._json_struct, "No folders in catalog root"
+        assert 'services' in self._json_struct, "No services in catalog root"
 
 # Definitions for classes calling/manipulating services
 
 class Service(ReSTURL):
-    """Represents an ArcGIS ReST service. This is an abstract base -- services 
+    """Represents an ArcGIS ReST service. This is an abstract base -- services
        derive from this."""
     __cache_request__ = False
     def __init__(self, url):
@@ -210,8 +212,9 @@ class Result(ReSTURL):
     def __init__(self, url):
         super(Result, self).__init__(url)
         if 'error' in self._json_struct:
-            raise ServerError("ERROR %i: %s" % (self._json_struct['error']['code'], 
-                                             self._json_struct['error']['message']))
+            raise ServerError("ERROR %i: %s" % 
+                               (self._json_struct['error']['code'], 
+                                self._json_struct['error']['message']))
 
 # Service implementations -- mostly simple conversion wrappers for the
 # functionality handled up above, wrapper types for results, etc.
@@ -220,10 +223,10 @@ class MapService(Service):
     """Map services offer access to map and layer content. Map services can
        either be cached or dynamic. A map service that fulfills requests with
        pre-created tiles from a cache instead of dynamically rendering part of
-       the map is called a cached map service. A dynamic map service requires the
-       server to render the map each time a request comes in. Map services using 
-       a tile cache can significantly improve performance while delivering maps,
-       while dynamic map services offer more flexibility."""
+       the map is called a cached map service. A dynamic map service requires
+       the server to render the map each time a request comes in. Map services
+       using a tile cache can significantly improve performance while
+       delivering maps, while dynamic map services offer more flexibility."""
     @property
     def MapServer(self):
         return self
@@ -233,104 +236,124 @@ class MapService(Service):
            result of this operation is a map image resource. This resource
            provides information about the exported map image such as its URL,
            its width and height, extent and scale."""
-        return self._get_subfolder('export/', Result, {'bbox': bbox, 
-                                                       'size': size,
-                                                       'dpi': dpi,
-                                                       'imageSR': imageSR,
-                                                       'bboxSR': bboxSR,
-                                                       'format': format,
-                                                       'layerDefs': layerDefs,
-                                                       'layers': layers,
-                                                       'transparent': transparent})
+        return self._get_subfolder('export/', Result, 
+                                              {'bbox': bbox, 
+                                               'size': size,
+                                               'dpi': dpi,
+                                               'imageSR': imageSR,
+                                               'bboxSR': bboxSR,
+                                               'format': format,
+                                               'layerDefs': layerDefs,
+                                               'layers': layers,
+                                               'transparent': transparent})
     def Identify(self, geometry, sr=None, layers=None, tolerance=1, 
                  mapExtent=None, imageDisplay=None, returnGeometry=True):
         """The identify operation is performed on a map service resource. The
            result of this operation is an identify results resource. Each
            identified result includes its name, layer ID, layer name, geometry
-           and geometry type, and other attributes of that result as name-value 
+           and geometry type, and other attributes of that result as name-value
            pairs."""
         assert hasattr(geometry, '__geometry_type__'), "Invalid geometry"
-        return self._get_subfolder('identify/', Result, {'geometry': geometry,
-                                                        'geometryType': 
-                                                            geometry.__geometry_type__,
-                                                        'sr': sr,
-                                                        'layers': layers,
-                                                        'tolerance': tolerance, 
-                                                        'mapExtent': mapExtent, 
-                                                        'imageDisplay': imageDisplay,
-                                                        'returnGeometry':
-                                                            returnGeometry})
+        gt = geometry.__geometry_type__
+        return self._get_subfolder('identify/', Result,
+                                                {'geometry': geometry,
+                                                 'geometryType': gt,
+                                                 'sr': sr,
+                                                 'layers': layers,
+                                                 'tolerance': tolerance,
+                                                 'mapExtent': mapExtent,
+                                                 'imageDisplay': 
+                                                    imageDisplay,
+                                                 'returnGeometry':
+                                                    returnGeometry})
     def Find(self, searchText, contains=True, searchFields=None, sr=None, 
              layers=None, returnGeometry=True):
-        """The find operation is performed on a map service resource. The result
-           of this operation is a find results resource. Each result includes its
-           value, feature ID, field name,?layer ID, layer name, geometry, geometry
-           type, and attributes in the form of name-value pairs."""
-        return self._get_subfolder('find/', Result, {'searchText': searchText,
-                                                     'contains': contains,
-                                                     'searchFields': searchFields,
-                                                     'sr': sr, 
-                                                     'layers': layers,
-                                                     'returnGeometry':
-                                                        returnGeometry})
+        """The find operation is performed on a map service resource. The
+           result of this operation is a find results resource. Each result
+           includes  its value, feature ID, field name,?layer ID, layer name,
+           geometry, geometry type, and attributes in the form of name-value
+           pairs."""
+        return self._get_subfolder('find/', Result, 
+                                            {'searchText': searchText,
+                                             'contains': contains,
+                                             'searchFields': searchFields,
+                                             'sr': sr, 
+                                             'layers': layers,
+                                             'returnGeometry': returnGeometry})
     def GenerateKML(self, docName, layers, layerOptions='composite'):
         """The generateKml operation is performed on a map service resource.
-           The result of this operation is a KML document wrapped in a KMZ file.
-           The document contains a network link to the KML Service endpoint with 
-           properties and parameters you specify.
+           The result of this operation is a KML document wrapped in a KMZ 
+           file. The document contains a network link to the KML Service 
+           endpoint with properties and parameters you specify.
 
-                Layer Options:
-                    composite: (default) All layers as a single composite image.
-                               Layers cannot be turned on and off in the client.
-                separateImage: Each layer as a separate image.
-                 nonComposite: Vector layers as vectors and raster layers as
-                               images."""
+           Layer Options:
+                 composite: (default) All layers as a single composite image.
+                            Layers cannot be turned on and off in the client.
+             separateImage: Each layer as a separate image.
+              nonComposite: Vector layers as vectors and raster layers as
+                            images."""
         return self._get_subfolder('generateKml/', Result, {'docName': docName, 
                                                             'layers': layers,
                                                             'layerOptions':
                                                                 layerOptions})
 
+class ReverseGeocodeResult(Result):
+    """Represents the result from a reverse geocode operation"""
+    @property
+    def address(self):
+        return self._json_struct['address']
+    @property
+    def location(self):
+        return geometry.convert_from_json(self._json_struct['location'])
+
+    def __getattr__(self, attr):
+        return self._json_struct['address'][attr]
+
 class GeocodeService(Service):
-    """Geocoding is the process of assigning a location, usually in the form of
-       coordinate values (points), to an address by comparing the descriptive
-       location elements in the address to those present in the reference material. 
-       Addresses come in many forms, ranging from the common address format of a
-       house number followed by the street name and succeeding information to other
-       location descriptions such as postal zone or census tract. An address
-       includes any type of information that distinguishes a place."""
+    """Geocoding is the process of assigning a location, usually in the form
+       of coordinate values (points), to an address by comparing the
+       descriptive location elements in the address to those present in the
+       reference material. Addresses come in many forms, ranging from the
+       common address format of a house number followed by the street name and
+       succeeding information to other location descriptions such as postal
+       zone or census tract. An address includes any type of information that
+       distinguishes a place."""
     @property
     def GeocodeServer(self):
         return self
     def FindAddressCandidates(self, outFields=[], **fields):
-        """The findAddressCandidates operation is performed on a geocode service
-           resource. The result of this operation is a resource representing the 
-           list of address candidates. This resource provides information about
-           candidates including the address, location, and score."""
+        """The findAddressCandidates operation is performed on a geocode
+           service resource. The result of this operation is a resource
+           representing the  list of address candidates. This resource
+           provides information about candidates including the address,
+           location, and score."""
         required_unset_fields = []
         for field in self._json_struct['addressFields']:
             if field['required'] and field['name'] not in fields:
                 required_unset_fields.append(field['name'])
         if required_unset_fields:
-            raise ValueError("Required field%s not set for Geocode search: %s" % 
-                                ('' if len(required_unset_fields) == 1 
-                                        else 's', ', '.join(required_unset_fields)))
+            raise ValueError("Required field%s not set for Geocode: %s" % 
+                               ('' if len(required_unset_fields) == 1 
+                                   else 's', ', '.join(required_unset_fields)))
         query = fields.copy()
         query['outFields'] = outFields
         return self._get_subfolder('findAddressCandidates/', Result, query) 
     def ReverseGeocode(self, location, distance):
-        """The reverseGeocode operation is performed on a geocode service resource.
-           The result of this operation is a reverse geocoded address resource.
-           This resource provides information about all the address fields
-           pertaining to the reverse geocoded address as well as its exact
-           location."""
-        return self._get_subfolder('reverseGeocode/', Result, {'location': location, 
-                                                               'distance': distance})
+        """The reverseGeocode operation is performed on a geocode service 
+           resource. The result of this operation is a reverse geocoded address
+           resource. This resource provides information about all the address
+           fields pertaining to the reverse geocoded address as well as its
+           exact location."""
+        return self._get_subfolder('reverseGeocode/', ReverseGeocodeResult, 
+                                                      {'location': location, 
+                                                       'distance': distance})
 
-class GPTask(Folder):
+class GPTask(Service):
     """The GP task resource represents a single task in a GP service published
        using the ArcGIS Server. It provides basic information about the task
-       including its name and display name. It also provides detailed information
-       about the various input and output parameters exposed by the task"""
+       including its name and display name. It also provides detailed 
+       information about the various input and output parameters exposed by the
+       task"""
     pass
 
 class GPService(Service):
@@ -339,32 +362,33 @@ class GPService(Service):
        conversion tools necessary for all GIS users.
 
        A geoprocessing service represents a collection of published tools that
-       perform tasks necessary for manipulating and analyzing geographic information 
-       across a wide range of disciplines. Each tool performs one or more
-       operations, such as projecting a data set from one map projection to another,
-       adding fields to a table, or creating buffer zones around features. A tool
-       accepts input (such as feature sets, tables, and property values), executes
-       operations using the input data, and generates output for presentation in a
-       map or further processing by the client. Tools can be executed synchronously
-       (in sequence) or asynchronously."""
+       perform tasks necessary for manipulating and analyzing geographic 
+       information across a wide range of disciplines. Each tool performs one
+       or more operations, such as projecting a data set from one map
+       projection to another, adding fields to a table, or creating buffer 
+       zones around features. A tool accepts input (such as feature sets, 
+       tables, and property values), executes operations using the input data,
+       and generates output for presentation in a map or further processing by 
+       the client. Tools can be executed synchronously (in sequence) or
+       asynchronously."""
     @property
     def GPServer(self):
         return self
 
 class GeometryService(Service):
     """A geometry service contains utility methods, which provide access to
-       sophisticated and frequently used geometric operations. An ArcGIS Server Web 
-       site can only expose one geometry service with the static name "Geometry."
-       Note that geometry input and output, where required, are always packaged as
-       an array."""
+       sophisticated and frequently used geometric operations. An ArcGIS Server
+       Web site can only expose one geometry service with the static name
+       "Geometry." Note that geometry input and output, where required, are
+       always packaged as an array."""
     @property
     def GeometryServer(self):
         return self
     def Project(self):
-        """The project operation is performed on a geometry service resource. The
-           result of this operation is an array of projected geometries. This resource
-           projects an array of input geometries from an input spatial reference to an
-           output spatial reference."""
+        """The project operation is performed on a geometry service resource.
+           The result of this operation is an array of projected geometries.
+           This resource projects an array of input geometries from an input
+           spatial reference to an output spatial reference."""
         pass
     def Simplify(self):
         """The simplify operation is performed on a geometry service resource. 
@@ -375,9 +399,10 @@ class GeometryService(Service):
            IPolyline.SimplifyNetwork Method."""
         pass
     def Buffer(self):
-        """The buffer operation is performed on a geometry service resource. The result
-           of this operation is buffer polygons at the specified distances for the input 
-           geometry array. An option is available to union buffers at each distance."""
+        """The buffer operation is performed on a geometry service resource.
+           The result of this operation is buffer polygons at the specified
+           distances for the input geometry array. An option is available to
+           union buffers at each distance."""
         pass
     def AreasAndLengths(self):
         """The areasAndLengths operation is performed on a geometry service resource.

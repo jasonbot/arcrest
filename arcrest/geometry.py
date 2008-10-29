@@ -2,8 +2,22 @@
    as returned by the REST API. The REST API supports 4 geometry types - 
    points, polylines, polygons and envelopes."""
 
+def pointlist(points, sr):
+    """Convert a list of the form [[x, y] ... ] to a list of Point instances
+       with the given x, y coordinates."""
+    assert all(len(pt) == 2 for pt in points), "Point(s) not in [x, y] form"
+    return [Point(coord[0], coord[1], sr) for coord in points]
+
+def listofpointlist(ptlist, sr):
+    """Convert a list of the form [[[x, y] ...] ...] to a list of lists of 
+       Point instances with the given x, y coordinates."""
+    return [pointlist(listofpoints, sr) for listofpoints in ptlist]
+
 class Geometry(object):
-    """Represents an abstract base for geometries"""
+    """Represents an abstract base for json-represented geometries on
+       the ArcGIS Server REST API. Please refer to Point, Multipoint,
+       Polygon, Polyline and Envelope in this module for more information
+       on geometry types."""
     def __init__(self):
         raise NotImplementedError("Cannot instantiate abstract geometry type")
     @property
@@ -33,7 +47,9 @@ class SpatialReference(Geometry):
        For a list of valid WKID values, see projections.Projected and 
        projections.Graphic in this package."""
     def __init__(self, wkid):
-        self.wkid = wkid
+        if isinstance(wkid, dict):
+            wkid = wkid['wkid']
+        self.wkid = int(wkid)
     @property
     def _json_struct(self):
         return {'wkid': self.wkid}
@@ -51,8 +67,8 @@ class Point(Geometry):
     def __init__(self, x, y, spatialReference=SpatialReference(4326)):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
-        x, y = float(x), float(y)
-        self.x, self.y, self.spatialReference = x, y, spatialReference
+        self.x, self.y, self.spatialReference = \
+            float(x), float(y), spatialReference
     @property
     def _json_struct(self):
         return {'x': self.x,
@@ -75,7 +91,7 @@ class Polyline(Geometry):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
-        self.paths = paths
+        self.paths = listofpointlist(paths, spatialReference)
     @property
     def _json_paths(self):
         def fixpath(somepath):
@@ -107,7 +123,7 @@ class Polygon(Polyline):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
-        self.rings = rings
+        self.rings = listofpointlist(rings, spatialReference)
     @property
     def _json_rings(self):
         def fixring(somering):
@@ -136,7 +152,7 @@ class Multipoint(Geometry):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
-        self.points = points
+        self.points = pointlist(points, spatialReference)
     @property
     def _json_points(self):
         def fixpoint(somepointarray):
@@ -161,11 +177,13 @@ class Envelope(Geometry):
     """An envelope contains the corner points of an extent and is represented by 
        xmin, ymin, xmax, and ymax, along with a spatialReference."""
     __geometry_type__ = "esriGeometryEnvelope"
-    def __init__(self, xmin, ymin, xmax, ymax, spatialReference=SpatialReference(4326)):
+    def __init__(self, xmin, ymin, xmax, ymax,
+                 spatialReference=SpatialReference(4326)):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
-        self.xmin, self.ymin, self.xmax, self.ymax = xmin, ymin, xmax, ymax
+        self.xmin, self.ymin, self.xmax, self.ymax = \
+            float(xmin), float(ymin), float(xmax), float(ymax)
     @property
     def _json_struct(self):
         return {'xmin': self.xmin, 
@@ -180,13 +198,14 @@ class Envelope(Geometry):
 def convert_from_json(struct):
     "Convert a JSON struct to a Geometry of some sort"
     attrlist = {
+        'x': Point,
         'wkid': SpatialReference,
-        'paths': PolyLine,
+        'paths': Polyline,
         'rings': Polygon,
         'points': Multipoint,
         'xmin': Envelope
     }
-    for key, cls in attrlist:
+    for key, cls in attrlist.iteritems():
         if key in struct:
             return cls.fromJsonStruct(struct)
     raise ValueError("Unconvertible to geometry")
