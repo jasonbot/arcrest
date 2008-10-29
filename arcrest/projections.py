@@ -9,6 +9,8 @@ class proj(object):
             self._name_mapping[int(val)] = key
     def __getitem__(self, index):
         return self._name_mapping[index]
+    def __contains__(self, index):
+        return index in self._name_mapping
 
 Projected = proj('projected.txt')
 Geographic = proj('geographic.txt')

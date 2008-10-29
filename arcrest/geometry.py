@@ -2,6 +2,18 @@
    as returned by the REST API. The REST API supports 4 geometry types - 
    points, polylines, polygons and envelopes."""
 
+try:
+    import json
+except ImportError:
+    try:
+        import simplejson as json
+    except ImportError:
+        raise ImportError("Please install the simplejson module "\
+                          "from http://www.undefined.org/python/ "\
+                          "or use arcrest with Python 2.6")
+
+import projections
+
 def pointlist(points, sr):
     """Convert a list of the form [[x, y] ... ] to a list of Point instances
        with the given x, y coordinates."""
@@ -24,15 +36,6 @@ class Geometry(object):
     def _json_struct(self):
         raise NotImplementedError("Unimplemented save to JSON")
     def __str__(self):
-        try:
-            import json
-        except ImportError:
-            try:
-                import simplejson as json
-            except ImportError:
-                raise ImportError("Please install the simplejson module "\
-                                  "from http://www.undefined.org/python/ "\
-                                  "or use arcrest with Python 2.6")
         return json.dumps(self._json_struct)
     @classmethod
     def fromJsonStruct(cls, struct):
@@ -49,6 +52,10 @@ class SpatialReference(Geometry):
     def __init__(self, wkid):
         if isinstance(wkid, dict):
             wkid = wkid['wkid']
+        elif hasattr(projections.Projected, str(wkid)):
+            wkid = getattr(projections.Projected, str(wkid))
+        elif hasattr(projections.Geographic, str(wkid)):
+            wkid = getattr(projections.Geographic, str(wkid))
         self.wkid = int(wkid)
     @property
     def _json_struct(self):
@@ -57,6 +64,24 @@ class SpatialReference(Geometry):
         if isinstance(other, SpatialReference):
             return self.wkid == other.wkid
         return self.wkid == other
+    @apply
+    def name():
+        def get_(self):
+            "Get/view the name for the well known ID of a Projection"
+            if self.wkid in projections.Projected:
+                return projections.Projected[self.wkid]
+            elif self.wkid in projections.Geographic:
+                return projections.Geographic[self.wkid]
+            else:
+                raise KeyError("Not a known WKID.")
+        def set_(self, wkid):
+            if hasattr(projections.Projected, wkid):
+                self.wkid = getattr(projections.Projected, wkid)
+            elif hasattr(projections.Geographic, wkid):
+                self.wkid = getattr(projections.Geographic, wkid)
+            else:
+                raise KeyError("Not a known projection name.")
+        return property(get_, set_)
     @classmethod
     def fromJsonStruct(cls, struct):
         return cls(int(struct['wkid']))
@@ -84,8 +109,8 @@ class Point(Geometry):
 class Polyline(Geometry):
     """A polyline contains an array of paths and a spatialReference. Each 
        path is represented as an array of points. And each point in the path is
-       represented as a 2-element array. The 0-index is the x-coordinate and the
-       1-index is the y-coordinate."""
+       represented as a 2-element array. The 0-index is the x-coordinate and
+       the 1-index is the y-coordinate."""
     __geometry_type__ = "esriGeometryPolyline"
     def __init__(self, paths=[], spatialReference=SpatialReference(4326)):
         if not isinstance(spatialReference, SpatialReference):
@@ -99,7 +124,7 @@ class Polyline(Geometry):
                 if isinstance(pt, Point):
                     assert pt.spatialReference is None or \
                         pt.spatialReference == self.spatialReference, \
-                        "Point is not in the same spatial reference as Polyline"
+                        "Point is not in same spatial reference as Polyline"
                     yield [pt.x, pt.y]
                 else:
                     yield list(pt)
@@ -113,11 +138,11 @@ class Polyline(Geometry):
         return cls(**struct)
 
 class Polygon(Polyline):
-    """A polygon contains an array of rings and a spatialReference. Each ring is
-       represented as an array of points. The first point of each ring is always
-       the same as the last point. And each point in the ring is represented as a
-       2-element array. The 0-index is the x-coordinate and the 1-index is the 
-       y-coordinate."""
+    """A polygon contains an array of rings and a spatialReference. Each ring 
+       is represented as an array of points. The first point of each ring is
+       always the same as the last point. And each point in the ring is 
+       represented as a 2-element array. The 0-index is the x-coordinate and
+       the 1-index is the y-coordinate."""
     __geometry_type__ = "esriGeometryPolygon"
     def __init__(self, rings=[], spatialReference=SpatialReference(4326)):
         if not isinstance(spatialReference, SpatialReference):
@@ -145,9 +170,9 @@ class Polygon(Polyline):
         return cls(**struct)
 
 class Multipoint(Geometry):
-    """A multipoint contains an array of points and a spatialReference. Each point is
-       represented as a 2-element array. The 0-index is the x-coordinate and the 1-index
-       is the y-coordinate."""
+    """A multipoint contains an array of points and a spatialReference. Each
+       point is represented as a 2-element array. The 0-index is the
+       x-coordinate and the 1-index is the y-coordinate."""
     def __init__(self, points=[], spatialReference=SpatialReference(4326)):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
@@ -160,7 +185,7 @@ class Multipoint(Geometry):
                 if isinstance(pt, Point):
                     assert pt.spatialReference is None or \
                         pt.spatialReference == self.spatialReference, \
-                        "Point is not in the same spatial reference as Multipoint"
+                        "Point is not in same spatial reference as Multipoint"
                     yield [pt.x, pt.y]
                 else:
                     yield list(pt)
@@ -174,8 +199,8 @@ class Multipoint(Geometry):
         return cls(**struct)
 
 class Envelope(Geometry):
-    """An envelope contains the corner points of an extent and is represented by 
-       xmin, ymin, xmax, and ymax, along with a spatialReference."""
+    """An envelope contains the corner points of an extent and is represented
+       by xmin, ymin, xmax, and ymax, along with a spatialReference."""
     __geometry_type__ = "esriGeometryEnvelope"
     def __init__(self, xmin, ymin, xmax, ymax,
                  spatialReference=SpatialReference(4326)):
@@ -196,7 +221,7 @@ class Envelope(Geometry):
         return cls(*struct)
 
 def convert_from_json(struct):
-    "Convert a JSON struct to a Geometry of some sort"
+    "Convert a JSON struct to a Geometry based on its structure"
     attrlist = {
         'x': Point,
         'wkid': SpatialReference,

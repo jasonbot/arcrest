@@ -38,10 +38,12 @@ class GeometryTests(unittest.TestCase):
 
 class ReSTURLTests(unittest.TestCase):
     def testURLInstatiatesAtAll(self):
-        url = arcrest.ReSTURL("http://flame6:8399/arcgis/rest/services?f=json")
+        url = "http://flame6:8399/arcgis/rest/services?f=json"
+        urlobject = arcrest.ReSTURL(url)
     def testUrlMakerHasContents(self):
-        url = arcrest.ReSTURL("http://flame6:8399/arcgis/rest/services?f=json")
-        url._contents
+        url = "http://flame6:8399/arcgis/rest/services?f=json"
+        urlobject = arcrest.ReSTURL(url)
+        urlobject._contents
 
 class ServerTests(unittest.TestCase):
     def testConnectToServer(self):
@@ -51,13 +53,15 @@ class ServerTests(unittest.TestCase):
         self.failUnless(server.url == 
                         'http://flame6:8399/arcgis/rest/services/?f=json', 
                         "URL is not formed correctly")
+        print server.folders
+        print server.services
     def testServiceList(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
-        self.failUnless(set(server.services) == set(["Geometry"]),
+        self.failUnless(set(server._servicenames) == set(["Geometry"]),
                         "Services list does not match")
     def testFolderList(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
-        self.failUnless(set(server.folders) == 
+        self.failUnless(set(server._foldernames) == 
                         set(["CachedMaps", "Geocode", "Geodata", "Globes",
                              "GP",  "Maps"]), 
                         "Folder list does not match")
@@ -83,8 +87,8 @@ class ServerTests(unittest.TestCase):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
         gp = server.GP
         self.assert_(not isinstance(gp.ByRefTools, 
-                                        (arcrest.GPService, arcrest.MapService)), 
-                     "Ambiguous--should not be a concrete service")
+                                     (arcrest.GPService, arcrest.MapService)),
+                                "Ambiguous--should not be a concrete service")
         byreftools = gp.ByRefTools.GPServer
         byreftools = gp.ByRefTools_GPServer
 
@@ -99,7 +103,8 @@ class GeocodeServerTests(unittest.TestCase):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
         geocoder = server.Geocode.California
         results = geocoder.FindAddressCandidates(Street="9081 Santa Monica",
-                                                 City="Los Angeles", Zip=90069)
+                                                 City="Los Angeles",
+                                                 Zip=90069)
     def testReverseGeocode(self):
         url = "http://flame6:8399/arcgis/rest/services"
         geocoder = arcrest.Catalog(url).Geocode.California

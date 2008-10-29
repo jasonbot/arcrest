@@ -34,9 +34,7 @@ class ReSTURL(object):
             url = urlparse.urlsplit(url)
         # Ellipsis is used instead of None for the case where no data
         # is returned from the server due to an error condition -- we
-        # need to differentiate between 'NULL' and 'UNDEFINED' and
-        # seriously, did you even know Ellipsis was a python construct?
-        # I didn't either.
+        # need to differentiate between 'NULL' and 'UNDEFINED'
         self.__urldata__ = Ellipsis
         # Pull out query, whatever it may be
         urllist = list(url)
@@ -50,6 +48,8 @@ class ReSTURL(object):
         self._url = urllist
         if self.__lazy_fetch__ is False and self.__cache_request__ is True:
             self._contents
+    def __repr__(self):
+        return "<%s(%r)>" % (self.__class__.__name__, self.url)
     def _get_subfolder(self, foldername, returntype, params={}):
         """Return an object of the requested type with the path relative
            to the current object's URL. Optionally, query parameters
@@ -106,32 +106,33 @@ class ReSTURL(object):
 class Folder(ReSTURL):
     """Represents a folder path on an ArcGIS ReST server."""
     __cache_request__  = True
+    # Conversion table from type string to class instance.
+    _service_type_mapping = None
     @property
-    def folders(self):
-        "Returns a list of folders available from this folder."
+    def _foldernames(self):
+        "Returns a list of folder names available from this folder."
         return [folder.split('/')[-1] for folder 
                     in self._json_struct.get('folders', [])]
     @property
-    def services(self):
+    def folders(self):
+        "Returns a list of Folder objects available in this folder."
+        return [self._get_subfolder(fn, Folder) for fn in self._foldernames]
+    @property
+    def _servicenames(self):
         "Give the list of services available in this folder."
         return set([service['name'].rstrip('/').split('/')[-1] 
                         for service in self._json_struct.get('services', [])])
+    @property
+    def services(self):
+        "Returns a list of Service objects available in this folder"
+        return [self._get_subfolder("%s/%s/" % (s['name'], s['type']), 
+                self._service_type_mapping.get(s['type'], Service)) for s
+                in self._json_struct.get('services', [])]
     def __getattr__(self, attr):
         return self[attr]
     def __getitem__(self, attr):
-        # Conversion table from type string to class instance.
-        service_type_mapping = {
-            'MapServer': MapService,
-            'GeocodeServer': GeocodeService,
-            'GPServer': GPService,
-            'GeometryServer': GeometryService,
-            'ImageServer': ImageService,
-            'NAServer': NetworkService,
-            'GeoDataServer': GeoDataService,
-            'GlobeServer': GlobeService
-        }
         # If it's a folder, easy:
-        if attr in self.folders:
+        if attr in self._foldernames:
             return self._get_subfolder(attr+'/', Folder)
         # Handle the case of Folder_Name being potentially of Service_Type
         # format
@@ -146,7 +147,7 @@ class Folder(ReSTURL):
             if len(matchingservices) == 1: 
                 return self._get_subfolder("%s/%s/" % 
                     (untyped_attr, servicetype),
-                    service_type_mapping.get(servicetype, Service))
+                    self._service_type_mapping.get(servicetype, Service))
         # Then match by service name
         matchingservices = [svc
                             for svc in self._json_struct['services'] 
@@ -161,14 +162,14 @@ class Folder(ReSTURL):
             for svc in matchingservices:
                 attr, servicetype = svc['name'], svc['type']
                 service = self._get_subfolder("%s/%s/" % (attr, servicetype), 
-                    service_type_mapping.get(servicetype, Service))
+                    self._service_type_mapping.get(servicetype, Service))
                 setattr(ambiguous, servicetype, service)
             return ambiguous
         # Just one match, can return itself.
         elif len(matchingservices) == 1:
             servicetype = matchingservices[0]['type']
             return self._get_subfolder("%s/%s/" % (attr, servicetype), 
-                service_type_mapping.get(servicetype, Service))
+                self._service_type_mapping.get(servicetype, Service))
         raise AttributeError("No service or folder named %r found" % attr)
 
 # A catalog root functions the same as a folder, so treat Catalog as just a
@@ -405,57 +406,74 @@ class GeometryService(Service):
            union buffers at each distance."""
         pass
     def AreasAndLengths(self):
-        """The areasAndLengths operation is performed on a geometry service resource.
-           This operation calculates areas and perimeter lengths for each polygon
-           specified in the input array."""
+        """The areasAndLengths operation is performed on a geometry service
+           resource. This operation calculates areas and perimeter lengths for
+           each polygon specified in the input array."""
         pass
     def Lengths(self):
-        """The lengths operation is performed on a geometry service resource. This
-           operation calculates the lengths of each polyline specified in the input array"""
+        """The lengths operation is performed on a geometry service resource.
+           This operation calculates the lengths of each polyline specified in
+           the input array"""
         pass
 
 class ImageService(Service):
-    """An image service provides read-only access to a mosaicked collection of images or a
-       raster data set."""
+    """An image service provides read-only access to a mosaicked collection of
+       images or a raster data set."""
     @property
     def ImageServer(self):
         return self
     def ExportImage(self):
-        """The export operation is performed on a map service resource. The result of
-           this operation is a map image resource. This resource provides information
-           about the exported map image such as its URL, its width and height, extent
-           and scale."""
+        """The export operation is performed on a map service resource. The
+           result of this operation is a map image resource. This resource
+           provides information about the exported map image such as its URL,
+           its width and height, extent and scale."""
         pass
 
 class NetworkService(Service):
-    """The network service resource represents a network analysis service published with
-       ArcGIS Server. The resource provides information about the service such as the
-       service description and the various network layers (route, closest facility and 
-       service area layers) contained in the network analysis service."""
+    """The network service resource represents a network analysis service
+       published with ArcGIS Server. The resource provides information about
+       the service such as the service description and the various network
+       layers (route, closest facility and service area layers) contained in
+       the network analysis service."""
     @property
     def NAServer(self):
         return self
     class NetworkLayer(Folder):
-        """The network layer resource represents a single network layer in a network
-           analysis service published by ArcGIS Server. It provides basic information 
-           about the network layer such as its name, type, and network classes.
-           Additionally, depending on the layer type, it provides different pieces of
-           information as detailed in the examples."""
+        """The network layer resource represents a single network layer in a
+           network analysis service published by ArcGIS Server. It provides
+           basic information about the network layer such as its name, type,
+           and network classes. Additionally, depending on the layer type, it
+           provides different pieces of information as detailed in the
+           examples."""
         pass
 
 class GeoDataService(Service):
-    """The geodata service resource represents a geodata service that you have published
-       with ArcGIS Server. The resource provides basic information associated with the
-       geodata service such as the service description, its workspace type, default 
-       working version, versions, and replicas."""
+    """The geodata service resource represents a geodata service that you have
+       published with ArcGIS Server. The resource provides basic information
+       associated with the geodata service such as the service description,
+       its workspace type, default  working version, versions, and replicas."""
     @property
     def GeoDataServer(self):
         return self
 
 class GlobeService(Service):
-    """The globe service resource represents a globe service published with ArcGIS
-       Server. The resource provides information about the service such as the service 
-       description and the various layers contained in the published globe document."""
+    """The globe service resource represents a globe service published with
+       ArcGIS Server. The resource provides information about the service such
+       as the service description and the various layers contained in the
+       published globe document."""
     @property
     def GlobeServer(self):
         return self
+
+# Have to create mapping at the end for Folders, there are no forward 
+# declarations in Python
+Folder._service_type_mapping = {
+    'MapServer': MapService,
+    'GeocodeServer': GeocodeService,
+    'GPServer': GPService,
+    'GeometryServer': GeometryService,
+    'ImageServer': ImageService,
+    'NAServer': NetworkService,
+    'GeoDataServer': GeoDataService,
+    'GlobeServer': GlobeService
+}
