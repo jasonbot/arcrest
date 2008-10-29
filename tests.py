@@ -53,8 +53,6 @@ class ServerTests(unittest.TestCase):
         self.failUnless(server.url == 
                         'http://flame6:8399/arcgis/rest/services/?f=json', 
                         "URL is not formed correctly")
-        print server.folders
-        print server.services
     def testServiceList(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
         self.failUnless(set(server._servicenames) == set(["Geometry"]),
