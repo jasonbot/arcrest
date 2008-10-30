@@ -80,9 +80,12 @@ class ReSTURL(object):
         return rt
     @property
     def url(self):
+        """The URL as a string of the resource."""
         return urlparse.urlunsplit(self._url)
     @property
     def _contents(self):
+        """The raw contents of the URL as fetched, this is done lazily.
+           for non-lazy fetching this is accessed in the object constructor."""
         if self.__urldata__ is Ellipsis or self.__cache_request__ is False:
             handle = urllib2.urlopen(self.url)
             # Handle the special case of a redirect (only follow once) --
@@ -98,6 +101,8 @@ class ReSTURL(object):
         return self.__urldata__
     @property
     def _json_struct(self):
+        """The json data structure in the URL contents, it will cache this
+           if it makes sense so it doesn't parse over and over."""
         if self.__cache_request__:
             if self.__json_struct__ is Ellipsis:
                 self.__json_struct__ = json.loads(self._contents)
@@ -132,34 +137,40 @@ class Folder(ReSTURL):
         return [self._get_subfolder("%s/%s/" % (s['name'], s['type']), 
                 self._service_type_mapping.get(s['type'], Service)) for s
                 in self._json_struct.get('services', [])]
+    @property
+    def url(self):
+        if not self._url[2].endswith('/'):
+            self._url[2] += '/'
+        return ReSTURL.url.__get__(self)
     def __getattr__(self, attr):
         return self[attr]
     def __getitem__(self, attr):
         # If it's a folder, easy:
         if attr in self._foldernames:
-            return self._get_subfolder(attr+'/', Folder)
+            return self._get_subfolder(attr, Folder)
+        services = [x.copy() for x in self._json_struct['services']]
+        # Strip out relative paths
+        for service in services:
+            service['name'] = service['name'].rstrip('/').split('/')[-1]
         # Handle the case of Folder_Name being potentially of Service_Type
         # format
         if '_' in attr: # May have a Name_Type service here
             al = attr.rstrip('/').split('/')[-1].split('_')
             servicetype = al.pop()
             untyped_attr = '_'.join(al)
-            matchingservices = [svc for svc in self._json_struct['services'] 
-                                    if svc['name'].rstrip('/').split('/')[-1] 
-                                        == untyped_attr
-                                    and svc['type'] == servicetype]
+            matchingservices = [svc for svc in services 
+                                if svc['name'] == untyped_attr
+                                and svc['type'] == servicetype]
             if len(matchingservices) == 1: 
                 return self._get_subfolder("%s/%s/" % 
                     (untyped_attr, servicetype),
                     self._service_type_mapping.get(servicetype, Service))
         # Then match by service name
-        matchingservices = [svc
-                            for svc in self._json_struct['services'] 
-                            if svc['name'].rstrip('/').split('/')[-1] == attr]
+        matchingservices = [svc for svc in services if svc['name'] == attr]
         # Found more than one match, there is ambiguity so return an
         # object holding .ServiceType attributes representing each service.
         if len(matchingservices) > 1:
-            # Return an object with accessors for overlapping services
+            # Return an instance with accessors for overlapping services
             class AmbiguousService(object):
                 """This service name has multiple service types."""
             ambiguous = AmbiguousService()
@@ -217,9 +228,10 @@ class Result(ReSTURL):
     def __init__(self, url):
         super(Result, self).__init__(url)
         if 'error' in self._json_struct:
-            raise ServerError("ERROR %i: %s" % 
+            raise ServerError("ERROR %i: %s <%s>" % 
                                (self._json_struct['error']['code'], 
-                                self._json_struct['error']['message']))
+                                self._json_struct['error']['message'],
+                                self.url))
 
 # Service implementations -- mostly simple conversion wrappers for the
 # functionality handled up above, wrapper types for results, etc.
@@ -302,6 +314,18 @@ class MapService(Service):
                                                             'layerOptions':
                                                                 layerOptions})
 
+class FindAddressCandidatesResult(Result):
+    """Represents the result from a Geocode operation"""
+    @property
+    def candidates(self):
+        def cditer():
+            for candidate in self._json_struct['candidates']:
+                newcandidate = candidate.copy()
+                newcandidate['location'] = \
+                    geometry.convert_from_json(newcandidate['location'])
+                yield newcandidate
+        return list(cditer())
+
 class ReverseGeocodeResult(Result):
     """Represents the result from a reverse geocode operation"""
     @property
@@ -310,7 +334,6 @@ class ReverseGeocodeResult(Result):
     @property
     def location(self):
         return geometry.convert_from_json(self._json_struct['location'])
-
     def __getattr__(self, attr):
         return self._json_struct['address'][attr]
 
@@ -342,7 +365,8 @@ class GeocodeService(Service):
                                    else 's', ', '.join(required_unset_fields)))
         query = fields.copy()
         query['outFields'] = outFields
-        return self._get_subfolder('findAddressCandidates/', Result, query) 
+        return self._get_subfolder('findAddressCandidates/', 
+                                   FindAddressCandidatesResult, query)
     def ReverseGeocode(self, location, distance):
         """The reverseGeocode operation is performed on a geocode service 
            resource. The result of this operation is a reverse geocoded address
@@ -417,20 +441,25 @@ class GeometryService(Service):
            The result of this operation is an array of projected geometries.
            This resource projects an array of input geometries from an input
            spatial reference to an output spatial reference."""
+
         if isinstance(geometries, geometry.Geometry):
             geometries = [geometries]
+
         if isinstance(inSR, geometry.SpatialReference):
             inSR = inSR.wkid
         elif inSR is None:
-            inSR = geometries[0].spatialReference
+            inSR = geometries[0].spatialReference.wkid
+
         if isinstance(outSR, geometry.SpatialReference):
             outSR = outSR.wkid
+
         geometry_types = set([x.__geometry_type__ for x in geometries])
         assert len(geometry_types) == 1, "Too many geometry types"
         geo_json = json.dumps({'geometryType': list(geometry_types)[0],
                     'geometries': [geo._json_struct_without_sr 
                                         for geo in geometries]
                     })
+
         return self._get_subfolder('project', GeometryResult, 
                                    {'geometries': geo_json,
                                     'inSR': inSR,
@@ -451,7 +480,7 @@ class GeometryService(Service):
         if isinstance(sr, geometry.SpatialReference):
             sr = sr.wkid
         elif sr is None:
-            sr = geometries[0].spatialReference
+            sr = geometries[0].spatialReference.wkid
 
         geometry_types = set([x.__geometry_type__ for x in geometries])
         assert len(geometry_types) == 1, "Too many geometry types"
@@ -484,17 +513,17 @@ class GeometryService(Service):
         if isinstance(inSR, geometry.SpatialReference):
             inSR = inSR.wkid
         elif inSR is None:
-            inSR = geometries[0].spatialReference
+            inSR = geometries[0].spatialReference.wkid
 
         if isinstance(outSR, geometry.SpatialReference):
             outSR = outSR.wkid
         elif outSR is None:
-            outSR = geometries[0].spatialReference
+            outSR = geometries[0].spatialReference.wkid
 
         if isinstance(bufferSR, geometry.SpatialReference):
             bufferSR = bufferSR.wkid
         elif bufferSR is None:
-            bufferSR = geometries[0].spatialReference
+            bufferSR = geometries[0].spatialReference.wkid
 
         return self._get_subfolder('buffer', GeometryResult, 
                                    {'geometries': geo_json,
@@ -517,7 +546,7 @@ class GeometryService(Service):
         if isinstance(sr, geometry.SpatialReference):
             sr = sr.wkid
         elif sr is None:
-            sr = polygons[0].spatialReference
+            sr = polygons[0].spatialReference.wkid
 
         geo_json = json.dumps([polygon._json_struct_without_sr
                                    for polygon in polygons])
@@ -538,7 +567,7 @@ class GeometryService(Service):
         if isinstance(sr, geometry.SpatialReference):
             sr = sr.wkid
         elif sr is None:
-            sr = polylines[0].spatialReference
+            sr = polylines[0].spatialReference.wkid
 
         geo_json = json.dumps([polyline._json_struct_without_sr
                                  for polyline in polylines])

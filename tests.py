@@ -87,8 +87,11 @@ class ServerTests(unittest.TestCase):
         self.assert_(not isinstance(gp.ByRefTools, 
                                      (arcrest.GPService, arcrest.MapService)),
                                 "Ambiguous--should not be a concrete service")
-        byreftools = gp.ByRefTools.GPServer
-        byreftools = gp.ByRefTools_GPServer
+        byreftools1 = gp.ByRefTools.GPServer
+        byreftools2 = gp.ByRefTools_GPServer
+        self.assert_(byreftools1.url == byreftools2.url, 
+                     "URLs should be identical: %r, %r" % (byreftools1.url,
+                                                           byreftools2.url))
 
 class MapServerTests(unittest.TestCase):
     pass
@@ -100,9 +103,12 @@ class GeocodeServerTests(unittest.TestCase):
     def testFindCandidates(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
         geocoder = server.Geocode.California
-        results = geocoder.FindAddressCandidates(Street="9081 Santa Monica",
-                                                 City="Los Angeles",
-                                                 Zip=90069)
+        # The Troubadour in Hollywood
+        results = geocoder.FindAddressCandidates(
+                                             Street="9081 SANTA MONICA BLVD",
+                                             City="LOS ANGELES",
+                                             Zip=90069)
+        results.candidates
     def testReverseGeocode(self):
         url = "http://flame6:8399/arcgis/rest/services"
         geocoder = arcrest.Catalog(url).Geocode.California
