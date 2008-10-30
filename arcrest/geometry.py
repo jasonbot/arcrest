@@ -33,12 +33,15 @@ class Geometry(object):
     def __init__(self):
         raise NotImplementedError("Cannot instantiate abstract geometry type")
     @property
+    def _json_struct_without_sr(self):
+        return self._json_struct
+    @property
     def _json_struct(self):
         raise NotImplementedError("Unimplemented save to JSON")
     def __str__(self):
         return json.dumps(self._json_struct)
     @classmethod
-    def fromJsonStruct(cls, struct):
+    def from_json_struct(cls, struct):
         raise NotImplementedError("Unimplemented convert from JSON")
 
 class SpatialReference(Geometry):
@@ -83,7 +86,7 @@ class SpatialReference(Geometry):
                 raise KeyError("Not a known projection name.")
         return property(get_, set_)
     @classmethod
-    def fromJsonStruct(cls, struct):
+    def from_json_struct(cls, struct):
         return cls(int(struct['wkid']))
 
 class Point(Geometry):
@@ -95,12 +98,18 @@ class Point(Geometry):
         self.x, self.y, self.spatialReference = \
             float(x), float(y), spatialReference
     @property
+    def _json_struct_without_sr(self):
+        return {'x': self.x,
+                'y': self.y}
+    @property
     def _json_struct(self):
         return {'x': self.x,
                 'y': self.y,
-                'spatialReference': self.spatialReference._json_struct}
+                'spatialReference': None \
+                                    if self.spatialReference is None \
+                                    else self.spatialReference._json_struct}
     @classmethod
-    def fromJsonStruct(cls, struct):
+    def from_json_struct(cls, struct):
         if isinstance(struct, (list, tuple)) and len(struct) == 2:
             return cls(*struct)
         else:
@@ -130,11 +139,14 @@ class Polyline(Geometry):
                     yield list(pt)
         return [list(fixpath(path)) for path in self.paths]
     @property
+    def _json_struct_without_sr(self):
+        return {'paths': self._json_paths}
+    @property
     def _json_struct(self):
         return {'paths': self._json_paths,
                 'spatialReference': self.spatialReference._json_struct}
     @classmethod
-    def fromJsonStruct(cls, struct):
+    def from_json_struct(cls, struct):
         return cls(**struct)
 
 class Polygon(Polyline):
@@ -162,11 +174,14 @@ class Polygon(Polyline):
                     yield list(pt)
         return [list(fixring(ring)) for ring in self.rings]
     @property
+    def _json_struct_without_sr(self):
+        return {'rings': self._json_rings}
+    @property
     def _json_struct(self):
         return {'rings': self._json_rings,
                 'spatialReference': self.spatialReference._json_struct}
     @classmethod
-    def fromJsonStruct(cls, struct):
+    def from_json_struct(cls, struct):
         return cls(**struct)
 
 class Multipoint(Geometry):
@@ -191,11 +206,14 @@ class Multipoint(Geometry):
                     yield list(pt)
         return list(fixpoints(self.points))
     @property
+    def _json_struct_without_sr(self):
+        return {'points': self._json_points}
+    @property
     def _json_struct(self):
         return {'points': self._json_points,
                 'spatialReference': self.spatialReference._json_struct}
     @classmethod
-    def fromJsonStruct(cls, struct):
+    def from_json_struct(cls, struct):
         return cls(**struct)
 
 class Envelope(Geometry):
@@ -210,14 +228,25 @@ class Envelope(Geometry):
         self.xmin, self.ymin, self.xmax, self.ymax = \
             float(xmin), float(ymin), float(xmax), float(ymax)
     @property
+    def _json_struct_without_sr(self):
+        return {'xmin': self.xmin, 
+                'ymin': self.ymin,
+                'xmax': self.xmax,
+                'ymax': self.ymax}
+    @property
     def _json_struct(self):
         return {'xmin': self.xmin, 
                 'ymin': self.ymin,
                 'xmax': self.xmax,
                 'ymax': self.ymax,
                 'spatialReference': self.spatialReference._json_struct}
+    @property
+    def bbox(self):
+        "Return the envelope as a Bound Box string compatible with (bb) params"
+        return ",".join(str(attr) for attr in 
+                            (self.xmin, self.ymin, self.xmax, self.ymax))
     @classmethod
-    def fromJsonStruct(cls, struct):
+    def from_json_struct(cls, struct):
         return cls(*struct)
 
 def convert_from_json(struct):
@@ -230,7 +259,12 @@ def convert_from_json(struct):
         'points': Multipoint,
         'xmin': Envelope
     }
-    for key, cls in attrlist.iteritems():
-        if key in struct:
-            return cls.fromJsonStruct(struct)
+    # bbox string
+    if isinstance(struct, basestring) and len(struct.split(',')) == 4:
+        return Envelope(*map(float, struct.split(',')))
+    # Look for telltale attributes in the dict
+    if isinstance(struct, dict):
+        for key, cls in attrlist.iteritems():
+            if key in struct:
+                return cls.from_json_struct(struct)
     raise ValueError("Unconvertible to geometry")

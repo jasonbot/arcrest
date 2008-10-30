@@ -64,6 +64,10 @@ class ReSTURL(object):
                 # Lowercase bool string
                 if isinstance(val, bool):
                     query_dict[key] = str(val).lower()
+                # Special case: convert an envelope to .bbox in the bb
+                # parameter
+                elif key == 'bbox' and isinstance(val, geometry.Envelope):
+                    query_dict[key] = val.bbox
                 # Ignore null values, coerce strings
                 elif val is not None:
                     query_dict[key] = str(val)
@@ -376,6 +380,28 @@ class GPService(Service):
     def GPServer(self):
         return self
 
+class GeometryResult(Result):
+    """Represents the output of a Project, Simplify or Buffer operation 
+       performed by an ArcGIS REST API Geometry service."""
+    @property
+    def geometries(self):
+        return [geometry.convert_from_json(geo) 
+                for geo in self._json_struct['geometries']]
+
+class LengthsResult(Result):
+    """Represents the output of a Lengths operation performed by an ArcGIS
+       REST API Geometry service."""
+    @property
+    def lengths(self):
+        return map(float(length) for length in self._json_struct['lengths'])
+
+class AreasAndLengthsResult(LengthsResult):
+    """Represents the output of a AreasAndLengths operation performed by an 
+       ArcGIS REST API Geometry service."""
+    @property
+    def areas(self):
+        return map(float(area) for area in self._json_struct['areas'])
+
 class GeometryService(Service):
     """A geometry service contains utility methods, which provide access to
        sophisticated and frequently used geometric operations. An ArcGIS Server
@@ -385,36 +411,142 @@ class GeometryService(Service):
     @property
     def GeometryServer(self):
         return self
-    def Project(self):
+
+    def Project(self, geometries, outSR, inSR=None):
         """The project operation is performed on a geometry service resource.
            The result of this operation is an array of projected geometries.
            This resource projects an array of input geometries from an input
            spatial reference to an output spatial reference."""
-        pass
-    def Simplify(self):
+        if isinstance(geometries, geometry.Geometry):
+            geometries = [geometries]
+        if isinstance(inSR, geometry.SpatialReference):
+            inSR = inSR.wkid
+        elif inSR is None:
+            inSR = geometries[0].spatialReference
+        if isinstance(outSR, geometry.SpatialReference):
+            outSR = outSR.wkid
+        geometry_types = set([x.__geometry_type__ for x in geometries])
+        assert len(geometry_types) == 1, "Too many geometry types"
+        geo_json = json.dumps({'geometryType': list(geometry_types)[0],
+                    'geometries': [geo._json_struct_without_sr 
+                                        for geo in geometries]
+                    })
+        return self._get_subfolder('project', GeometryResult, 
+                                   {'geometries': geo_json,
+                                    'inSR': inSR,
+                                    'outSR': outSR
+                                   })
+
+    def Simplify(self, geometries, sr=None):
         """The simplify operation is performed on a geometry service resource. 
            Simplify permanently alters the input geometry so that the geometry 
            becomes topologically consistent. This resource applies the ArcGIS 
            simplify operation to each geometry in the input array. For more 
            information, see ITopologicalOperator.Simplify Method and 
            IPolyline.SimplifyNetwork Method."""
-        pass
-    def Buffer(self):
+
+        if isinstance(geometries, geometry.Geometry):
+            geometries = [geometries]
+
+        if isinstance(sr, geometry.SpatialReference):
+            sr = sr.wkid
+        elif sr is None:
+            sr = geometries[0].spatialReference
+
+        geometry_types = set([x.__geometry_type__ for x in geometries])
+        assert len(geometry_types) == 1, "Too many geometry types"
+        geo_json = json.dumps({'geometryType': list(geometry_types)[0],
+                    'geometries': [geo._json_struct_without_sr
+                                        for geo in geometries]
+                    })
+        return self._get_subfolder('simplify', GeometryResult, 
+                                   {'geometries': geo_json,
+                                    'sr': sr
+                                   })
+
+    def Buffer(self, geometries, distances, unit=None, unionResults=False,
+               inSR=None, outSR=None, bufferSR=None):
         """The buffer operation is performed on a geometry service resource.
            The result of this operation is buffer polygons at the specified
            distances for the input geometry array. An option is available to
            union buffers at each distance."""
-        pass
-    def AreasAndLengths(self):
+
+        if isinstance(geometries, geometry.Geometry):
+            geometries = [geometries]
+
+        geometry_types = set([x.__geometry_type__ for x in geometries])
+        assert len(geometry_types) == 1, "Too many geometry types"
+        geo_json = json.dumps({'geometryType': list(geometry_types)[0],
+                    'geometries': [geo._json_struct_without_sr
+                                        for geo in geometries]
+                    })
+
+        if isinstance(inSR, geometry.SpatialReference):
+            inSR = inSR.wkid
+        elif inSR is None:
+            inSR = geometries[0].spatialReference
+
+        if isinstance(outSR, geometry.SpatialReference):
+            outSR = outSR.wkid
+        elif outSR is None:
+            outSR = geometries[0].spatialReference
+
+        if isinstance(bufferSR, geometry.SpatialReference):
+            bufferSR = bufferSR.wkid
+        elif bufferSR is None:
+            bufferSR = geometries[0].spatialReference
+
+        return self._get_subfolder('buffer', GeometryResult, 
+                                   {'geometries': geo_json,
+                                    'distances': distances,
+                                    'unit': unit,
+                                    'unionResults': unionResults,
+                                    'inSR': inSR,
+                                    'outSR': outSR,
+                                    'bufferSR': bufferSR
+                                   })
+
+    def AreasAndLengths(self, polygons, sr=None):
         """The areasAndLengths operation is performed on a geometry service
            resource. This operation calculates areas and perimeter lengths for
            each polygon specified in the input array."""
-        pass
-    def Lengths(self):
+
+        if isinstance(polygons, geometry.Geometry):
+            polygons = [polygons]
+
+        if isinstance(sr, geometry.SpatialReference):
+            sr = sr.wkid
+        elif sr is None:
+            sr = polygons[0].spatialReference
+
+        geo_json = json.dumps([polygon._json_struct_without_sr
+                                   for polygon in polygons])
+
+        return self._get_subfolder('areasAndLengths', AreasAndLengthsResult, 
+                                    {'polygons': geo_json,
+                                     'sr': sr
+                                    })
+        
+    def Lengths(self, polylines, sr=None):
         """The lengths operation is performed on a geometry service resource.
            This operation calculates the lengths of each polyline specified in
            the input array"""
-        pass
+
+        if isinstance(polylines, geometry.Geometry):
+            polylines = [polylines]
+
+        if isinstance(sr, geometry.SpatialReference):
+            sr = sr.wkid
+        elif sr is None:
+            sr = polylines[0].spatialReference
+
+        geo_json = json.dumps([polyline._json_struct_without_sr
+                                 for polyline in polylines])
+
+        return self._get_subfolder('lengths', LengthsResult, 
+                                    {'polylines': geo_json,
+                                     'sr': sr
+                                    })
 
 class ImageService(Service):
     """An image service provides read-only access to a mosaicked collection of
