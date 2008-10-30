@@ -23,13 +23,25 @@ import urlparse
 
 import geometry
 
-class ReSTURL(object):
+# Note that nearly every class below derives from this RestURL class.
+# The reasoning is that every object has an underlying URL resource on 
+# the REST server. Some are static or near-static, such as a folder or a
+# service's definition, but some URLs are volatile and represent the
+# application of an action, such as Buffering a set of points using the
+# geometry service. This class attempts to provide some baseline functionality
+# required by the set of operations one performs using the ArcGIS REST API,
+# such as making sure teh format is always set to json, parsing the json,
+# 'caching' the result in memory as needed, and returning instances of objects
+# represented by relative URLs.
+class RestURL(object):
     """Represents a top-level, base REST-style URL."""
-    __cache_request__ = False # Fetch every time or just once?
-    __urldata__ = Ellipsis
-    __json_struct__ = Ellipsis
-    __lazy_fetch__ = True
+    __cache_request__ = False  # Fetch every time or just once?
+    __urldata__ = Ellipsis     # What actually gets HTTP GETten
+    __json_struct__ = Ellipsis # Cache for json.loads(self.__urldata__)
+    __lazy_fetch__ = True      # Fetch when constructed, or later on?
     def __init__(self, url):
+        # Expects a urlparse.urlsplitted list as the url, but accepts a
+        # string because that is easier/makse more sense everywhere.
         if isinstance(url, basestring):
             url = urlparse.urlsplit(url)
         # Ellipsis is used instead of None for the case where no data
@@ -39,6 +51,11 @@ class ReSTURL(object):
         # Pull out query, whatever it may be
         urllist = list(url)
         query_dict = {}
+        # parse_qs returns a dict, but every value is a list (it assumes
+        # that keys can be set multiple times like ?a=1&a=2 -- this flexibility
+        # is probably useful to someone, but not here). Pull out the first
+        # element of every list so when we convert back to a query string
+        # it doesn't enclose all values in []
         for k, v in cgi.parse_qs(urllist[3]).iteritems():
             query_dict[k] = v[0]
         # Set the f= flag to json (so we can interface with it)
@@ -46,6 +63,7 @@ class ReSTURL(object):
         # Hack our modified query string back into URL components
         urllist[3] = urllib.urlencode(query_dict)
         self._url = urllist
+        # Nonlazy: force a fetch
         if self.__lazy_fetch__ is False and self.__cache_request__ is True:
             self._contents
     def __repr__(self):
@@ -55,11 +73,15 @@ class ReSTURL(object):
            to the current object's URL. Optionally, query parameters
            may be set."""
         newurl = urlparse.urljoin(self.url, foldername, False)
-        # Add the key-value pairs sent in params to query string
+        #print "    ", self.url, "(", foldername, ")", newurl
+        # Add the key-value pairs sent in params to query string if they
+        # are so defined.
         if params:
             url_tuple = urlparse.urlsplit(newurl)
             urllist = list(url_tuple)
-            query_dict = cgi.parse_qs(urllist[3])
+            # As above, pull out first element from parse_qs' values
+            query_dict = dict((k, v[0]) for k, v in 
+                                cgi.parse_qs(urllist[3]).iteritems())
             for key, val in params.iteritems():
                 # Lowercase bool string
                 if isinstance(val, bool):
@@ -68,12 +90,14 @@ class ReSTURL(object):
                 # parameter
                 elif key == 'bbox' and isinstance(val, geometry.Envelope):
                     query_dict[key] = val.bbox
-                # Ignore null values, coerce strings
+                # Ignore null values, and coerce string values (hopefully
+                # everything sent in to a query has a sane __str__)
                 elif val is not None:
                     query_dict[key] = str(val)
+            # Replace URL query component with newly altered component
             urllist[3] = urllib.urlencode(query_dict)
             newurl = urllist
-        # Instantiate new ReSTURL or subclass
+        # Instantiate new RestURL or subclass
         rt = returntype(newurl)
         # Remind the resource where it came from
         rt.parent = self
@@ -85,7 +109,7 @@ class ReSTURL(object):
     @property
     def _contents(self):
         """The raw contents of the URL as fetched, this is done lazily.
-           for non-lazy fetching this is accessed in the object constructor."""
+           For non-lazy fetching this is accessed in the object constructor."""
         if self.__urldata__ is Ellipsis or self.__cache_request__ is False:
             handle = urllib2.urlopen(self.url)
             # Handle the special case of a redirect (only follow once) --
@@ -112,22 +136,22 @@ class ReSTURL(object):
 
 # On top of a URL, the ArcGIS Server folder structure lists subfolders
 # and services.
-class Folder(ReSTURL):
-    """Represents a folder path on an ArcGIS ReST server."""
+class Folder(RestURL):
+    """Represents a folder path on an ArcGIS REST server."""
     __cache_request__  = True
     # Conversion table from type string to class instance.
     _service_type_mapping = None
     @property
-    def _foldernames(self):
+    def foldernames(self):
         "Returns a list of folder names available from this folder."
         return [folder.split('/')[-1] for folder 
                     in self._json_struct.get('folders', [])]
     @property
     def folders(self):
         "Returns a list of Folder objects available in this folder."
-        return [self._get_subfolder(fn, Folder) for fn in self._foldernames]
+        return [self._get_subfolder(fn, Folder) for fn in self.foldernames]
     @property
-    def _servicenames(self):
+    def servicenames(self):
         "Give the list of services available in this folder."
         return set([service['name'].rstrip('/').split('/')[-1] 
                         for service in self._json_struct.get('services', [])])
@@ -141,12 +165,12 @@ class Folder(ReSTURL):
     def url(self):
         if not self._url[2].endswith('/'):
             self._url[2] += '/'
-        return ReSTURL.url.__get__(self)
+        return RestURL.url.__get__(self)
     def __getattr__(self, attr):
         return self[attr]
     def __getitem__(self, attr):
         # If it's a folder, easy:
-        if attr in self._foldernames:
+        if attr in self.foldernames:
             return self._get_subfolder(attr, Folder)
         services = [x.copy() for x in self._json_struct['services']]
         # Strip out relative paths
@@ -209,8 +233,8 @@ class Catalog(Folder):
 
 # Definitions for classes calling/manipulating services
 
-class Service(ReSTURL):
-    """Represents an ArcGIS ReST service. This is an abstract base -- services
+class Service(RestURL):
+    """Represents an ArcGIS REST service. This is an abstract base -- services
        derive from this."""
     __cache_request__ = False
     def __init__(self, url):
@@ -220,9 +244,9 @@ class ServerError(Exception):
     """Exception for server-side error responses"""
     pass
 
-class Result(ReSTURL):
+class Result(RestURL):
     """Abstract class representing the result of an operation performed on a
-       ReST service"""
+       REST service"""
     __cache_request__ = True # Only request the URL once
     __lazy_fetch__ = False # Force-fetch immediately
     def __init__(self, url):
@@ -233,8 +257,19 @@ class Result(ReSTURL):
                                 self._json_struct['error']['message'],
                                 self.url))
 
+class Layer(RestURL):
+    """Represents the base class for map and network layers"""
+    __cache_request__ = True # Only request the URL once
+    __lazy_fetch__ = False # Force-fetch immediately
+
 # Service implementations -- mostly simple conversion wrappers for the
 # functionality handled up above, wrapper types for results, etc.
+
+class MapLayer(Layer):
+    """The layer resource represents a single layer in a map of a map service 
+       published by ArcGIS Server. It provides basic information about the
+       layer such as its name, type, parent and sub-layers, fields, min and
+       max scales, extent, and copyright text."""
 
 class MapService(Service):
     """Map services offer access to map and layer content. Map services can
@@ -270,10 +305,15 @@ class MapService(Service):
            identified result includes its name, layer ID, layer name, geometry
            and geometry type, and other attributes of that result as name-value
            pairs."""
+        if isinstance(sr, geometry.SpatialReference):
+            sr = sr.wkid
         assert hasattr(geometry, '__geometry_type__'), "Invalid geometry"
         gt = geometry.__geometry_type__
+        if sr is None:
+            sr = geometry.spatial
+        geo_json = json.dumps(geometry._json_struct_without_srReference.wkid)
         return self._get_subfolder('identify/', Result,
-                                                {'geometry': geometry,
+                                                {'geometry': geo_json,
                                                  'geometryType': gt,
                                                  'sr': sr,
                                                  'layers': layers,
@@ -290,6 +330,8 @@ class MapService(Service):
            includes  its value, feature ID, field name,?layer ID, layer name,
            geometry, geometry type, and attributes in the form of name-value
            pairs."""
+        if isinstance(sr, geometry.SpatialReference):
+            sr = sr.wkid
         return self._get_subfolder('find/', Result, 
                                             {'searchText': searchText,
                                              'contains': contains,
@@ -313,11 +355,22 @@ class MapService(Service):
                                                             'layers': layers,
                                                             'layerOptions':
                                                                 layerOptions})
+    @property
+    def layernames(self):
+        """Return a list of the names of this map's layers"""
+        return [layer['name'] for layer in self._json_struct['layers']]
+    @property
+    def layers(self):
+        """Return a list of this map's layer objects"""
+        return [self._get_subfolder("%s/" % layer['id'], MapLayer)
+                for layer in self._json_struct['layers']]
 
 class FindAddressCandidatesResult(Result):
-    """Represents the result from a Geocode operation"""
+    """Represents the result from a geocode operation"""
     @property
     def candidates(self):
+        """A list of candidate addresses from a geocode operation"""
+        # convert x['location'] to a point from a json point struct
         def cditer():
             for candidate in self._json_struct['candidates']:
                 newcandidate = candidate.copy()
@@ -403,6 +456,13 @@ class GPService(Service):
     @property
     def GPServer(self):
         return self
+    @property
+    def _tasknames(self):
+        return self._json_struct['tasks']
+    @property
+    def tasks(self):
+        return [self._get_subfolder(taskname, GPTask)
+                for taskname in self._tasknames]
 
 class GeometryResult(Result):
     """Represents the output of a Project, Simplify or Buffer operation 
@@ -590,6 +650,14 @@ class ImageService(Service):
            its width and height, extent and scale."""
         pass
 
+class NetworkLayer(Layer):
+    """The network layer resource represents a single network layer in a
+       network analysis service published by ArcGIS Server. It provides
+       basic information about the network layer such as its name, type,
+       and network classes. Additionally, depending on the layer type, it
+       provides different pieces of information as detailed in the
+       examples."""
+
 class NetworkService(Service):
     """The network service resource represents a network analysis service
        published with ArcGIS Server. The resource provides information about
@@ -599,14 +667,6 @@ class NetworkService(Service):
     @property
     def NAServer(self):
         return self
-    class NetworkLayer(Folder):
-        """The network layer resource represents a single network layer in a
-           network analysis service published by ArcGIS Server. It provides
-           basic information about the network layer such as its name, type,
-           and network classes. Additionally, depending on the layer type, it
-           provides different pieces of information as detailed in the
-           examples."""
-        pass
 
 class GeoDataService(Service):
     """The geodata service resource represents a geodata service that you have

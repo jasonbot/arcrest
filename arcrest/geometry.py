@@ -149,7 +149,7 @@ class Polyline(Geometry):
     def from_json_struct(cls, struct):
         return cls(**struct)
 
-class Polygon(Polyline):
+class Polygon(Geometry):
     """A polygon contains an array of rings and a spatialReference. Each ring 
        is represented as an array of points. The first point of each ring is
        always the same as the last point. And each point in the ring is 

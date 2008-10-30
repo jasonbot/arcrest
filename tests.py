@@ -36,13 +36,13 @@ class GeometryTests(unittest.TestCase):
         self.assert_(isinstance(multipoint, arcrest.geometry.Multipoint), 
                         "Not a multipoint")
 
-class ReSTURLTests(unittest.TestCase):
+class RestURLTests(unittest.TestCase):
     def testURLInstatiatesAtAll(self):
         url = "http://flame6:8399/arcgis/rest/services?f=json"
-        urlobject = arcrest.ReSTURL(url)
+        urlobject = arcrest.RestURL(url)
     def testUrlMakerHasContents(self):
         url = "http://flame6:8399/arcgis/rest/services?f=json"
-        urlobject = arcrest.ReSTURL(url)
+        urlobject = arcrest.RestURL(url)
         urlobject._contents
 
 class ServerTests(unittest.TestCase):
@@ -55,11 +55,11 @@ class ServerTests(unittest.TestCase):
                         "URL is not formed correctly")
     def testServiceList(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
-        self.failUnless(set(server._servicenames) == set(["Geometry"]),
+        self.failUnless(set(server.servicenames) == set(["Geometry"]),
                         "Services list does not match")
     def testFolderList(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
-        self.failUnless(set(server._foldernames) == 
+        self.failUnless(set(server.foldernames) == 
                         set(["CachedMaps", "Geocode", "Geodata", "Globes",
                              "GP",  "Maps"]), 
                         "Folder list does not match")
@@ -93,8 +93,39 @@ class ServerTests(unittest.TestCase):
                      "URLs should be identical: %r, %r" % (byreftools1.url,
                                                            byreftools2.url))
 
+class GPServerTests(unittest.TestCase):
+    def testGetGPService(self):
+        url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
+        server = arcrest.Catalog(url)
+        gp = server.Elevation.ESRI_Elevation_World.GPServer
+        self.assert_(isinstance(gp, arcrest.GPService), "Not a GP service")
+    def testGetGPTasks(self):
+        url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
+        server = arcrest.Catalog(url)
+        gp = server.Elevation.ESRI_Elevation_World.GPServer
+        self.assert_(all(isinstance(task, arcrest.GPTask) 
+                         for task in gp.tasks), "Tasks aren't tasks")
+
 class MapServerTests(unittest.TestCase):
-    pass
+    def testGetMapService(self):
+        url = "http://flame6:8399/arcgis/rest/services/"
+        server = arcrest.Catalog(url)
+        mapservice = server.Maps.Redlands.MapServer
+        self.assert_(isinstance(mapservice, arcrest.MapService),
+                     "Not a map service")
+    def testLayerNames(self):
+        url = "http://flame6:8399/arcgis/rest/services/"
+        server = arcrest.Catalog(url)
+        mapservice = server.Maps.Redlands.MapServer
+        self.assert_(set(mapservice.layernames) ==
+                     set(['Streets', 'Parcels', 'Redlands image']),
+                     "Layer names did not match up")
+    def testLayers(self):
+        url = "http://flame6:8399/arcgis/rest/services/"
+        server = arcrest.Catalog(url)
+        mapservice = server.Maps.Redlands.MapServer
+        self.assert_(all(isinstance(layer, arcrest.MapLayer) 
+                     for layer in mapservice.layers), "Layers aren't layers")
 
 class GeocodeServerTests(unittest.TestCase):
     def testConnect(self):
@@ -124,5 +155,6 @@ class GeocodeServerTests(unittest.TestCase):
 
 if __name__ == '__main__':
     test.verbose = True
-    test.test_support.run_unittest(GeometryTests, ReSTURLTests, ServerTests,
-                                   MapServerTests, GeocodeServerTests)
+    test.test_support.run_unittest(GeometryTests, RestURLTests, ServerTests,
+                                   GPServerTests, MapServerTests,
+                                   GeocodeServerTests)
