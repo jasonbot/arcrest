@@ -159,7 +159,7 @@ class Folder(RestURL):
     """Represents a folder path on an ArcGIS REST server."""
     __cache_request__  = True
     # Conversion table from type string to class instance.
-    _service_type_mapping = None
+    _service_type_mapping = {}
     @property
     def foldernames(self):
         "Returns a list of folder names available from this folder."
@@ -258,6 +258,16 @@ class Service(RestURL):
        derive from this."""
     __cache_request__ = False
     __service_type__ = None
+    class __metaclass__(type):
+        """Idea borrowed from http://effbot.org/zone/metaclass-plugins.htm
+           -- use the metaclass API to register derivative classes in the
+           Folder's service type registry so when it hits a 
+           {'name': 'x', 'type': 'y'} service entry it knows to instantiate a
+           y to represent a relative ./x/y/ URL."""
+        def __init__(cls, name, bases, dict):
+            type.__init__(name, bases, dict)
+            if hasattr(cls, '__service_type__'):
+                Folder._service_type_mapping[cls.__service_type__] = cls
     @property
     def serviceDescription(self):
         """Get a short description of the service. Will return None if there is
@@ -648,6 +658,15 @@ class GPTask(RestURL):
        information about the various input and output parameters exposed by the
        task"""
 
+    def Execute(self, *params, **kw):
+        pass
+    def SubmitJob(self, *params, **kw):
+        pass
+    def __call__(self, *params, **kw):
+        if self.synchronous:
+            return self.execute(*params, **kw)
+        else:
+            return self.submitJob(*params, **kw)
     @property
     def name(self):
         return self._json_struct['name']
@@ -1211,16 +1230,3 @@ class GlobeService(Service):
         """Return a list of this globe service's layer objects"""
         return [self._get_subfolder("%s/" % layer['id'], GlobeLayer)
                 for layer in self._json_struct['layers']]
-
-# Have to create mapping at the end for Folders, there are no forward 
-# declarations in Python
-Folder._service_type_mapping = {
-    'MapServer': MapService,
-    'GeocodeServer': GeocodeService,
-    'GPServer': GPService,
-    'GeometryServer': GeometryService,
-    'ImageServer': ImageService,
-    'NAServer': NetworkService,
-    'GeoDataServer': GeoDataService,
-    'GlobeServer': GlobeService
-}
