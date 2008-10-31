@@ -69,7 +69,7 @@ class ServerTests(unittest.TestCase):
     def testHasJSON(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
         server._json_struct
-    def testGetService(self): 
+    def testGetService(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
         service = server.Geometry
         self.assert_(isinstance(service, arcrest.Service), "Not a service.")
@@ -92,19 +92,6 @@ class ServerTests(unittest.TestCase):
         self.assert_(byreftools1.url == byreftools2.url, 
                      "URLs should be identical: %r, %r" % (byreftools1.url,
                                                            byreftools2.url))
-
-class GPServerTests(unittest.TestCase):
-    def testGetGPService(self):
-        url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
-        server = arcrest.Catalog(url)
-        gp = server.Elevation.ESRI_Elevation_World.GPServer
-        self.assert_(isinstance(gp, arcrest.GPService), "Not a GP service")
-    def testGetGPTasks(self):
-        url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
-        server = arcrest.Catalog(url)
-        gp = server.Elevation.ESRI_Elevation_World.GPServer
-        self.assert_(all(isinstance(task, arcrest.GPTask) 
-                         for task in gp.tasks), "Tasks aren't tasks")
 
 class MapServerTests(unittest.TestCase):
     def testGetMapService(self):
@@ -153,8 +140,59 @@ class GeocodeServerTests(unittest.TestCase):
         self.assert_(isinstance(results.location, arcrest.geometry.Point), 
                      "Expected point for location")
 
+class GPServerTests(unittest.TestCase):
+    def testGetGPService(self):
+        url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
+        server = arcrest.Catalog(url)
+        gp = server.Elevation.ESRI_Elevation_World.GPServer
+        self.assert_(isinstance(gp, arcrest.GPService), "Not a GP service")
+    def testGetGPTasks(self):
+        url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
+        server = arcrest.Catalog(url)
+        gp = server.Elevation.ESRI_Elevation_World.GPServer
+        self.assert_(all(isinstance(task, arcrest.GPTask) 
+                         for task in gp.tasks), "Tasks aren't tasks")
+
+class GeometryServerTests(unittest.TestCase):
+    def testGetGeometryService(self):
+        url = "http://flame6:8399/arcgis/rest/services"
+        server = arcrest.Catalog(url)
+        geo = server.Geometry
+        self.assert_(isinstance(geo, arcrest.GeometryService),
+                     "Not a geometry service")
+    def testBufferAPoint(self):
+        url = "http://flame6:8399/arcgis/rest/services"
+        server = arcrest.Catalog(url)
+        geo = server.Geometry
+        point = arcrest.geometry.Point(-122.405634, 37.780959)
+        result = geo.Buffer(geometries=point, distances="5")
+        geoms = result.geometries[0].rings
+        self.assert_(all([all([isinstance(p, arcrest.geometry.Point)
+                     for p in ring])for ring in geoms]),
+                     "Result not a list of list of points")
+
+class ImageServiceTests(unittest.TestCase):
+    pass
+
+class NetworkServiceTests(unittest.TestCase):
+    pass
+
+class GeoDataServiceTests(unittest.TestCase):
+    pass
+
+class GlobeServiceTests(unittest.TestCase):
+    pass
+
 if __name__ == '__main__':
     test.verbose = True
-    test.test_support.run_unittest(GeometryTests, RestURLTests, ServerTests,
-                                   GPServerTests, MapServerTests,
-                                   GeocodeServerTests)
+    test.test_support.run_unittest(GeometryTests,
+                                   RestURLTests,
+                                   ServerTests,
+                                   MapServerTests,
+                                   GeocodeServerTests,
+                                   GPServerTests,
+                                   GeometryServerTests,
+                                   ImageServiceTests,
+                                   NetworkServiceTests,
+                                   GeoDataServiceTests,
+                                   GlobeServiceTests)
