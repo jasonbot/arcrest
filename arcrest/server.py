@@ -6,6 +6,7 @@
 
 # json parsing is a third-party library until 2.6, make some 
 # effort to import it
+
 try:
     import json
 except ImportError:
@@ -30,18 +31,21 @@ import geometry
 # application of an action, such as Buffering a set of points using the
 # geometry service. This class attempts to provide some baseline functionality
 # required by the set of operations one performs using the ArcGIS REST API,
-# such as making sure teh format is always set to json, parsing the json,
-# 'caching' the result in memory as needed, and returning instances of objects
+# such as making sure the format is always set to json, parsing the json,
+# keeping the result in memory as needed, and returning instances of objects
 # represented by relative URLs.
+
 class RestURL(object):
     """Represents a top-level, base REST-style URL."""
     __cache_request__ = False  # Fetch every time or just once?
     __urldata__ = Ellipsis     # What actually gets HTTP GETten
     __json_struct__ = Ellipsis # Cache for json.loads(self.__urldata__)
+    __has_json__ = True        # Parse the data as a json struct? Set to
+                               # false for binary data, html, etc.
     __lazy_fetch__ = True      # Fetch when constructed, or later on?
     def __init__(self, url):
         # Expects a urlparse.urlsplitted list as the url, but accepts a
-        # string because that is easier/makse more sense everywhere.
+        # string because that is easier/makes more sense everywhere.
         if isinstance(url, basestring):
             url = urlparse.urlsplit(url)
         # Ellipsis is used instead of None for the case where no data
@@ -59,7 +63,8 @@ class RestURL(object):
         for k, v in cgi.parse_qs(urllist[3]).iteritems():
             query_dict[k] = v[0]
         # Set the f= flag to json (so we can interface with it)
-        query_dict['f'] = 'json'
+        if self.__has_json__ is True:
+            query_dict['f'] = 'json'
         # Hack our modified query string back into URL components
         urllist[3] = urllib.urlencode(query_dict)
         self._url = urllist
@@ -81,15 +86,18 @@ class RestURL(object):
             urllist = list(url_tuple)
             # As above, pull out first element from parse_qs' values
             query_dict = dict((k, v[0]) for k, v in 
-                                cgi.parse_qs(urllist[3]).iteritems())
+                               cgi.parse_qs(urllist[3]).iteritems())
             for key, val in params.iteritems():
                 # Lowercase bool string
                 if isinstance(val, bool):
                     query_dict[key] = str(val).lower()
                 # Special case: convert an envelope to .bbox in the bb
                 # parameter
-                elif key == 'bbox' and isinstance(val, geometry.Envelope):
+                elif isinstance(val, geometry.Envelope):
                     query_dict[key] = val.bbox
+                # Just use the wkid of SpatialReferences
+                elif isinstance(val, geometry.SpatialReference): 
+                    query_dict[key] = val.wkid
                 # Ignore null values, and coerce string values (hopefully
                 # everything sent in to a query has a sane __str__)
                 elif val is not None:
@@ -163,6 +171,7 @@ class Folder(RestURL):
                 in self._json_struct.get('services', [])]
     @property
     def url(self):
+        """The URL as a string of the resource."""
         if not self._url[2].endswith('/'):
             self._url[2] += '/'
         return RestURL.url.__get__(self)
@@ -237,12 +246,42 @@ class Service(RestURL):
     """Represents an ArcGIS REST service. This is an abstract base -- services
        derive from this."""
     __cache_request__ = False
-    def __init__(self, url):
-        super(Service, self).__init__(url)
+    __service_type__ = None
+    @property
+    def serviceDescription(self):
+        """Get a short description of the service. Will return None if there is
+           no description for this service or service type."""
+        return self._json_struct.get('serviceDescription', None)
+    def __repr__(self):
+        return "<%s%s (%r)>" % (self.__service_type__,
+                                " - %r" % self.serviceDescription
+                                   if self.serviceDescription
+                                   else '',
+                                self.url)
+    def __getattr__(self, attr):
+        # Special-cased __getattr__ -- if a folder has an unambiguous service
+        # by name it will return a Service instance, otherwise it will return
+        # an AmbiguousService instance with accessors. For example,
+        # http://flame6:8399/arcgis/rest/services/GP has ByRefTools as a
+        # MapServer and a GPServer, so
+        #    >>> server = Catalog("http://flame6:8399/arcgis/rest/services/")
+        #    >>> server.GP.ByRefTools
+        # has an ambiguous match, meaning you need to access
+        #    >>> server.GP.ByRefTools.GPServer
+        # to get to the GP verion of the service, but
+        #    >>> server.GP.DriveTimePolygons
+        # gives you the GPServer. This gives and inconsistent interface,
+        # because then
+        #    >>> server.GP.DriveTimePolygons.GPServer
+        # doesn't work and that's inconsistent. Meant to be a balance between
+        # ease-of-use and explicitness.
+        if attr == self.__service_type__:
+            return self
+        raise AttributeError("%r does not have attribute %r" % 
+                             (self.__class__.__name__, attr))
 
 class ServerError(Exception):
     """Exception for server-side error responses"""
-    pass
 
 class Result(RestURL):
     """Abstract class representing the result of an operation performed on a
@@ -252,7 +291,7 @@ class Result(RestURL):
     def __init__(self, url):
         super(Result, self).__init__(url)
         if 'error' in self._json_struct:
-            raise ServerError("ERROR %i: %s <%s>" % 
+            raise ServerError("ERROR %i: %r <%s>" % 
                                (self._json_struct['error']['code'], 
                                 self._json_struct['error']['message'],
                                 self.url))
@@ -270,6 +309,70 @@ class MapLayer(Layer):
        published by ArcGIS Server. It provides basic information about the
        layer such as its name, type, parent and sub-layers, fields, min and
        max scales, extent, and copyright text."""
+    def QueryLayer(self, text=None, Geometry=None, inSR=None, 
+                   spatialRel='esriSpatialRelIntersects', where=None,
+                   outFields=None, returnGeometry=None, outSR=None):
+        """The query operation is performed on a layer resource. The result
+           of this operation is a resultset resource. This resource provides
+           information about query results including the values for the fields
+           requested by the user. If you request geometry information, the
+           geometry of each result is also returned in the resultset.
+
+           Spatial Relation Options:
+                esriSpatialRelIntersects | esriSpatialRelContains | 
+                esriSpatialRelCrosses | esriSpatialRelEnvelopeIntersects | 
+                esriSpatialRelIndexIntersects | esriSpatialRelOverlaps | 
+                esriSpatialRelTouches | esriSpatialRelWithin"""
+    @property
+    def id(self):
+        return self._json_struct['id']
+    @property
+    def name(self):
+        return self._json_struct['name']
+    @property
+    def type(self):
+        return self._json_struct['type']
+    @property
+    def geometryType(self):
+        return self._json_struct['geometryType']
+    @property
+    def copyrightText(self):
+        return self._json_struct['copyrightText']
+    @property
+    def parentLayer(self):
+        return self._get_subfolder("../%s/" % 
+                                   self._json_struct['parentLayer']['id'],
+                                   MapLayer)
+    @property
+    def subLayers(self):
+        return [self._get_subfolder("../%s/" % 
+                                    layer['parentLayer']['id'],
+                                    MapLayer)
+                for layer in self._json_struct['subLayers']]
+    @property
+    def minScale(self):
+        return self._json_struct['minScale']
+    @property
+    def maxScale(self):
+        return self._json_struct['maxScale']
+    @property
+    def extent(self):
+        return geometry.convert_from_json(self._json_struct['extent'])
+    @property
+    def displayField(self):
+        return self._json_struct['displayField']
+    @property
+    def fields(self):
+        return self._json_struct['fields']
+
+class MapTile(RestURL):
+    """Represents the map tile fetched from a map service."""
+    __has_json__ = False
+    def save(self, outfile):
+        """Save the image data to a file or file-like object"""
+        if isinstance(outfile, basestring):
+            outfile = open(outfile, 'wb')
+        outfile.write(self._contents)
 
 class MapService(Service):
     """Map services offer access to map and layer content. Map services can
@@ -279,9 +382,7 @@ class MapService(Service):
        the server to render the map each time a request comes in. Map services
        using a tile cache can significantly improve performance while
        delivering maps, while dynamic map services offer more flexibility."""
-    @property
-    def MapServer(self):
-        return self
+    __service_type__ = "MapServer"
     def ExportMap(self, bbox, size=None, dpi=None, imageSR=None, bboxSR=None,
                   format=None, layerDefs=None, layers=None, transparent=False):
         """The export operation is performed on a map service resource. The
@@ -298,20 +399,18 @@ class MapService(Service):
                                                'layerDefs': layerDefs,
                                                'layers': layers,
                                                'transparent': transparent})
-    def Identify(self, geometry, sr=None, layers=None, tolerance=1, 
+    def Identify(self, Geometry, sr=None, layers=None, tolerance=1, 
                  mapExtent=None, imageDisplay=None, returnGeometry=True):
         """The identify operation is performed on a map service resource. The
            result of this operation is an identify results resource. Each
            identified result includes its name, layer ID, layer name, geometry
            and geometry type, and other attributes of that result as name-value
            pairs."""
-        if isinstance(sr, geometry.SpatialReference):
-            sr = sr.wkid
-        assert hasattr(geometry, '__geometry_type__'), "Invalid geometry"
-        gt = geometry.__geometry_type__
+        assert hasattr(Geometry, '__geometry_type__'), "Invalid geometry"
+        gt = Geometry.__geometry_type__
         if sr is None:
-            sr = geometry.spatial
-        geo_json = json.dumps(geometry._json_struct_without_srReference.wkid)
+            sr = Geometry.spatialReference.wkid
+        geo_json = json.dumps(Geometry._json_struct_without_srReference.wkid)
         return self._get_subfolder('identify/', Result,
                                                 {'geometry': geo_json,
                                                  'geometryType': gt,
@@ -327,11 +426,9 @@ class MapService(Service):
              layers=None, returnGeometry=True):
         """The find operation is performed on a map service resource. The
            result of this operation is a find results resource. Each result
-           includes  its value, feature ID, field name,?layer ID, layer name,
+           includes  its value, feature ID, field name, layer ID, layer name,
            geometry, geometry type, and attributes in the form of name-value
            pairs."""
-        if isinstance(sr, geometry.SpatialReference):
-            sr = sr.wkid
         return self._get_subfolder('find/', Result, 
                                             {'searchText': searchText,
                                              'contains': contains,
@@ -351,10 +448,45 @@ class MapService(Service):
              separateImage: Each layer as a separate image.
               nonComposite: Vector layers as vectors and raster layers as
                             images."""
-        return self._get_subfolder('generateKml/', Result, {'docName': docName, 
-                                                            'layers': layers,
-                                                            'layerOptions':
-                                                                layerOptions})
+        return self._get_subfolder('generateKml/', Result,
+                                       {'docName': docName, 
+                                        'layers': layers,
+                                        'layerOptions': layerOptions})
+    def tile(self, row, col, zoomlevel=None):
+        """For cached maps, this resource represents a single cached tile for
+           the map. The image bytes for the tile at the specified level, row 
+           and column are directly streamed to the client. If the tile is not
+           found, an HTTP status code of 404 (Not found) is returned."""
+        return self._get_subfolder("tile/%s/%s/%s/" % (row, col, zoomlevel), 
+                                   MapTile)
+
+    @property
+    def mapName(self):
+        """This map's name"""
+        return self._json_struct['mapName']
+    @property
+    def description(self):
+        """This map's description"""
+        return self._json_struct['description']
+    @property
+    def copyrightText(self):
+        """This map's copyright text"""
+        return self._json_struct['copyrightText']
+    @property
+    def spatialReference(self):
+        """This map's Spatial Reference"""
+        return geometry._convert_from_json(
+                                        self._json_struct['spatialReference'])
+    @property
+    def initialExtent(self):
+        """This map's initial extent"""
+        return geometry._convert_from_json(
+                                        self._json_struct['initialExtent'])
+    @property
+    def fullExtent(self):
+        """This map's full extent"""
+        return geometry._convert_from_json(
+                                        self._json_struct['fullExtent'])
     @property
     def layernames(self):
         """Return a list of the names of this map's layers"""
@@ -366,7 +498,10 @@ class MapService(Service):
                 for layer in self._json_struct['layers']]
 
 class FindAddressCandidatesResult(Result):
-    """Represents the result from a geocode operation"""
+    """Represents the result from a geocode operation. The .candidates
+       field holds a list of candidate addresses as python dicts; the
+       ['location'] key in each is a geometry.Point for the location of the
+       address."""
     @property
     def candidates(self):
         """A list of candidate addresses from a geocode operation"""
@@ -380,7 +515,10 @@ class FindAddressCandidatesResult(Result):
         return list(cditer())
 
 class ReverseGeocodeResult(Result):
-    """Represents the result from a reverse geocode operation"""
+    """Represents the result from a reverse geocode operation -- the two
+       interesting fields are .address, which is a dictionary with the
+       fields of the candidate address, and .location, which is a
+       geometry.Point which is the actual location of the address."""
     @property
     def address(self):
         return self._json_struct['address']
@@ -399,9 +537,7 @@ class GeocodeService(Service):
        succeeding information to other location descriptions such as postal
        zone or census tract. An address includes any type of information that
        distinguishes a place."""
-    @property
-    def GeocodeServer(self):
-        return self
+    __service_type__ = "GeocodeServer"
     def FindAddressCandidates(self, outFields=[], **fields):
         """The findAddressCandidates operation is performed on a geocode
            service resource. The result of this operation is a resource
@@ -436,7 +572,20 @@ class GPTask(Service):
        including its name and display name. It also provides detailed 
        information about the various input and output parameters exposed by the
        task"""
-    pass
+    @property
+    def executionType(self):
+        """Returns the execution type of this task."""
+        return self._json_struct['executionType']
+    @property
+    def synchronous(self):
+        """Returns a boolean indicating whether this tasks runs synchronously
+           (True) or asynchronously (False)."""
+        sv = self._json_struct['executionType']
+        if sv == 'esriExecutionTypeSynchronous':
+            return True
+        elif sv == 'esriExecutionTypeAsynchronous':
+            return False
+        raise ValueError("Unknown synchronous value: %r" % sv)
 
 class GPService(Service):
     """Geoprocessing is a fundamental part of enterprise GIS operations. 
@@ -453,16 +602,14 @@ class GPService(Service):
        and generates output for presentation in a map or further processing by 
        the client. Tools can be executed synchronously (in sequence) or
        asynchronously."""
+    __service_type__ = "GPServer"
     @property
-    def GPServer(self):
-        return self
-    @property
-    def _tasknames(self):
+    def tasknames(self):
         return self._json_struct['tasks']
     @property
     def tasks(self):
         return [self._get_subfolder(taskname, GPTask)
-                for taskname in self._tasknames]
+                for taskname in self.tasknames]
 
 class GeometryResult(Result):
     """Represents the output of a Project, Simplify or Buffer operation 
@@ -492,9 +639,7 @@ class GeometryService(Service):
        Web site can only expose one geometry service with the static name
        "Geometry." Note that geometry input and output, where required, are
        always packaged as an array."""
-    @property
-    def GeometryServer(self):
-        return self
+    __service_type__ = "GeometryServer"
 
     def Project(self, geometries, outSR, inSR=None):
         """The project operation is performed on a geometry service resource.
@@ -505,13 +650,8 @@ class GeometryService(Service):
         if isinstance(geometries, geometry.Geometry):
             geometries = [geometries]
 
-        if isinstance(inSR, geometry.SpatialReference):
-            inSR = inSR.wkid
-        elif inSR is None:
+        if inSR is None:
             inSR = geometries[0].spatialReference.wkid
-
-        if isinstance(outSR, geometry.SpatialReference):
-            outSR = outSR.wkid
 
         geometry_types = set([x.__geometry_type__ for x in geometries])
         assert len(geometry_types) == 1, "Too many geometry types"
@@ -537,9 +677,7 @@ class GeometryService(Service):
         if isinstance(geometries, geometry.Geometry):
             geometries = [geometries]
 
-        if isinstance(sr, geometry.SpatialReference):
-            sr = sr.wkid
-        elif sr is None:
+        if sr is None:
             sr = geometries[0].spatialReference.wkid
 
         geometry_types = set([x.__geometry_type__ for x in geometries])
@@ -570,19 +708,13 @@ class GeometryService(Service):
                                         for geo in geometries]
                     })
 
-        if isinstance(inSR, geometry.SpatialReference):
-            inSR = inSR.wkid
-        elif inSR is None:
+        if inSR is None:
             inSR = geometries[0].spatialReference.wkid
 
-        if isinstance(outSR, geometry.SpatialReference):
-            outSR = outSR.wkid
-        elif outSR is None:
+        if outSR is None:
             outSR = geometries[0].spatialReference.wkid
 
-        if isinstance(bufferSR, geometry.SpatialReference):
-            bufferSR = bufferSR.wkid
-        elif bufferSR is None:
+        if bufferSR is None:
             bufferSR = geometries[0].spatialReference.wkid
 
         return self._get_subfolder('buffer', GeometryResult, 
@@ -603,9 +735,7 @@ class GeometryService(Service):
         if isinstance(polygons, geometry.Geometry):
             polygons = [polygons]
 
-        if isinstance(sr, geometry.SpatialReference):
-            sr = sr.wkid
-        elif sr is None:
+        if sr is None:
             sr = polygons[0].spatialReference.wkid
 
         geo_json = json.dumps([polygon._json_struct_without_sr
@@ -624,9 +754,7 @@ class GeometryService(Service):
         if isinstance(polylines, geometry.Geometry):
             polylines = [polylines]
 
-        if isinstance(sr, geometry.SpatialReference):
-            sr = sr.wkid
-        elif sr is None:
+        if sr is None:
             sr = polylines[0].spatialReference.wkid
 
         geo_json = json.dumps([polyline._json_struct_without_sr
@@ -637,18 +765,36 @@ class GeometryService(Service):
                                      'sr': sr
                                     })
 
+class ExportImageResult(Result):
+    """Represents the output of an Image Service exportImage call."""
+
 class ImageService(Service):
     """An image service provides read-only access to a mosaicked collection of
        images or a raster data set."""
-    @property
-    def ImageServer(self):
-        return self
-    def ExportImage(self):
+    __service_type__ = "ImageServer"
+    def ExportImage(self, bbox=None, size=None, imageSR=None, bboxSR=None,
+                    format=None, pixelType=None, noData=None, 
+                    interpolation=None, compressionQuality=None, bandIds=None,
+                    mosaicProperties=None, viewpointProperties=None):
         """The export operation is performed on a map service resource. The
            result of this operation is a map image resource. This resource
            provides information about the exported map image such as its URL,
            its width and height, extent and scale."""
-        pass
+
+        return self._get_subfolder('exportImage/', ExportImageResult, 
+                                    {'bbox': bbox,
+                                     'size': size,
+                                     'imageSR': imageSR,
+                                     'bboxSR': bboxSR,
+                                     'format': format,
+                                     'pixelType': pixelType,
+                                     'noData': noData,
+                                     'interpolation': interpolation,
+                                     'compressionQuality': compressionQuality, 
+                                     'bandIds': bandIds,
+                                     'mosaicProperties': mosaicProperties,
+                                     'viewpointProperties': viewpointProperties
+                                    })
 
 class NetworkLayer(Layer):
     """The network layer resource represents a single network layer in a
@@ -657,6 +803,51 @@ class NetworkLayer(Layer):
        and network classes. Additionally, depending on the layer type, it
        provides different pieces of information as detailed in the
        examples."""
+    @property
+    def layerName(self):
+        return self._json_struct['layerName']
+    @property
+    def layerType(self):
+        return self._json_struct['layerType']
+    @property
+    def impedance(self):
+        return self._json_struct['impedance']
+    @property
+    def useStartTime(self):
+        return self._json_struct['useStartTime']
+    @property
+    def useTimeWindows(self):
+        return self._json_struct['useTimeWindows']
+    @property
+    def preserveFirstStop(self):
+        return self._json_struct['preserveFirstStop']
+    @property
+    def preserveLastStop(self):
+        return self._json_struct['preserveLastStop']
+    @property
+    def restrictUTurns(self):
+        return self._json_struct['restrictUTurns']
+    @property
+    def outputLineType(self):
+        return self._json_struct['outputLineType']
+    @property
+    def useHierarchy(self):
+        return self._json_struct['useHierarchy']
+    @property
+    def ignoreInvalidLocations(self):
+        return self._json_struct['ignoreInvalidLocations']
+    @property
+    def restrictions(self):
+        return self._json_struct['restrictions']
+    @property
+    def distanceUnits(self):
+        return self._json_struct['distanceUnits']
+    @property
+    def useTimeAttribute(self):
+        return self._json_struct['useTimeAttribute']
+    @property
+    def networkClasses(self):
+        return self._json_struct['networkClasses']
 
 class NetworkService(Service):
     """The network service resource represents a network analysis service
@@ -664,27 +855,163 @@ class NetworkService(Service):
        the service such as the service description and the various network
        layers (route, closest facility and service area layers) contained in
        the network analysis service."""
+    __service_type__ = "NAServer"
     @property
-    def NAServer(self):
-        return self
+    def routeLayers(self):
+        return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
+                self._json_struct['routeLayers']]
+    @property
+    def serviceAreaLayers(self):
+        return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
+                self._json_struct['serviceAreaLayers']]
+    @property
+    def closestFacilityLayers(self):
+        return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
+                self._json_struct['closestFacilityLayers']]
+
+class GeoDataVersion(RestURL):
+    """The geodata version resource represents a single version in a geodata
+       service published using ArcGIS Server. It provides basic information
+       about the version such as its description, created and modified times,
+       access type, as well as parent, children and ancestor versions."""
+    @property
+    def name(self):
+        return self._json_struct['name']
+    @property
+    def description(self):
+        return self._json_struct['description']
+    @property
+    def created(self):
+        return self._json_struct['created']
+    @property
+    def modified(self):
+        return self._json_struct['modified']
+    @property
+    def access(self):
+        return self._json_struct['access']
+    @property
+    def parentVersion(self):
+        return self._json_struct['parentVersion']
+    @property
+    def childVersions(self):
+        return self._json_struct['childVersions']
+    @property
+    def ancestorVersions(self):
+        return self._json_struct['ancestorVersions']
+
+class GeoDataReplica(RestURL):
+    """The geodata replica resource represents a single replica in a geodata
+       service published using ArcGIS Server. It provides basic information
+       about the replica such as its id, replica version, creation date, GUID,
+       role, access type, and reconcile policy."""
+    @property
+    def name(self):
+        return self._json_struct['name']
+    @property
+    def id(self):
+        return self._json_struct['id']
+    @property
+    def replicaVersion(self):
+        return self._json_struct['replicaVersion']
+    @property
+    def guid(self):
+        return self._json_struct['guid']
+    @property
+    def role(self):
+        return self._json_struct['role']
+    @property
+    def accessType(self):
+        return self._json_struct['accessType']
+    @property
+    def myGenerationNumber(self):
+        return self._json_struct['myGenerationNumber']
+    @property
+    def sibGenerationNumber(self):
+        return self._json_struct['sibGenerationNumber']
+    @property
+    def sibMyGenerationNumber(self):
+        return self._json_struct['sibMyGenerationNumber']
+    @property
+    def replicaState(self):
+        return self._json_struct['replicaState']
+    @property
+    def sibConnectionString(self):
+        return self._json_struct['sibConnectionString']
+    @property
+    def modelType(self):
+        return self._json_struct['modelType']
+    @property
+    def singleGeneration(self):
+        return self._json_struct['singleGeneration']
+    @property
+    def spatialRelation(self):
+        return self._json_struct['spatialRelation']
+    @property
+    def queryGeometryType(self):
+        return self._json_struct['queryGeometryType']
+    @property
+    def queryGeometry(self):
+        return geometry.convert_from_json(self._json_struct['queryGeometry'])
+    @property
+    def transferRelatedObjects(self):
+        return self._json_struct['transferRelatedObjects']
+    @property
+    def reconcilePolicy(self):
+        return self._json_struct['reconcilePolicy']
 
 class GeoDataService(Service):
     """The geodata service resource represents a geodata service that you have
        published with ArcGIS Server. The resource provides basic information
        associated with the geodata service such as the service description,
        its workspace type, default  working version, versions, and replicas."""
+    __service_type__ = "GeoDataServer"
     @property
-    def GeoDataServer(self):
-        return self
+    def workspaceType(self):
+        return self._json_struct['workspaceType']
+    @property
+    def defaultWorkingVersionName(self):
+        return self._json_struct['defaultWorkingVersion']
+    @property
+    def defaultWorkingVersion(self):
+        return self._get_subfolder("versions/%s/" % 
+                                   self.defaultWorkingVersionName,
+                                   GeoDataVersion)
+    @property
+    def versionnames(self):
+        return self._json_struct['versions']
+    @property
+    def versions(self):
+        return [self._get_subfolder("versions/%s/" % version, GeoDataVersion)
+                for version in self.versionnames]
+    @property
+    def replicanames(self):
+        return self._json_struct['replicas']
+    @property
+    def replicas(self):
+        return [self._get_subfolder("replicas/%s/" % version, GeoDataReplica)
+                for replica in self.replicanames]
+
+class GlobeLayer(Layer):
+    """The globe layer resource represents a single layer in a globe service
+       published by ArcGIS Server. It provides basic information about the
+       layer such as its ID, name, type, parent and sub-layers, fields, extent,
+       data type, sampling mode, and extrusion type."""
 
 class GlobeService(Service):
     """The globe service resource represents a globe service published with
        ArcGIS Server. The resource provides information about the service such
        as the service description and the various layers contained in the
        published globe document."""
+    __service_type__ = "GlobeServer"
     @property
-    def GlobeServer(self):
-        return self
+    def layernames(self):
+        """Return a list of the names of this globe service's layers"""
+        return [layer['name'] for layer in self._json_struct['layers']]
+    @property
+    def layers(self):
+        """Return a list of this globe service's layer objects"""
+        return [self._get_subfolder("%s/" % layer['id'], GlobeLayer)
+                for layer in self._json_struct['layers']]
 
 # Have to create mapping at the end for Folders, there are no forward 
 # declarations in Python
