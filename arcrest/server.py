@@ -98,6 +98,12 @@ class RestURL(object):
                 # Just use the wkid of SpatialReferences
                 elif isinstance(val, geometry.SpatialReference): 
                     query_dict[key] = val.wkid
+                # Layer selection: if it's a list, make it a comma-separated
+                # string
+                elif key == "layers" and isinstance(val, (list, tuple)):
+                    val = ",".join([str(v.id) 
+                                    if isinstance(v, Layer)
+                                    else str(v) for v in val])
                 # Ignore null values, and coerce string values (hopefully
                 # everything sent in to a query has a sane __str__)
                 elif val is not None:
@@ -295,9 +301,9 @@ class Result(RestURL):
     __lazy_fetch__ = False # Force-fetch immediately
 
 class BinaryResult(Result):
-    """Class repsenting the result of an operation perfomed on a service with
+    """Class representing the result of an operation perfomed on a service with
        some sort of opaque binary data, such as a PNG or KMZ. Contrast to a
-       JsonResult, which has immediately accessible data."""
+       JsonResult, which has an immediately accessible data structure."""
     __has_json__ = False
     def save(self, outfile):
         """Save the image data to a file or file-like object"""
@@ -340,10 +346,15 @@ class MapLayer(Layer):
            geometry of each result is also returned in the resultset.
 
            Spatial Relation Options:
-                esriSpatialRelIntersects | esriSpatialRelContains | 
-                esriSpatialRelCrosses | esriSpatialRelEnvelopeIntersects | 
-                esriSpatialRelIndexIntersects | esriSpatialRelOverlaps | 
-                esriSpatialRelTouches | esriSpatialRelWithin"""
+           =========================
+           - esriSpatialRelIntersects
+           - esriSpatialRelContains
+           - esriSpatialRelCrosses
+           - esriSpatialRelEnvelopeIntersects
+           - esriSpatialRelIndexIntersects
+           - esriSpatialRelOverlaps
+           - esriSpatialRelTouches
+           - esriSpatialRelWithin"""
     @property
     def id(self):
         return self._json_struct['id']
@@ -416,6 +427,9 @@ class ExportMapResult(JsonResult):
 class IdentifyOrFindResult(JsonResult):
     """Represents the result of a Find or Identify operation performed on a
        Map Service."""
+    @property
+    def results(self):
+        return self._json_struct['results']
 
 class ExportKMLResult(BinaryResult):
     """Represents the result of an Export KML operation performed on a Map
@@ -494,11 +508,12 @@ class MapService(Service):
            endpoint with properties and parameters you specify.
 
            Layer Options:
-                 composite: (default) All layers as a single composite image.
-                            Layers cannot be turned on and off in the client.
-             separateImage: Each layer as a separate image.
-              nonComposite: Vector layers as vectors and raster layers as
-                            images."""
+           ==============
+           - composite: (default) All layers as a single composite image.
+                        Layers cannot be turned on and off in the client.
+           - separateImage: Each layer as a separate image.
+           - nonComposite: Vector layers as vectors and raster layers as
+                           images."""
         return self._get_subfolder('generateKml/', GenerateKMLResult,
                                        {'docName': docName, 
                                         'layers': layers,

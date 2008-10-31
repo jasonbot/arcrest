@@ -15,7 +15,7 @@ except ImportError:
 import projections
 
 def pointlist(points, sr):
-    """Convert a list of the form [[x, y] ... ] to a list of Point instances
+    """Convert a list of the form [[x, y] ...] to a list of Point instances
        with the given x, y coordinates."""
     assert all(len(pt) == 2 for pt in points), "Point(s) not in [x, y] form"
     return [Point(coord[0], coord[1], sr) for coord in points]
@@ -247,7 +247,7 @@ class Envelope(Geometry):
                             (self.xmin, self.ymin, self.xmax, self.ymax))
     @classmethod
     def from_json_struct(cls, struct):
-        return cls(*struct)
+        return cls(**struct)
 
 def convert_from_json(struct):
     "Convert a JSON struct to a Geometry based on its structure"
