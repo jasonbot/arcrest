@@ -268,7 +268,7 @@ class Service(RestURL):
         #    >>> server.GP.ByRefTools
         # has an ambiguous match, meaning you need to access
         #    >>> server.GP.ByRefTools.GPServer
-        # to get to the GP verion of the service, but
+        # to get to the GP version of the service, but
         #    >>> server.GP.DriveTimePolygons
         # gives you the GPServer. This gives and inconsistent interface,
         # because then
@@ -374,6 +374,30 @@ class MapTile(RestURL):
             outfile = open(outfile, 'wb')
         outfile.write(self._contents)
 
+class ExportMapResult(Service):
+    """Represents the result of an Export Map operation performed on a Map
+       Service."""
+    @property
+    def href(self):
+        return self._json_struct['href']
+    @property
+    def width(self):
+        return self._json_struct['width']
+    @property
+    def height(self):
+        return self._json_struct['height']
+    @property
+    def extent(self):
+        return geometry.convert_from_json(self._json_struct['extent'])
+    @property
+    def scale(self):
+        return self._json_struct['scale']
+    def save(self, outfile):
+        """Save the image data to a file or file-like object"""
+        if isinstance(outfile, basestring):
+            outfile = open(outfile, 'wb')
+        outfile.write(urllib2.urlopen(self.href).read())
+
 class MapService(Service):
     """Map services offer access to map and layer content. Map services can
        either be cached or dynamic. A map service that fulfills requests with
@@ -389,7 +413,7 @@ class MapService(Service):
            result of this operation is a map image resource. This resource
            provides information about the exported map image such as its URL,
            its width and height, extent and scale."""
-        return self._get_subfolder('export/', Result, 
+        return self._get_subfolder('export/', ExportMapResult, 
                                               {'bbox': bbox, 
                                                'size': size,
                                                'dpi': dpi,
@@ -525,8 +549,13 @@ class ReverseGeocodeResult(Result):
     @property
     def location(self):
         return geometry.convert_from_json(self._json_struct['location'])
-    def __getattr__(self, attr):
+    def __getitem__(self, attr):
         return self._json_struct['address'][attr]
+    def __getattr__(self, attr):
+        try:
+            return self[attr]
+        except KeyError, e:
+            raise AttributError(str(e))
 
 class GeocodeService(Service):
     """Geocoding is the process of assigning a location, usually in the form
@@ -767,6 +796,23 @@ class GeometryService(Service):
 
 class ExportImageResult(Result):
     """Represents the output of an Image Service exportImage call."""
+    @property
+    def href(self):
+        return self._json_struct['href']
+    @property
+    def width(self):
+        return self._json_struct['width']
+    @property
+    def height(self):
+        return self._json_struct['height']
+    @property
+    def extent(self):
+        return geometry.convert_from_json(self._json_struct['extent'])
+    def save(self, outfile):
+        """Save the image data to a file or file-like object"""
+        if isinstance(outfile, basestring):
+            outfile = open(outfile, 'wb')
+        outfile.write(urllib2.urlopen(self.href).read())
 
 class ImageService(Service):
     """An image service provides read-only access to a mosaicked collection of
@@ -868,6 +914,18 @@ class NetworkService(Service):
     def closestFacilityLayers(self):
         return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
                 self._json_struct['closestFacilityLayers']]
+    def __getitem__(self, attr):
+        layer_names = set(self._json_struct['routeLayers'] +
+                          self._json_struct['serviceAreaLayers'] +
+                          self._json_struct['closestFacilityLayers'])
+        if attr in layer_names:
+            self._get_subfolder("%s/" % attr, NetworkLayer)
+        raise KeyError("No attribute %r found" % attr)
+    def __getattr__(self, attr):
+        try:
+            return self[attr]
+        except KeyError, e:
+            raise AttributeError(str(e))
 
 class GeoDataVersion(RestURL):
     """The geodata version resource represents a single version in a geodata
@@ -996,6 +1054,66 @@ class GlobeLayer(Layer):
        published by ArcGIS Server. It provides basic information about the
        layer such as its ID, name, type, parent and sub-layers, fields, extent,
        data type, sampling mode, and extrusion type."""
+    @property
+    def id(self):
+        return self._json_struct['id']
+    @property
+    def name(self):
+        return self._json_struct['name']
+    @property
+    def type(self):
+        return self._json_struct['type']
+    @property
+    def description(self):
+        return self._json_struct['description']
+    @property
+    def extent(self):
+        return geometry.convert_from_json(self._json_struct['extent'])
+    @property
+    def dataType(self):
+        return self._json_struct['dataType']
+    @property
+    def maxDistance(self):
+        return self._json_struct['maxDistance']
+    @property
+    def minDistance(self):
+        return self._json_struct['minDistance']
+    @property
+    def samplingMode(self):
+        return self._json_struct['samplingMode']
+    @property
+    def baseID(self):
+        return self._json_struct['baseID']
+    @property
+    def baseOption(self):
+        return self._json_struct['baseOption']
+    @property
+    def extrusionType(self):
+        return self._json_struct['extrusionType']
+    @property
+    def extrusionExpression(self):
+        return self._json_struct['extrusionExpression']
+    @property
+    def cullMode(self):
+        return self._json_struct['cullMode']
+    @property
+    def copyrightText(self):
+        return self._json_struct['copyrightText']
+    @property
+    def displayField(self):
+        return self._json_struct['displayField']
+    @property
+    def fields(self):
+        return self._json_struct['fields']
+    @property
+    def parentLayer(self):
+        return self._get_subfolder("../%s/" % 
+                                   self._json_struct['parentLayer']['id'],
+                                   GlobeLayer)
+    @property
+    def subLayers(self):
+        return [self._get_subfolder("../%s/" % layer['id'], GlobeLayer)
+                for layer in self._json_struct['subLayers']]
 
 class GlobeService(Service):
     """The globe service resource represents a globe service published with
