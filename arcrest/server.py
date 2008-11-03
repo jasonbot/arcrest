@@ -742,6 +742,16 @@ class GPService(Service):
         elif sv == 'esriExecutionTypeAsynchronous':
             return False
         raise ValueError("Unknown synchronous value: %r" % sv)
+    def __getitem__(self, attr):
+        for task in self.tasknames:
+            if task == attr:
+                return self._get_subfolder(task, GPTask)
+        raise KeyError("No task named %r found" % attr)
+    def __getattr__(self, attr):
+        try:
+            return self[attr]
+        except KeyError:
+            return Service.__getattr__(self, attr)
 
 class GeometryResult(JsonResult):
     """Represents the output of a Project, Simplify or Buffer operation 
