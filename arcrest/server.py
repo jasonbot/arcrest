@@ -43,6 +43,7 @@ class RestURL(object):
     __has_json__ = True        # Parse the data as a json struct? Set to
                                # false for binary data, html, etc.
     __lazy_fetch__ = True      # Fetch when constructed, or later on?
+
     def __init__(self, url):
         # Expects a urlparse.urlsplitted list as the url, but accepts a
         # string because that is easier/makes more sense everywhere.
@@ -125,6 +126,7 @@ class RestURL(object):
         """The raw contents of the URL as fetched, this is done lazily.
            For non-lazy fetching this is accessed in the object constructor."""
         if self.__urldata__ is Ellipsis or self.__cache_request__ is False:
+            #print 'fetch', self.url
             handle = urllib2.urlopen(self.url)
             # Handle the special case of a redirect (only follow once) --
             # Note that only the first 3 components (protocol, hostname, path)
@@ -149,7 +151,7 @@ class RestURL(object):
             else:
                 return json.loads(self._contents)
         else:
-            # Return an empty dict for things so they don't have to sepcial
+            # Return an empty dict for things so they don't have to special
             # case against a None value or anything
             return {}
 
@@ -160,6 +162,7 @@ class Folder(RestURL):
     __cache_request__  = True
     # Conversion table from type string to class instance.
     _service_type_mapping = {}
+
     @property
     def foldernames(self):
         "Returns a list of folder names available from this folder."
@@ -239,6 +242,7 @@ class Catalog(Folder):
        ArcGIS Server host. This resource represents a catalog of folders and 
        services published on the host."""
     __cache_request__  = True
+
     def __init__(self, url):
         url_ = list(urlparse.urlsplit(url))
         if not url_[2].endswith('/'):
@@ -256,14 +260,16 @@ class Catalog(Folder):
 class Service(RestURL):
     """Represents an ArcGIS REST service. This is an abstract base -- services
        derive from this."""
-    __cache_request__ = False
+    __cache_request__ = True
     __service_type__ = None
+
     class __metaclass__(type):
         """Idea borrowed from http://effbot.org/zone/metaclass-plugins.htm
            -- use the metaclass API to register derivative classes in the
            Folder's service type registry so when it hits a 
-           {'name': 'x', 'type': 'y'} service entry it knows to instantiate a
-           y to represent a relative ./x/y/ URL."""
+           {'name': 'x', 'type': 'y'} service entry in the services key in a
+           folder's json data it knows to instantiate an instance of y to
+           represent a relative ./x/y/ URL."""
         def __init__(cls, name, bases, dict):
             type.__init__(name, bases, dict)
             if hasattr(cls, '__service_type__'):
@@ -315,6 +321,7 @@ class BinaryResult(Result):
        some sort of opaque binary data, such as a PNG or KMZ. Contrast to a
        JsonResult, which has an immediately accessible data structure."""
     __has_json__ = False
+
     def save(self, outfile):
         """Save the image data to a file or file-like object"""
         if isinstance(outfile, basestring):
@@ -324,6 +331,7 @@ class BinaryResult(Result):
 class JsonResult(Result):
     """Class representing a specialization to results that expect
        some sort of json data"""
+
     __has_json__ = True
     def __init__(self, url):
         super(JsonResult, self).__init__(url)
@@ -346,6 +354,7 @@ class MapLayer(Layer):
        published by ArcGIS Server. It provides basic information about the
        layer such as its name, type, parent and sub-layers, fields, min and
        max scales, extent, and copyright text."""
+
     def QueryLayer(self, text=None, Geometry=None, inSR=None, 
                    spatialRel='esriSpatialRelIntersects', where=None,
                    outFields=None, returnGeometry=None, outSR=None):
@@ -413,6 +422,7 @@ class MapTile(BinaryResult):
 class ExportMapResult(JsonResult):
     """Represents the result of an Export Map operation performed on a Map
        Service."""
+
     @property
     def href(self):
         return self._json_struct['href']
@@ -437,6 +447,7 @@ class ExportMapResult(JsonResult):
 class IdentifyOrFindResult(JsonResult):
     """Represents the result of a Find or Identify operation performed on a
        Map Service."""
+
     @property
     def results(self):
         return self._json_struct['results']
@@ -529,7 +540,7 @@ class MapService(Service):
                                         'layers': layers,
                                         'layerOptions': layerOptions})
 
-    def tile(self, row, col, zoomlevel=None):
+    def tile(self, row, col, zoomlevel):
         """For cached maps, this resource represents a single cached tile for
            the map. The image bytes for the tile at the specified level, row 
            and column are directly streamed to the client. If the tile is not
@@ -657,6 +668,7 @@ class GPTask(RestURL):
        including its name and display name. It also provides detailed 
        information about the various input and output parameters exposed by the
        task"""
+    __cache_request__ = True
 
     def Execute(self, *params, **kw):
         pass
@@ -734,6 +746,7 @@ class GPService(Service):
 class GeometryResult(JsonResult):
     """Represents the output of a Project, Simplify or Buffer operation 
        performed by an ArcGIS REST API Geometry service."""
+
     @property
     def geometries(self):
         return [geometry.convert_from_json(geo) 
@@ -742,6 +755,7 @@ class GeometryResult(JsonResult):
 class LengthsResult(JsonResult):
     """Represents the output of a Lengths operation performed by an ArcGIS
        REST API Geometry service."""
+
     @property
     def lengths(self):
         return map(float(length) for length in self._json_struct['lengths'])
@@ -749,6 +763,7 @@ class LengthsResult(JsonResult):
 class AreasAndLengthsResult(LengthsResult):
     """Represents the output of a AreasAndLengths operation performed by an 
        ArcGIS REST API Geometry service."""
+
     @property
     def areas(self):
         return map(float(area) for area in self._json_struct['areas'])
