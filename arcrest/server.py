@@ -593,7 +593,8 @@ class FindAddressCandidatesResult(JsonResult):
 
     @property
     def candidates(self):
-        """A list of candidate addresses from a geocode operation"""
+        """A list of candidate addresses (as dictionaries) from a geocode
+           operation"""
         # convert x['location'] to a point from a json point struct
         def cditer():
             for candidate in self._json_struct['candidates']:
@@ -662,6 +663,22 @@ class GeocodeService(Service):
                                                       {'location': location, 
                                                        'distance': distance})
 
+class GPJob(RestURL):
+    """The GP job resource represents a job submitted using the submit job
+       operation. It provides basic information about the job such as the job
+       ID, status and messages. Additionally, if the job has successfully
+       completed, it provides information about the result parameters as well
+       as input parameters."""
+
+class GPExecutionResult(RestURL):
+    """The GP result resource represents a result parameter for a GP job. It
+       provides information about the result parameter such as its name, data
+       type and value. The value is the most important piece of information
+       provided by this resource. Based on the data type of the parameter, the
+       values provide different types of information. Given this fact, the
+       value will have different structures based on the data type as defined
+       below."""
+
 class GPTask(RestURL):
     """The GP task resource represents a single task in a GP service published
        using the ArcGIS Server. It provides basic information about the task
@@ -670,18 +687,27 @@ class GPTask(RestURL):
        task"""
     __cache_request__ = True
 
+    def __init__(self, url):
+        super(GPTask, self).__init__(url)
+        extra_usage = "Usage: %s(%s)\n\n" % (self.name,
+                                           ', '.join(param['name']
+                                           for param in
+                                           self._json_struct.get('parameters',
+                                                                 [])
+                                           ))
+        self.__doc__ = extra_usage + self.__doc__
     def Execute(self, *params, **kw):
-        pass
+        print params, kw
     def SubmitJob(self, *params, **kw):
-        pass
+        print params, kw
     def __call__(self, *params, **kw):
         if self.synchronous:
-            return self.execute(*params, **kw)
+            return self.Execute(*params, **kw)
         else:
-            return self.submitJob(*params, **kw)
+            return self.SubmitJob(*params, **kw)
     @property
     def name(self):
-        return self._json_struct['name']
+        return self._json_struct.get('name', '')
     @property
     def displayName(self):
         return self._json_struct['displayName']
