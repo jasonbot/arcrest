@@ -157,7 +157,14 @@ class GPServerTests(unittest.TestCase):
         server = arcrest.Catalog(url)
         results = server.Specialty.ESRI_Currents_World.MessageInABottle(
             arcrest.geometry.Point(0, 0, spatialReference=4326), 5)
-        print results._json_struct
+        self.assert_(isinstance(results.Output,
+                                arcrest.gptypes.GPFeatureRecordSetLayer),
+                     "Expected recordsetlayer, got %r" % type(results.Output))
+        for feature in results.Output.features:
+            self.assert_(isinstance(feature, 
+                                    arcrest.geometry.Polyline),
+                         "Expected polyline got %r" %
+                            type(results.Output.features))
 
 class GeometryServerTests(unittest.TestCase):
     def testGetGeometryService(self):

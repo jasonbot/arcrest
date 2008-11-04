@@ -16,6 +16,16 @@ import geometry
 
 class GPBaseType(object):
     """Base type for Geoprocessing argument types"""
+    class __metaclass__(type):
+        def __init__(cls, name, bases, dict):
+            type.__init__(name, bases, dict)
+            try:
+                GPBaseType._gp_type_mapping[cls.__name__] = cls
+            except:
+                pass
+    #: Mapping from Geoprocessing type to name
+    _gp_type_mapping = {}
+
     def __str__(self):
         return json.dumps(self._json_struct)
 
@@ -28,6 +38,9 @@ class GPSimpleType(GPBaseType):
     @property
     def _json_struct(self):
         return self.__conversion__(self.value)
+    @classmethod
+    def from_json_struct(cls, value):
+        return cls.__conversion__(value)
 
 class GPBoolean(GPSimpleType):
     """Represents a geoprocessing boolean parameter"""
@@ -74,30 +87,45 @@ class GPLinearUnit(GPBaseType):
     @property
     def _json_struct(self):
         return {'distance': self.distance, 'units': self.units}
+    @classmethod
+    def from_json_struct(cls, val):
+        return cls(val['distance'], val['units'])
 
 class GPFeatureRecordSetLayer(GPBaseType):
     """Represents a geoprocessing feature recordset parameter"""
     def __init__(self, Geometry, sr=None):
         if isinstance(Geometry, geometry.Geometry):
             Geometry = [Geometry]
-        self._data = Geometry
-        self.spatialReference = self._data[0].spatialReference
+        self.features = Geometry
+        if sr:
+            self.spatialReference = sr
+        elif len(self.features):
+            self.spatialReference = self.features[0].spatialReference
+        else:
+            raise ValueError("Could not determine spatial reference")
     @property
     def _json_struct(self):
-        geometry_types = set(geom.__geometry_type__ for geom in self._data)
+        geometry_types = set(geom.__geometry_type__ for geom in self.features)
         assert len(geometry_types) == 1, "Must have consistent geometries"
         geometry_type = list(geometry_types)[0]
         return {
                     'geometryType': geometry_type,
                     'spatialReference': self.spatialReference._json_struct,
                     'features': [
-                        x._json_struct_for_featureset for x in self._data]
+                        x._json_struct_for_featureset for x in self.features]
                }
+    @classmethod
+    def from_json_struct(cls, value):
+        spatialreference = geometry.convert_from_json(value['spatialReference'])
+        geometries = [geometry.convert_from_json(geo['geometry'], 
+                                                 geo['attributes']) 
+                        for geo in value['features']]
+        return cls(geometries, spatialreference)
 
 class GPRecordSet(GPBaseType):
     """Represents a geoprocessing recordset parameter"""
     def __init__(self, arg):
-        self._data = arg
+        self.features = arg
 
 class GPDate(GPBaseType):
     """Represents a geoprocessing date parameter. The format parameter
@@ -113,9 +141,19 @@ class GPDate(GPBaseType):
             self.date = date
         else:
             raise ValueError("Cannot convert %r to a date" % date)
+    @property
     def _json_struct(self):
         return {'date': self.date.strftime(self.format),
                 'format': self.format.replace('%', '')}
+    @classmethod
+    def from_json_struct(cls, value):
+        datestring = value['date']
+        formatstring = value['format']
+        # Re-escape field names from formats like Y-m-d back to strftime-style
+        # %Y-%m-%d strings
+        for chr in "%aAbBcdHIjmMpSUwWxXyYZ":
+            formatstring = formatstring.replace(chr, '%'+chr)
+        return cls(datestring, formatstring)
 
 class GPDataFile(GPBaseType):
     """A URL for a geoprocessing data file parameter"""
@@ -125,6 +163,9 @@ class GPDataFile(GPBaseType):
         self.url = url
     def _json_struct(self):
         return {'url': self.url}
+    @classmethod
+    def from_json_struct(cls, value):
+        return cls(value['url'])
 
 class GPUrlWithFormatType(GPBaseType):
     """A class for representing Raster data and Raster layers -- both have a 
@@ -138,6 +179,9 @@ class GPUrlWithFormatType(GPBaseType):
     @property
     def _json_struct(self):
         return {'url': self.url, 'format': self.format}
+    @classmethod
+    def from_json_struct(cls, value):
+        return cls(value['url'], value['format'])
 
 class GPRasterData(GPUrlWithFormatType):
     """A URL for a geoprocessing raster data file parameter, with format."""

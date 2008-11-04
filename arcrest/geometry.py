@@ -261,7 +261,7 @@ class Envelope(Geometry):
 
 def convert_from_json(struct, attributes=None):
     "Convert a JSON struct to a Geometry based on its structure"
-    attrlist = {
+    indicative_attrbutes = {
         'x': Point,
         'wkid': SpatialReference,
         'paths': Polyline,
@@ -274,7 +274,7 @@ def convert_from_json(struct, attributes=None):
         return Envelope(*map(float, struct.split(',')))
     # Look for telltale attributes in the dict
     if isinstance(struct, dict):
-        for key, cls in attrlist.iteritems():
+        for key, cls in indicative_attrbutes.iteritems():
             if key in struct:
                 return cls.from_json_struct(struct)
     raise ValueError("Unconvertible to geometry")

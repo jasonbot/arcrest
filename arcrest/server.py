@@ -59,7 +59,7 @@ class RestURL(object):
         query_dict = {}
         # parse_qs returns a dict, but every value is a list (it assumes
         # that keys can be set multiple times like ?a=1&a=2 -- this flexibility
-        # is probably useful to someone, but not here). Pull out the first
+        # is probably useful somewhere, but not here). Pull out the first
         # element of every list so when we convert back to a query string
         # it doesn't enclose all values in []
         for k, v in cgi.parse_qs(urllist[3]).iteritems():
@@ -684,6 +684,31 @@ class GPExecutionResult(JsonResult):
        values provide different types of information. Given this fact, the
        value will have different structures based on the data type as defined
        below."""
+    _results = None
+    @property
+    def messages(self):
+        return self._json_struct['messages']
+    @property
+    def results(self):
+        if self._results is None:
+            results = self._json_struct['results']
+            def result_iterator():
+                for result in results:
+                    datatype = gptypes.GPBaseType._gp_type_mapping.get(
+                                                      result['dataType'], None)
+                    if datatype is None:
+                        conversion = str
+                    else:
+                        conversion = datatype.from_json_struct
+                    dt = result['paramName']
+                    val = conversion(result['value'])
+                    yield (dt, val)
+            self._results = dict(res for res in result_iterator())
+        return self._results
+    def __getitem__(self, key):
+        return self.results[key]
+    def __getattr__(self, attr):
+        return self[attr]
 
 class GPTask(RestURL):
     """The GP task resource represents a single task in a GP service published
@@ -743,7 +768,8 @@ class GPTask(RestURL):
         parameters = self._json_struct['parameters']
         for parameter in parameters:
             dt = parameter['dataType']
-            parameter['datatype'] = getattr(gptypes, dt, str)
+            parameter['datatype'] = \
+                gptypes.GPBaseType._gp_type_mapping.get(dt, str)
         return parameters
     @property
     def executionType(self):
