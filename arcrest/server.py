@@ -74,7 +74,10 @@ class RestURL(object):
         if self.__lazy_fetch__ is False and self.__cache_request__ is True:
             self._contents
     def __repr__(self):
-        return "<%s(%r)>" % (self.__class__.__name__, self.url)
+        url = self.url
+        if len(url) > 100:
+            url = url[:97] + "..."
+        return "<%s(%r)>" % (self.__class__.__name__, url)
     def _get_subfolder(self, foldername, returntype, params={}):
         """Return an object of the requested type with the path relative
            to the current object's URL. Optionally, query parameters
@@ -703,12 +706,14 @@ class GPTask(RestURL):
                 parametervalues[param_to_convert['name']] = \
                     param_to_convert['datatype'](
                         parametervalues[param_to_convert['name']])._json_struct
-        print parametervalues
+        #print parametervalues
         return parametervalues
     def Execute(self, *params, **kw):
         fp = self.__fixparams(params, kw)
+        return self._get_subfolder('execute/', RestURL, fp)
     def SubmitJob(self, *params, **kw):
         fp = self.__fixparams(params, kw)
+        return self._get_subfolder('submitJob/', RestURL, fp)
     def __call__(self, *params, **kw):
         if self.synchronous:
             return self.Execute(*params, **kw)
@@ -765,7 +770,7 @@ class GPService(Service):
         return self._json_struct['tasks']
     @property
     def tasks(self):
-        return [self._get_subfolder(taskname, GPTask)
+        return [self._get_subfolder(taskname+'/', GPTask)
                 for taskname in self.tasknames]
     @property
     def executionType(self):
@@ -784,7 +789,7 @@ class GPService(Service):
     def __getitem__(self, attr):
         for task in self.tasknames:
             if task == attr:
-                return self._get_subfolder(task, GPTask)
+                return self._get_subfolder(task+'/', GPTask)
         raise KeyError("No task named %r found" % attr)
     def __getattr__(self, attr):
         try:

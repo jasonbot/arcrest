@@ -37,7 +37,14 @@ class Geometry(object):
         return self._json_struct
     @property
     def _json_struct(self):
-        raise NotImplementedError("Unimplemented save to JSON")
+        raise NotImplementedError("Unimplemented conversion to JSON")
+    @property
+    def _json_struct_without_sr(self):
+        raise NotImplementedError("Unimplemented conversion to JSON")
+    @property
+    def _json_struct_for_featureset(self):
+        return { 'geometry': self._json_struct_without_sr,
+                 'attributes': getattr(self, 'attributes', {})}
     def __str__(self):
         return json.dumps(self._json_struct)
     @classmethod
@@ -59,6 +66,9 @@ class SpatialReference(Geometry):
             wkid = getattr(projections.Projected, str(wkid))
         elif hasattr(projections.Geographic, str(wkid)):
             wkid = getattr(projections.Geographic, str(wkid))
+        elif wkid is None:
+            self.wkid = None
+            return
         self.wkid = int(wkid)
     @property
     def _json_struct(self):
@@ -92,7 +102,7 @@ class SpatialReference(Geometry):
 class Point(Geometry):
     """A point contains x and y fields along with a spatialReference field."""
     __geometry_type__ = "esriGeometryPoint"
-    def __init__(self, x, y, spatialReference=SpatialReference(4326)):
+    def __init__(self, x, y, spatialReference=None):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
         self.x, self.y, self.spatialReference = \
@@ -121,7 +131,7 @@ class Polyline(Geometry):
        represented as a 2-element array. The 0-index is the x-coordinate and
        the 1-index is the y-coordinate."""
     __geometry_type__ = "esriGeometryPolyline"
-    def __init__(self, paths=[], spatialReference=SpatialReference(4326)):
+    def __init__(self, paths=[], spatialReference=None):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
@@ -156,7 +166,7 @@ class Polygon(Geometry):
        represented as a 2-element array. The 0-index is the x-coordinate and
        the 1-index is the y-coordinate."""
     __geometry_type__ = "esriGeometryPolygon"
-    def __init__(self, rings=[], spatialReference=SpatialReference(4326)):
+    def __init__(self, rings=[], spatialReference=None):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
@@ -188,7 +198,7 @@ class Multipoint(Geometry):
     """A multipoint contains an array of points and a spatialReference. Each
        point is represented as a 2-element array. The 0-index is the
        x-coordinate and the 1-index is the y-coordinate."""
-    def __init__(self, points=[], spatialReference=SpatialReference(4326)):
+    def __init__(self, points=[], spatialReference=None):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
@@ -221,7 +231,7 @@ class Envelope(Geometry):
        by xmin, ymin, xmax, and ymax, along with a spatialReference."""
     __geometry_type__ = "esriGeometryEnvelope"
     def __init__(self, xmin, ymin, xmax, ymax,
-                 spatialReference=SpatialReference(4326)):
+                 spatialReference=None):
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
@@ -249,7 +259,7 @@ class Envelope(Geometry):
     def from_json_struct(cls, struct):
         return cls(**struct)
 
-def convert_from_json(struct):
+def convert_from_json(struct, attributes=None):
     "Convert a JSON struct to a Geometry based on its structure"
     attrlist = {
         'x': Point,

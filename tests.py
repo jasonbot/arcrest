@@ -170,8 +170,12 @@ class GeometryServerTests(unittest.TestCase):
         url = "http://flame6:8399/arcgis/rest/services"
         server = arcrest.Catalog(url)
         geo = server.Geometry
-        point = arcrest.geometry.Point(-122.405634, 37.780959)
+        point = arcrest.geometry.Point(-122.405634, 37.780959,
+                                       spatialReference=4326)
         result = geo.Buffer(geometries=point, distances="5")
+        self.assert_(all(isinstance(geom, arcrest.geometry.Polygon) 
+                         for geom in result.geometries),
+                     "Expected all polygons from Buffer operation.")
         geoms = result.geometries[0].rings
         self.assert_(all([all([isinstance(p, arcrest.geometry.Point)
                      for p in ring])for ring in geoms]),

@@ -12,14 +12,12 @@ except ImportError:
                           "or use arcrest with Python 2.6")
 
 import datetime
+import geometry
 
 class GPBaseType(object):
     """Base type for Geoprocessing argument types"""
     def __str__(self):
         return json.dumps(self._json_struct)
-    @property
-    def _json_struct(self):
-        return None
 
 class GPSimpleType(GPBaseType):
     """For geoprocessing types that simplify to base Python types, such as 
@@ -49,6 +47,7 @@ class GPString(GPSimpleType):
 
 class GPLinearUnit(GPBaseType):
     """Represents a geoprocessing linear unit parameter"""
+    #: The set of unit names allowed, defaulting to esriMeters
     allowed_units = set(['esriCentimeters',
                          'esriDecimalDegrees',
                          'esriDecimeters',
@@ -78,11 +77,27 @@ class GPLinearUnit(GPBaseType):
 
 class GPFeatureRecordSetLayer(GPBaseType):
     """Represents a geoprocessing feature recordset parameter"""
-    pass
+    def __init__(self, Geometry, sr=None):
+        if isinstance(Geometry, geometry.Geometry):
+            Geometry = [Geometry]
+        self._data = Geometry
+        self.spatialReference = self._data[0].spatialReference
+    @property
+    def _json_struct(self):
+        geometry_types = set(geom.__geometry_type__ for geom in self._data)
+        assert len(geometry_types) == 1, "Must have consistent geometries"
+        geometry_type = list(geometry_types)[0]
+        return {
+                    'geometryType': geometry_type,
+                    'spatialReference': self.spatialReference._json_struct,
+                    'features': [
+                        x._json_struct_for_featureset for x in self._data]
+               }
 
 class GPRecordSet(GPBaseType):
     """Represents a geoprocessing recordset parameter"""
-    pass
+    def __init__(self, arg):
+        self._data = arg
 
 class GPDate(GPBaseType):
     """Represents a geoprocessing date parameter. The format parameter
