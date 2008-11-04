@@ -23,6 +23,7 @@ import urllib2
 import urlparse
 
 import geometry
+import gptypes
 
 # Note that nearly every class below derives from this RestURL class.
 # The reasoning is that every object has an underlying URL resource on 
@@ -689,17 +690,25 @@ class GPTask(RestURL):
 
     def __init__(self, url):
         super(GPTask, self).__init__(url)
-        extra_usage = "Usage: %s(%s)\n\n" % (self.name,
-                                           ', '.join(param['name']
-                                           for param in
-                                           self._json_struct.get('parameters',
-                                                                 [])
-                                           ))
-        self.__doc__ = extra_usage + self.__doc__
+    def __fixparams(self, params, kw):
+        self_parameters = self.parameters
+        parametervalues = dict(zip((p['name'] for p in self_parameters),
+                                    params))
+        for kw, kwval in kw.iteritems():
+            if kw in parametervalues:
+                raise KeyError("Multiple definitions of parameter %r" % kw)
+            parametervalues[kw] = kwval
+        for param_to_convert in self_parameters:
+            if param_to_convert['name'] in parametervalues:
+                parametervalues[param_to_convert['name']] = \
+                    param_to_convert['datatype'](
+                        parametervalues[param_to_convert['name']])._json_struct
+        print parametervalues
+        return parametervalues
     def Execute(self, *params, **kw):
-        print params, kw
+        fp = self.__fixparams(params, kw)
     def SubmitJob(self, *params, **kw):
-        print params, kw
+        fp = self.__fixparams(params, kw)
     def __call__(self, *params, **kw):
         if self.synchronous:
             return self.Execute(*params, **kw)
@@ -719,7 +728,11 @@ class GPTask(RestURL):
         return self._json_struct['helpUrl']
     @property
     def parameters(self):
-        return self._json_struct['parameters'] 
+        parameters = self._json_struct['parameters']
+        for parameter in parameters:
+            dt = parameter['dataType']
+            parameter['datatype'] = getattr(gptypes, dt, str)
+        return parameters
     @property
     def executionType(self):
         """Returns the execution type of this task."""

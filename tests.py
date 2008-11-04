@@ -152,6 +152,12 @@ class GPServerTests(unittest.TestCase):
         gp = server.Elevation.ESRI_Elevation_World.GPServer
         self.assert_(all(isinstance(task, arcrest.GPTask) 
                          for task in gp.tasks), "Tasks aren't tasks")
+    def testExecuteSynchronousGPTask(self):
+        url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
+        server = arcrest.Catalog(url)
+        results = server.Specialty.ESRI_Currents_World.MessageInABottle(
+            arcrest.geometry.Point(0, 0), 5)
+        print results
 
 class GeometryServerTests(unittest.TestCase):
     def testGetGeometryService(self):
