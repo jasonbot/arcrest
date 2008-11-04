@@ -104,7 +104,9 @@ class GPDate(GPBaseType):
 
 class GPDataFile(GPBaseType):
     """A URL for a geoprocessing data file parameter"""
-    def __init__(self, url=None):
+    #: The URL of the data file
+    url = ''
+    def __init__(self, url):
         self.url = url
     def _json_struct(self):
         return {'url': self.url}
@@ -112,7 +114,11 @@ class GPDataFile(GPBaseType):
 class GPUrlWithFormatType(GPBaseType):
     """A class for representing Raster data and Raster layers -- both have a 
        URL and a Format attribute."""
-    def __init__(self, url=None, format=None):
+    #: The URL of the resource
+    url = ''
+    #: The data format of the raster: jpeg, png, etc.
+    format = ''
+    def __init__(self, url, format):
         self.url, self.format = url, format
     @property
     def _json_struct(self):
