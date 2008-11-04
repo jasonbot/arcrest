@@ -342,7 +342,9 @@ class JsonResult(Result):
         if 'error' in self._json_struct:
             raise ServerError("ERROR %i: %r <%s>" % 
                                (self._json_struct['error']['code'], 
-                                self._json_struct['error']['message'],
+                                self._json_struct['error']['message'] or
+                                ",".join(
+                                    self._json_struct['error']['details']),
                                 self.url))
 
 class Layer(RestURL):
@@ -667,14 +669,14 @@ class GeocodeService(Service):
                                                       {'location': location, 
                                                        'distance': distance})
 
-class GPJob(RestURL):
+class GPJob(JsonResult):
     """The GP job resource represents a job submitted using the submit job
        operation. It provides basic information about the job such as the job
        ID, status and messages. Additionally, if the job has successfully
        completed, it provides information about the result parameters as well
        as input parameters."""
 
-class GPExecutionResult(RestURL):
+class GPExecutionResult(JsonResult):
     """The GP result resource represents a result parameter for a GP job. It
        provides information about the result parameter such as its name, data
        type and value. The value is the most important piece of information
@@ -709,11 +711,16 @@ class GPTask(RestURL):
         #print parametervalues
         return parametervalues
     def Execute(self, *params, **kw):
+        """Synchronously execute the specified GP task. Parameters are passed
+           in either in order or as keywords."""
         fp = self.__fixparams(params, kw)
-        return self._get_subfolder('execute/', RestURL, fp)
+        return self._get_subfolder('execute/', GPExecutionResult, fp)
     def SubmitJob(self, *params, **kw):
+        """Synchronously execute the specified GP task. This will return a 
+           Geoprocessing Job object. Parameters are passed in either in order
+           or as keywords."""
         fp = self.__fixparams(params, kw)
-        return self._get_subfolder('submitJob/', RestURL, fp)
+        return self._get_subfolder('submitJob/', GPJob, fp)
     def __call__(self, *params, **kw):
         if self.synchronous:
             return self.Execute(*params, **kw)
@@ -890,6 +897,9 @@ class GeometryService(Service):
         if isinstance(geometries, geometry.Geometry):
             geometries = [geometries]
 
+        if isinstance(distances, (list, tuple)):
+            distances=",".join(str(distance) for distance in distances)
+
         geometry_types = set([x.__geometry_type__ for x in geometries])
         assert len(geometry_types) == 1, "Too many geometry types"
         geo_json = json.dumps({'geometryType': list(geometry_types)[0],
@@ -924,6 +934,9 @@ class GeometryService(Service):
         if isinstance(polygons, geometry.Geometry):
             polygons = [polygons]
 
+        assert all(isinstance(polygon, geometry.Polygon)
+                   for polygon in polygons), "Must use polygons"
+
         if sr is None:
             sr = polygons[0].spatialReference.wkid
 
@@ -942,6 +955,9 @@ class GeometryService(Service):
 
         if isinstance(polylines, geometry.Geometry):
             polylines = [polylines]
+
+        assert all(isinstance(polyline, geometry.Polyline)
+                   for polyline in polylines), "Must use polylines"
 
         if sr is None:
             sr = polylines[0].spatialReference.wkid

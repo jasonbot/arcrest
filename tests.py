@@ -156,8 +156,8 @@ class GPServerTests(unittest.TestCase):
         url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
         server = arcrest.Catalog(url)
         results = server.Specialty.ESRI_Currents_World.MessageInABottle(
-            arcrest.geometry.Point(0, 0), 5)
-        print results
+            arcrest.geometry.Point(0, 0, spatialReference=4326), 5)
+        print results._json_struct
 
 class GeometryServerTests(unittest.TestCase):
     def testGetGeometryService(self):
@@ -172,7 +172,7 @@ class GeometryServerTests(unittest.TestCase):
         geo = server.Geometry
         point = arcrest.geometry.Point(-122.405634, 37.780959,
                                        spatialReference=4326)
-        result = geo.Buffer(geometries=point, distances="5")
+        result = geo.Buffer(geometries=point, distances=[5, 10])
         self.assert_(all(isinstance(geom, arcrest.geometry.Polygon) 
                          for geom in result.geometries),
                      "Expected all polygons from Buffer operation.")
