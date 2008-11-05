@@ -165,6 +165,18 @@ class GPServerTests(unittest.TestCase):
                                     arcrest.geometry.Polyline),
                          "Expected polyline got %r" %
                             type(results.Output.features))
+    def testExecuteAsynchronousGPTask(self):
+        import time
+        url = "http://flame6:8399/arcgis/rest/services/"
+        server = arcrest.Catalog(url)
+        gp = server.GP.FunctionalityTools.GPServer.LongProcessTool
+        job = gp(2.0)
+        start = time.time()
+        while job.running and (time.time() - start < 4.0):
+            time.sleep(0.15)
+        self.assert_(time.time() - start < 4.0, "Took too long to execute")
+        self.assert_(job.Output_String == "Done Sleeping",
+                     "Output didn't match")
 
 class GeometryServerTests(unittest.TestCase):
     def testGetGeometryService(self):

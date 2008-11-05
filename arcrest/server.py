@@ -669,6 +669,71 @@ class GeocodeService(Service):
                                                       {'location': location, 
                                                        'distance': distance})
 
+class GPJobStatus(RestURL):
+    """This class represents the current/pending status of an asynchronous
+       GP Task. Please refer to the GPJob class for more information."""
+    __cache_request__ = False
+    _results = None
+
+    job_statuses = set([
+        'esriJobCancelled',
+        'esriJobCancelling',
+        'esriJobDeleted',
+        'esriJobDeleting',
+        'esriJobExecuting',
+        'esriJobFailed',
+        'esriJobNew',
+        'esriJobSubmitted',
+        'esriJobSucceeded',
+        'esriJobTimedOut',
+        'esriJobWaiting'])
+
+    _still_running = set([
+        'esriJobCancelled',
+        'esriJobDeleted',
+        'esriJobExecuting',
+        'esriJobNew',
+        'esriJobSubmitted',
+        'esriJobWatiing'])
+
+    @property
+    def _json_struct(self):
+        js = RestURL._json_struct.__get__(self)
+        if js['jobStatus'] not in self._still_running:
+            self.__cache_request__ = True
+            self.__json_struct__ = js
+        return js
+    @property
+    def jobId(self):
+        return self._json_struct['jobId']
+    @property
+    def jobStatus(self):
+        return self._json_struct['jobStatus']
+    @property
+    def running(self):
+        return self._json_struct['jobStatus'] in self._still_running
+    @property
+    def results(self):
+        assert (not self.running), "Task is still executing."
+        if self._results is None:
+            def item_iterator():
+                for resref in self._json_struct['results'].itervalues():
+                    rel = self._get_subfolder(resref['paramUrl'], RestURL)
+                    result = rel._json_struct
+                    datatype = gptypes.GPBaseType._gp_type_mapping.get(
+                                                      result['dataType'], None)
+           
+                    if datatype is None:
+                        conversion = str
+                    else:
+                        conversion = datatype.from_json_struct
+                    dt = result['paramName']
+                    val = conversion(result['value'])
+                    yield (dt, val)
+            self._results = dict(item_iterator())
+        return self._results
+
+
 class GPJob(JsonResult):
     """The GP job resource represents a job submitted using the submit job
        operation. It provides basic information about the job such as the job
@@ -676,20 +741,42 @@ class GPJob(JsonResult):
        completed, it provides information about the result parameters as well
        as input parameters."""
 
+    def __init__(self, url):
+        super(GPJob, self).__init__(url)
+        self._jobstatus = self._get_subfolder('../jobs/%s/' % 
+                                              self._json_struct['jobId'],
+                                              GPJobStatus)
+    @property
+    def jobId(self):
+        "Return the unique ID the server assigned this task"
+        return self._jobstatus.jobId
+    @property
+    def jobStatus(self):
+        return self._jobstatus.jobStatus
+    @property
+    def running(self):
+        "A boolean (True: job completion pending; False: no longer executing)"
+        return self._jobstatus.running
+    @property
+    def results(self):
+        "Returns a dict of outputs from the GPTask execution."
+        return self._jobstatus.results
+    def __getitem__(self, key):
+        return self.results[key]
+    def __getattr__(self, attr):
+        return self[attr]
+
 class GPExecutionResult(JsonResult):
-    """The GP result resource represents a result parameter for a GP job. It
-       provides information about the result parameter such as its name, data
-       type and value. The value is the most important piece of information
-       provided by this resource. Based on the data type of the parameter, the
-       values provide different types of information. Given this fact, the
-       value will have different structures based on the data type as defined
-       below."""
+    """The GPExecutionResult object represents the output of running a 
+       synchronous GPTask."""
     _results = None
     @property
     def messages(self):
+        "Return a list of messages returned from the server."
         return self._json_struct['messages']
     @property
     def results(self):
+        "Returns a dict of outputs from the GPTask execution."
         if self._results is None:
             results = self._json_struct['results']
             def result_iterator():
