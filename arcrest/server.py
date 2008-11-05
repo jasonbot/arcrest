@@ -44,6 +44,8 @@ class RestURL(object):
     __has_json__ = True        # Parse the data as a json struct? Set to
                                # false for binary data, html, etc.
     __lazy_fetch__ = True      # Fetch when constructed, or later on?
+    __parent_type__ = None     # For automatically generated parent URLs
+    _parent = None
 
     def __init__(self, url):
         # Expects a urlparse.urlsplitted list as the url, but accepts a
@@ -158,6 +160,21 @@ class RestURL(object):
             # Return an empty dict for things so they don't have to special
             # case against a None value or anything
             return {}
+    @apply
+    def parent():
+        def get_(self):
+            "Get this object's parent"
+            if self._parent:
+                return self._parent
+            # auto-compute parent if needed
+            elif getattr(self, '__parent_type__', None):
+                return self._get_subfolder('..' if self._url[2].endswith('/')
+                                                else '.', self.__parent_type__)
+            else:
+                raise AttributeError("%r has no parent attribute" % type(self))
+        def set_(self, val):
+            self._parent = val
+        return property(get_, set_)
 
 # On top of a URL, the ArcGIS Server folder structure lists subfolders
 # and services.
@@ -266,6 +283,7 @@ class Service(RestURL):
        derive from this."""
     __cache_request__ = True
     __service_type__ = None
+    __parent_type__ = Folder
 
     class __metaclass__(type):
         """Idea borrowed from http://effbot.org/zone/metaclass-plugins.htm
@@ -669,6 +687,55 @@ class GeocodeService(Service):
                                                       {'location': location, 
                                                        'distance': distance})
 
+class GPService(Service):
+    """Geoprocessing is a fundamental part of enterprise GIS operations. 
+       Geoprocessing provides the data analysis, data management, and data 
+       conversion tools necessary for all GIS users.
+
+       A geoprocessing service represents a collection of published tools that
+       perform tasks necessary for manipulating and analyzing geographic 
+       information across a wide range of disciplines. Each tool performs one
+       or more operations, such as projecting a data set from one map
+       projection to another, adding fields to a table, or creating buffer 
+       zones around features. A tool accepts input (such as feature sets, 
+       tables, and property values), executes operations using the input data,
+       and generates output for presentation in a map or further processing by 
+       the client. Tools can be executed synchronously (in sequence) or
+       asynchronously."""
+    __service_type__ = "GPServer"
+
+    @property
+    def tasknames(self):
+        return self._json_struct['tasks']
+    @property
+    def tasks(self):
+        return [self._get_subfolder(taskname+'/', GPTask)
+                for taskname in self.tasknames]
+    @property
+    def executionType(self):
+        """Returns the execution type of this task."""
+        return self._json_struct['executionType']
+    @property
+    def synchronous(self):
+        """Returns a boolean indicating whether this tasks runs synchronously
+           (True) or asynchronously (False)."""
+        sv = self._json_struct['executionType']
+        if sv == 'esriExecutionTypeSynchronous':
+            return True
+        elif sv == 'esriExecutionTypeAsynchronous':
+            return False
+        raise ValueError("Unknown synchronous value: %r" % sv)
+    def __getitem__(self, attr):
+        for task in self.tasknames:
+            if task == attr:
+                return self._get_subfolder(task+'/', GPTask)
+        raise KeyError("No task named %r found" % attr)
+    def __getattr__(self, attr):
+        try:
+            return self[attr]
+        except KeyError:
+            return Service.__getattr__(self, attr)
+
 class GPJobStatus(RestURL):
     """This class represents the current/pending status of an asynchronous
        GP Task. Please refer to the GPJob class for more information."""
@@ -803,6 +870,7 @@ class GPTask(RestURL):
        including its name and display name. It also provides detailed 
        information about the various input and output parameters exposed by the
        task"""
+    __parent_type__ = GPService
     __cache_request__ = True
 
     def __init__(self, url):
@@ -868,54 +936,7 @@ class GPTask(RestURL):
            (True) or asynchronously (False)."""
         return self.parent.synchronous
 
-class GPService(Service):
-    """Geoprocessing is a fundamental part of enterprise GIS operations. 
-       Geoprocessing provides the data analysis, data management, and data 
-       conversion tools necessary for all GIS users.
 
-       A geoprocessing service represents a collection of published tools that
-       perform tasks necessary for manipulating and analyzing geographic 
-       information across a wide range of disciplines. Each tool performs one
-       or more operations, such as projecting a data set from one map
-       projection to another, adding fields to a table, or creating buffer 
-       zones around features. A tool accepts input (such as feature sets, 
-       tables, and property values), executes operations using the input data,
-       and generates output for presentation in a map or further processing by 
-       the client. Tools can be executed synchronously (in sequence) or
-       asynchronously."""
-    __service_type__ = "GPServer"
-
-    @property
-    def tasknames(self):
-        return self._json_struct['tasks']
-    @property
-    def tasks(self):
-        return [self._get_subfolder(taskname+'/', GPTask)
-                for taskname in self.tasknames]
-    @property
-    def executionType(self):
-        """Returns the execution type of this task."""
-        return self._json_struct['executionType']
-    @property
-    def synchronous(self):
-        """Returns a boolean indicating whether this tasks runs synchronously
-           (True) or asynchronously (False)."""
-        sv = self._json_struct['executionType']
-        if sv == 'esriExecutionTypeSynchronous':
-            return True
-        elif sv == 'esriExecutionTypeAsynchronous':
-            return False
-        raise ValueError("Unknown synchronous value: %r" % sv)
-    def __getitem__(self, attr):
-        for task in self.tasknames:
-            if task == attr:
-                return self._get_subfolder(task+'/', GPTask)
-        raise KeyError("No task named %r found" % attr)
-    def __getattr__(self, attr):
-        try:
-            return self[attr]
-        except KeyError:
-            return Service.__getattr__(self, attr)
 
 class GeometryResult(JsonResult):
     """Represents the output of a Project, Simplify or Buffer operation 
@@ -1133,6 +1154,39 @@ class ImageService(Service):
                                      'viewpointProperties': viewpointProperties
                                     })
 
+class NetworkService(Service):
+    """The network service resource represents a network analysis service
+       published with ArcGIS Server. The resource provides information about
+       the service such as the service description and the various network
+       layers (route, closest facility and service area layers) contained in
+       the network analysis service."""
+    __service_type__ = "NAServer"
+
+    @property
+    def routeLayers(self):
+        return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
+                self._json_struct['routeLayers']]
+    @property
+    def serviceAreaLayers(self):
+        return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
+                self._json_struct['serviceAreaLayers']]
+    @property
+    def closestFacilityLayers(self):
+        return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
+                self._json_struct['closestFacilityLayers']]
+    def __getitem__(self, attr):
+        layer_names = set(self._json_struct['routeLayers'] +
+                          self._json_struct['serviceAreaLayers'] +
+                          self._json_struct['closestFacilityLayers'])
+        if attr in layer_names:
+            self._get_subfolder("%s/" % attr, NetworkLayer)
+        raise KeyError("No attribute %r found" % attr)
+    def __getattr__(self, attr):
+        try:
+            return self[attr]
+        except KeyError, e:
+            raise AttributeError(str(e))
+
 class NetworkLayer(Layer):
     """The network layer resource represents a single network layer in a
        network analysis service published by ArcGIS Server. It provides
@@ -1140,6 +1194,7 @@ class NetworkLayer(Layer):
        and network classes. Additionally, depending on the layer type, it
        provides different pieces of information as detailed in the
        examples."""
+    __parent_type__ = NetworkService
 
     @property
     def layerName(self):
@@ -1187,38 +1242,7 @@ class NetworkLayer(Layer):
     def networkClasses(self):
         return self._json_struct['networkClasses']
 
-class NetworkService(Service):
-    """The network service resource represents a network analysis service
-       published with ArcGIS Server. The resource provides information about
-       the service such as the service description and the various network
-       layers (route, closest facility and service area layers) contained in
-       the network analysis service."""
-    __service_type__ = "NAServer"
 
-    @property
-    def routeLayers(self):
-        return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
-                self._json_struct['routeLayers']]
-    @property
-    def serviceAreaLayers(self):
-        return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
-                self._json_struct['serviceAreaLayers']]
-    @property
-    def closestFacilityLayers(self):
-        return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
-                self._json_struct['closestFacilityLayers']]
-    def __getitem__(self, attr):
-        layer_names = set(self._json_struct['routeLayers'] +
-                          self._json_struct['serviceAreaLayers'] +
-                          self._json_struct['closestFacilityLayers'])
-        if attr in layer_names:
-            self._get_subfolder("%s/" % attr, NetworkLayer)
-        raise KeyError("No attribute %r found" % attr)
-    def __getattr__(self, attr):
-        try:
-            return self[attr]
-        except KeyError, e:
-            raise AttributeError(str(e))
 
 class GeoDataVersion(RestURL):
     """The geodata version resource represents a single version in a geodata
