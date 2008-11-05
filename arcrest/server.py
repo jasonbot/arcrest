@@ -807,7 +807,7 @@ class GPTask(RestURL):
 
     def __init__(self, url):
         super(GPTask, self).__init__(url)
-    def __fixparams(self, params, kw):
+    def __expandparamstodict(self, params, kw):
         self_parameters = self.parameters
         parametervalues = dict(zip((p['name'] for p in self_parameters),
                                     params))
@@ -825,13 +825,13 @@ class GPTask(RestURL):
     def Execute(self, *params, **kw):
         """Synchronously execute the specified GP task. Parameters are passed
            in either in order or as keywords."""
-        fp = self.__fixparams(params, kw)
+        fp = self.__expandparamstodict(params, kw)
         return self._get_subfolder('execute/', GPExecutionResult, fp)
     def SubmitJob(self, *params, **kw):
         """Synchronously execute the specified GP task. This will return a 
            Geoprocessing Job object. Parameters are passed in either in order
            or as keywords."""
-        fp = self.__fixparams(params, kw)
+        fp = self.__expandparamstodict(params, kw)
         return self._get_subfolder('submitJob/', GPJob, fp)
     def __call__(self, *params, **kw):
         if self.synchronous:
