@@ -902,9 +902,10 @@ class GPTask(RestURL):
             parametervalues[kw] = kwval
         for param_to_convert in self_parameters:
             if param_to_convert['name'] in parametervalues:
-                parametervalues[param_to_convert['name']] = \
-                    param_to_convert['datatype'](
-                        parametervalues[param_to_convert['name']])._json_struct
+                val = parametervalues[param_to_convert['name']]
+                if not isinstance(val, param_to_convert['datatype']):
+                    parametervalues[param_to_convert['name']] = \
+                        param_to_convert['datatype'](val)._json_struct
         #print parametervalues
         return parametervalues
     def Execute(self, *params, **kw):

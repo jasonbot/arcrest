@@ -83,7 +83,7 @@ class GPLinearUnit(GPBaseType):
             unit = 'esriMeters'
         else:
             assert unit in self.allowed_units, "Unit %r not valid" % unit
-        self.distance, self.units = value, units
+        self.distance, self.units = value, unit
     @property
     def _json_struct(self):
         return {'distance': self.distance, 'units': self.units}

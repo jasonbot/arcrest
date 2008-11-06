@@ -202,6 +202,14 @@ class GPServerTests(unittest.TestCase):
         self.assert_(job.Output_String == "Done Sleeping",
                      "Output didn't match")
 
+class GPTypeTests(unittest.TestCase):
+    def testGPDate(self):
+        date = arcrest.GPDate("2008-11-5")
+        date.format
+        date._json_struct
+    def testGPLinearUnit(self):
+        unit = arcrest.GPLinearUnit(5, "esriCentimeters")
+
 class GeometryServerTests(unittest.TestCase):
     def testGetGeometryService(self):
         url = "http://flame6:8399/arcgis/rest/services"
@@ -244,6 +252,7 @@ if __name__ == '__main__':
                                    MapServerTests,
                                    GeocodeServerTests,
                                    GPServerTests,
+                                   GPTypeTests,
                                    GeometryServerTests,
                                    ImageServiceTests,
                                    NetworkServiceTests,
