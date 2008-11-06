@@ -136,7 +136,7 @@ class GPDate(GPBaseType):
        http://docs.python.org/library/time.html#time.strftime"""
     def __init__(self, date, format="%Y-%m-%d"):
         if isinstance(date, basestring):
-            self.date = datetime.strptime(date, format)
+            self.date = datetime.datetime.strptime(date, format)
         elif isinstance(date, (datetime.date, datetime.datetime)):
             self.date = date
         else:

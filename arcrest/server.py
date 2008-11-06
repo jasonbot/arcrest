@@ -872,6 +872,10 @@ class GPExecutionResult(JsonResult):
                     yield (dt, val)
             self._results = dict(res for res in result_iterator())
         return self._results
+    @property
+    def running(self):
+        "For method compatibility with GPJob, always return false"
+        return False
     def __getitem__(self, key):
         return self.results[key]
     def __getattr__(self, attr):
@@ -995,6 +999,8 @@ class GeometryService(Service):
 
         if inSR is None:
             inSR = geometries[0].spatialReference.wkid
+
+        assert outSR, "Cannot project to an empty output projection."
 
         geometry_types = set([x.__geometry_type__ for x in geometries])
         assert len(geometry_types) == 1, "Too many geometry types"
