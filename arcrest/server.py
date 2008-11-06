@@ -84,7 +84,7 @@ class RestURL(object):
         """Return an object of the requested type with the path relative
            to the current object's URL. Optionally, query parameters
            may be set."""
-        newurl = urlparse.urljoin(self.url, foldername, False)
+        newurl = urlparse.urljoin(self.url, urllib.quote(foldername), False)
         #print "    ", self.url, "(", foldername, ")", newurl
         # Add the key-value pairs sent in params to query string if they
         # are so defined.
@@ -707,7 +707,7 @@ class GPService(Service):
 
     @property
     def tasknames(self):
-        return [task.strip() for task in self._json_struct['tasks']]
+        return [task for task in self._json_struct['tasks']]
     @property
     def tasks(self):
         return [self._get_subfolder(taskname+'/', GPTask)
