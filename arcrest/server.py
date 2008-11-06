@@ -984,7 +984,7 @@ class GeometryService(Service):
        always packaged as an array."""
     __service_type__ = "GeometryServer"
 
-    def Project(self, geometries, outSR, inSR=None):
+    def Project(self, geometries, inSR=None, outSR=None):
         """The project operation is performed on a geometry service resource.
            The result of this operation is an array of projected geometries.
            This resource projects an array of input geometries from an input
