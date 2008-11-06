@@ -141,6 +141,7 @@ class GPDate(GPBaseType):
             self.date = date
         else:
             raise ValueError("Cannot convert %r to a date" % date)
+        self.format = format
     @property
     def _json_struct(self):
         return {'date': self.date.strftime(self.format),
