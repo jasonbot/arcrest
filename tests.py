@@ -63,6 +63,30 @@ class ServerTests(unittest.TestCase):
                         set(["CachedMaps", "Geocode", "Geodata", "Globes",
                              "GP",  "Maps"]), 
                         "Folder list does not match")
+    def testSecondFolderTest(self):
+        server = arcrest.Catalog("http://flame5/ArcGIS/rest/services")
+        folders = server.folders
+
+        known_400s = set([
+            "http://flame5/ArcGIS/rest/services/GP/ClosestFacilitiesService/"
+              "GPServer/Find Nearby Libraries/?f=json",
+            "http://flame5/ArcGIS/rest/services/GP/DriveTimePolygonsService/"
+              "GPServer/Calculate Drive Time Polygons/?f=json",
+            "http://flame5/ArcGIS/rest/services/GP/ShortestRouteService/"
+              "GPServer/Calculate Shortest Route and Text Directions/?f=json"
+        ])
+        for folder in folders:
+            services = folder.services
+            for service in services:
+                if type(service) == arcrest.GPService:
+                    tasks = service.tasks
+                    for task in tasks:
+                        try:
+                            # Force a fetch, get an attr
+                            task.name
+                        except:
+                            self.assert_(task.url in known_400s,
+                                         "Unknown failure: %r" % task.url)
     def testHasContents(self):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
         server._contents

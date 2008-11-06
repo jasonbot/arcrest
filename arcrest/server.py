@@ -192,7 +192,7 @@ class Folder(RestURL):
     @property
     def folders(self):
         "Returns a list of Folder objects available in this folder."
-        return [self._get_subfolder(fn, Folder) for fn in self.foldernames]
+        return [self._get_subfolder(fn+'/', Folder) for fn in self.foldernames]
     @property
     def servicenames(self):
         "Give the list of services available in this folder."
@@ -201,7 +201,8 @@ class Folder(RestURL):
     @property
     def services(self):
         "Returns a list of Service objects available in this folder"
-        return [self._get_subfolder("%s/%s/" % (s['name'], s['type']), 
+        return [self._get_subfolder("%s/%s/" % 
+                (s['name'].rstrip('/').split('/')[-1], s['type']), 
                 self._service_type_mapping.get(s['type'], Service)) for s
                 in self._json_struct.get('services', [])]
     @property
@@ -262,7 +263,6 @@ class Catalog(Folder):
     """The catalog resource is the root node and initial entry point into an 
        ArcGIS Server host. This resource represents a catalog of folders and 
        services published on the host."""
-    __cache_request__  = True
 
     def __init__(self, url):
         url_ = list(urlparse.urlsplit(url))
@@ -287,7 +287,7 @@ class Service(RestURL):
 
     class __metaclass__(type):
         """Idea borrowed from http://effbot.org/zone/metaclass-plugins.htm
-           -- use the metaclass API to register derivative classes in the
+           -- use the metaclass system to register derivative classes in the
            Folder's service type registry so when it hits a 
            {'name': 'x', 'type': 'y'} service entry in the services key in a
            folder's json data it knows to instantiate an instance of y to
@@ -353,8 +353,8 @@ class BinaryResult(Result):
 class JsonResult(Result):
     """Class representing a specialization to results that expect
        some sort of json data"""
-
     __has_json__ = True
+
     def __init__(self, url):
         super(JsonResult, self).__init__(url)
         if 'error' in self._json_struct:
@@ -366,7 +366,7 @@ class JsonResult(Result):
                                 self.url))
 
 class Layer(RestURL):
-    """Represents the base class for map and network layers"""
+    """The base class for map and network layers"""
     __cache_request__ = True # Only request the URL once
     __lazy_fetch__ = False # Force-fetch immediately
 
@@ -677,6 +677,7 @@ class GeocodeService(Service):
         query['outFields'] = outFields
         return self._get_subfolder('findAddressCandidates/', 
                                    FindAddressCandidatesResult, query)
+
     def ReverseGeocode(self, location, distance):
         """The reverseGeocode operation is performed on a geocode service 
            resource. The result of this operation is a reverse geocoded address
@@ -706,7 +707,7 @@ class GPService(Service):
 
     @property
     def tasknames(self):
-        return self._json_struct['tasks']
+        return [task.strip() for task in self._json_struct['tasks']]
     @property
     def tasks(self):
         return [self._get_subfolder(taskname+'/', GPTask)
