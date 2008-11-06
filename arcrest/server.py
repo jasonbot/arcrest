@@ -187,7 +187,7 @@ class Folder(RestURL):
     @property
     def foldernames(self):
         "Returns a list of folder names available from this folder."
-        return [folder.split('/')[-1] for folder 
+        return [folder.strip('/').split('/')[-1] for folder 
                     in self._json_struct.get('folders', [])]
     @property
     def folders(self):
@@ -743,6 +743,7 @@ class GPJobStatus(RestURL):
     __cache_request__ = False
     _results = None
 
+    # All the job status codes we are aware of (from Java API)
     job_statuses = set([
         'esriJobCancelled',
         'esriJobCancelling',
@@ -756,13 +757,22 @@ class GPJobStatus(RestURL):
         'esriJobTimedOut',
         'esriJobWaiting'])
 
+    # If this is the status, self.running = True
     _still_running = set([
-        'esriJobCancelled',
-        'esriJobDeleted',
+        'esriJobCancelling',
+        'esriJobDeleting',
         'esriJobExecuting',
         'esriJobNew',
         'esriJobSubmitted',
-        'esriJobWatiing'])
+        'esriJobWaiting'])
+
+    # If this is the status, then throw an error
+    _error_status = set([
+        'esriJobCancelled',
+        'esriJobDeleted',
+        'esriJobFailed',
+        'esriJobTimedOut',
+    ])
 
     @property
     def _json_struct(self):
@@ -770,6 +780,8 @@ class GPJobStatus(RestURL):
         if js['jobStatus'] not in self._still_running:
             self.__cache_request__ = True
             self.__json_struct__ = js
+            if js['jobStatus'] in self._error_status:
+                raise ServerError("Error: job status %r" % js['jobStatus'])
         return js
     @property
     def jobId(self):
