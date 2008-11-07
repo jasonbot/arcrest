@@ -134,6 +134,8 @@ class GPDate(GPBaseType):
        percent sign, as in the strftime function. For further information
        about Python strftime format strings, please refer to
        http://docs.python.org/library/time.html#time.strftime"""
+    __date_format = "%a %b %d %H:%M:%S %Z %Y"
+
     def __init__(self, date, format="%Y-%m-%d"):
         if isinstance(date, basestring):
             self.date = datetime.datetime.strptime(date, format)
@@ -144,17 +146,20 @@ class GPDate(GPBaseType):
         self.format = format
     @property
     def _json_struct(self):
-        return {'date': self.date.strftime(self.format),
-                'format': self.format.replace('%', '')}
+        return self.date.strftime(self.__date_format)
     @classmethod
     def from_json_struct(cls, value):
-        datestring = value['date']
-        formatstring = value['format']
-        # Re-escape field names from formats like Y-m-d back to strftime-style
-        # %Y-%m-%d strings
-        for chr in "%aAbBcdHIjmMpSUwWxXyYZ":
-            formatstring = formatstring.replace(chr, '%'+chr)
-        return cls(datestring, formatstring)
+        if isinstance(value, dict):
+            datestring = value['date']
+            formatstring = value['format']
+            # Re-escape field names from formats like Y-m-d back to
+            # strftime-style %Y-%m-%d strings
+            for chr in "%aAbBcdHIjmMpSUwWxXyYZ":
+                formatstring = formatstring.replace(chr, '%'+chr)
+            return cls(datestring, formatstring)
+        elif isinstance(value, basestring):
+            return cls(value, self.__date_format)
+            
 
 class GPDataFile(GPBaseType):
     """A URL for a geoprocessing data file parameter"""
