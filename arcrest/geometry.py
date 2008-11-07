@@ -70,6 +70,8 @@ class SpatialReference(Geometry):
             self.wkid = None
             return
         self.wkid = int(wkid)
+    def __repr__(self):
+        return "<Spatial Reference %i>" % self.wkid
     @property
     def _json_struct(self):
         return {'wkid': self.wkid}
@@ -107,6 +109,8 @@ class Point(Geometry):
             spatialReference = SpatialReference(spatialReference)
         self.x, self.y, self.spatialReference = \
             float(x), float(y), spatialReference
+    def __repr__(self):
+        return "POINT(%i %i)" % (self.x, self.y)
     @property
     def _json_struct_without_sr(self):
         return {'x': self.x,
@@ -136,6 +140,10 @@ class Polyline(Geometry):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
         self.paths = listofpointlist(paths, spatialReference)
+    def __repr__(self):
+        return "MULTILINESTRING(%s)" % "".join("(%s)" % 
+            ", ".join("%f %f" % pt for pt in segment)
+            for segment in self._json_paths)
     @property
     def _json_paths(self):
         def fixpath(somepath):
@@ -171,6 +179,10 @@ class Polygon(Geometry):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
         self.rings = listofpointlist(rings, spatialReference)
+    def __repr__(self):
+        return "POLYGON(%s)" % "".join("(%s)" % 
+            ", ".join("%f %f" % pt for pt in segment)
+            for segment in self._json_rings)
     @property
     def _json_rings(self):
         def fixring(somering):
@@ -203,6 +215,9 @@ class Multipoint(Geometry):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
         self.points = pointlist(points, spatialReference)
+    def __repr__(self):
+        return "MULTIPOINT(%s)" % ",".join("%f %f" % pt 
+                                           for pt in self._json_points)
     @property
     def _json_points(self):
         def fixpoint(somepointarray):

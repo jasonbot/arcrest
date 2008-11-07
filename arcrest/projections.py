@@ -7,7 +7,7 @@ class projection(object):
             self._name_mapping[int(val)] = key
             setattr(self, key.replace('-', '_'), val)
     def __getitem__(self, index):
-        return self._name_mapping[index]
+        return self._name_mapping[int(index)]
     def __contains__(self, index):
         return index in self._name_mapping
 

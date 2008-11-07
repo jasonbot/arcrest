@@ -138,7 +138,10 @@ class GPDate(GPBaseType):
 
     def __init__(self, date, format="%Y-%m-%d"):
         if isinstance(date, basestring):
-            self.date = datetime.datetime.strptime(date, format)
+            try:
+                self.date = datetime.datetime.strptime(date, format)
+            except:
+                self.date = datetime.datetime.strptime(date, self.__date_format)
         elif isinstance(date, (datetime.date, datetime.datetime)):
             self.date = date
         else:
@@ -146,7 +149,9 @@ class GPDate(GPBaseType):
         self.format = format
     @property
     def _json_struct(self):
-        return self.date.strftime(self.__date_format)
+        return {'date': self.date.strftime(self.format),
+                'format': self.format.replace('%', '')}
+        #return self.date.strftime(self.__date_format)
     @classmethod
     def from_json_struct(cls, value):
         if isinstance(value, dict):
@@ -159,7 +164,6 @@ class GPDate(GPBaseType):
             return cls(datestring, formatstring)
         elif isinstance(value, basestring):
             return cls(value, self.__date_format)
-            
 
 class GPDataFile(GPBaseType):
     """A URL for a geoprocessing data file parameter"""

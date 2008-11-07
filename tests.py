@@ -201,12 +201,23 @@ class GPServerTests(unittest.TestCase):
         self.assert_(time.time() - start < 4.0, "Took too long to execute")
         self.assert_(job.Output_String == "Done Sleeping",
                      "Output didn't match")
+    def testExecuteAsync2(self):
+        import time
+        task = arcrest.GPTask("http://flame6:8399/arcgis/rest/services/"
+                              "GP/ByValTools/GPServer/"
+                              "OutFeatureLayerParamTest")
+        job = task()
+        while job.running:
+            time.sleep(0.25)
+        print "****"
+        print job.results
+        print job.results['Output_Feature_Layer'].features
 
 class GPTypeTests(unittest.TestCase):
     def testGPDate(self):
         date = arcrest.GPDate("2008-11-5")
         date.format
-        date._json_struct
+        print date._json_struct
     def testGPLinearUnit(self):
         unit = arcrest.GPLinearUnit(5, "esriCentimeters")
 
