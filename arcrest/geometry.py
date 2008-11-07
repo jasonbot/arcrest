@@ -141,9 +141,12 @@ class Polyline(Geometry):
         self.spatialReference = spatialReference
         self.paths = listofpointlist(paths, spatialReference)
     def __repr__(self):
-        return "MULTILINESTRING(%s)" % "".join("(%s)" % 
-            ", ".join("%f %f" % map(float, pt) for pt in segment)
-            for segment in self._json_paths)
+        return "MULTILINESTRING(%s)" % "".join(
+                                        "".join(
+                                           ",".join(
+                                                " ".join(str(x) for x in pt)
+                                            for pt in path)) 
+                                        for path in self._json_paths)
     @property
     def _json_paths(self):
         def fixpath(somepath):
