@@ -189,6 +189,7 @@ class GPServerTests(unittest.TestCase):
                                     arcrest.geometry.Polyline),
                          "Expected polyline got %r" %
                             type(results.Output.features))
+        print results.messages
     def testExecuteAsynchronousGPTask(self):
         import time
         url = "http://flame6:8399/arcgis/rest/services/"
@@ -211,6 +212,7 @@ class GPServerTests(unittest.TestCase):
             time.sleep(0.25)
         print "****"
         print job.results
+        print job.messages
         print job.results['Output_Feature_Layer'].features
 
 class GPTypeTests(unittest.TestCase):

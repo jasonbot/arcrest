@@ -142,7 +142,7 @@ class Polyline(Geometry):
         self.paths = listofpointlist(paths, spatialReference)
     def __repr__(self):
         return "MULTILINESTRING(%s)" % "".join("(%s)" % 
-            ", ".join("%f %f" % pt for pt in segment)
+            ", ".join("%f %f" % map(float, pt) for pt in segment)
             for segment in self._json_paths)
     @property
     def _json_paths(self):
@@ -180,9 +180,12 @@ class Polygon(Geometry):
         self.spatialReference = spatialReference
         self.rings = listofpointlist(rings, spatialReference)
     def __repr__(self):
-        return "POLYGON(%s)" % "".join("(%s)" % 
-            ", ".join("%f %f" % pt for pt in segment)
-            for segment in self._json_rings)
+        return "POLYGON(%s)" % "".join(
+                                        "".join(
+                                           ",".join(
+                                                " ".join(str(x) for x in pt)
+                                            for pt in ring)) 
+                                        for ring in self._json_rings)
     @property
     def _json_rings(self):
         def fixring(somering):
@@ -216,7 +219,7 @@ class Multipoint(Geometry):
         self.spatialReference = spatialReference
         self.points = pointlist(points, spatialReference)
     def __repr__(self):
-        return "MULTIPOINT(%s)" % ",".join("%f %f" % pt 
+        return "MULTIPOINT(%s)" % ",".join("%f %f" % map(float, pt)
                                            for pt in self._json_points)
     @property
     def _json_points(self):

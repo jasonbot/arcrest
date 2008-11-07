@@ -688,6 +688,28 @@ class GeocodeService(Service):
                                                       {'location': location, 
                                                        'distance': distance})
 
+class GPMessage(object):
+    """Represents a message generated during the execution of a
+        geoprocessing task. It includes information such as when the
+        processing started, what parameter values are being used, the task
+        progress, warnings of potential problems and errors. It is composed
+        of a message type and description."""
+    __message_types = set(["esriJobMessageTypeInformative",
+                           "esriJobMessageTypeWarning",
+                           "esriJobMessageTypeError",
+                           "esriJobMessageTypeEmpty",
+                           "esriJobMessageTypeAbort"])
+    def __init__(self, description, type=None):
+        if isinstance(description, dict):
+            description, type = (description.get('description'),
+                                 description.get('type'))
+        elif isinstance(description, (tuple, list)):
+            description, type = description[0], description[1]
+        self.description, self.type = description, type
+    def __repr__(self):
+        return "<% 11s: %r>" % (self.type[len('esriJobMessageType'):],
+                                self.description)
+
 class GPService(Service):
     """Geoprocessing is a fundamental part of enterprise GIS operations. 
        Geoprocessing provides the data analysis, data management, and data 
@@ -780,8 +802,6 @@ class GPJobStatus(RestURL):
         if js['jobStatus'] not in self._still_running:
             self.__cache_request__ = True
             self.__json_struct__ = js
-            if js['jobStatus'] in self._error_status:
-                raise ServerError("Error: job status %r" % js['jobStatus'])
         return js
     @property
     def jobId(self):
@@ -795,6 +815,8 @@ class GPJobStatus(RestURL):
     @property
     def results(self):
         assert (not self.running), "Task is still executing."
+        if self.jobStatus in self._error_status:
+            raise ServerError("Error: job status %r" % js['jobStatus'])
         if self._results is None:
             def item_iterator():
                 for resref in self._json_struct['results'].itervalues():
@@ -812,7 +834,10 @@ class GPJobStatus(RestURL):
                     yield (dt, val)
             self._results = dict(item_iterator())
         return self._results
-
+    @property
+    def messages(self):
+        "Return a list of messages returned from the server."
+        return map(GPMessage, self._json_struct['messages'])
 
 class GPJob(JsonResult):
     """The GP job resource represents a job submitted using the submit job
@@ -841,6 +866,10 @@ class GPJob(JsonResult):
     def results(self):
         "Returns a dict of outputs from the GPTask execution."
         return self._jobstatus.results
+    @property
+    def messages(self):
+        "Return a list of messages returned from the server."
+        return self._jobstatus.messages
     def __getitem__(self, key):
         return self.results[key]
     def __getattr__(self, attr):
@@ -853,7 +882,7 @@ class GPExecutionResult(JsonResult):
     @property
     def messages(self):
         "Return a list of messages returned from the server."
-        return self._json_struct['messages']
+        return map(GPMessage, self._json_struct['messages'])
     @property
     def results(self):
         "Returns a dict of outputs from the GPTask execution."
