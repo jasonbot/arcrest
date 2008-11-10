@@ -60,7 +60,9 @@ class SpatialReference(Geometry):
        For a list of valid WKID values, see projections.Projected and 
        projections.Graphic in this package."""
     def __init__(self, wkid):
-        if isinstance(wkid, dict):
+        if isinstance(wkid, SpatialReference):
+            wkid = wkid.wkid
+        elif isinstance(wkid, dict):
             wkid = wkid['wkid']
         elif hasattr(projections.Projected, str(wkid)):
             wkid = getattr(projections.Projected, str(wkid))
@@ -71,7 +73,7 @@ class SpatialReference(Geometry):
             return
         self.wkid = int(wkid)
     def __repr__(self):
-        return "<Spatial Reference %i>" % self.wkid
+        return "<Spatial Reference %r>" % self.wkid
     @property
     def _json_struct(self):
         return {'wkid': self.wkid}

@@ -189,7 +189,7 @@ class GPServerTests(unittest.TestCase):
                                     arcrest.geometry.Polyline),
                          "Expected polyline got %r" %
                             type(results.Output.features))
-        print results.messages
+        #print results.messages
     def testExecuteAsynchronousGPTask(self):
         import time
         url = "http://flame6:8399/arcgis/rest/services/"
@@ -210,18 +210,43 @@ class GPServerTests(unittest.TestCase):
         job = task()
         while job.running:
             time.sleep(0.25)
-        print "****"
-        print job.results
-        print job.messages
-        print job.results['Output_Feature_Layer'].features
+        #print "****"
+        #print job.results
+        #print job.messages
+        #print job.results['Output_Feature_Layer'].features
 
 class GPTypeTests(unittest.TestCase):
     def testGPDate(self):
         date = arcrest.GPDate("2008-11-5")
         date.format
-        print date._json_struct
+        #print date._json_struct
+    def testGPDateGPCall(self):
+        import time
+        bvt = arcrest.GPService("http://nb2k3/arcgis/rest/services/GP/"
+                                "ByValTools/GPServer/")
+        gpdt = arcrest.GPDate.from_json_struct({"date": "4/6/07", 
+                                                "format": "M/d/y"})
+        job2 = bvt.SimpleParamTest(arcrest.GPString("hello"),
+                                   gpdt,
+                                   arcrest.GPLong(12345),
+                                   arcrest.GPDouble(123.456),
+                                   arcrest.GPBoolean(False),
+                                   arcrest.GPLinearUnit(5, "esriMeters"))
+        job2.jobId #print job2.jobId
+        while job2.running:
+            time.sleep(0.25)
+        job2.jobStatus #print job2.jobStatus
+         
+        for msg in job2.messages:
+            msg.description #print msg
+         
+        r2 = job2.results
     def testGPLinearUnit(self):
         unit = arcrest.GPLinearUnit(5, "esriCentimeters")
+    def testGPRecordSetSpatialReference(self):
+        rsl = arcrest.GPFeatureRecordSetLayer(arcrest.Point(1000000,1000000))
+        repr(rsl)
+        str(rsl)
 
 class GeometryServerTests(unittest.TestCase):
     def testGetGeometryService(self):

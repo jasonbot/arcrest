@@ -20,7 +20,8 @@ class GPBaseType(object):
         def __init__(cls, name, bases, dict):
             type.__init__(name, bases, dict)
             try:
-                GPBaseType._gp_type_mapping[cls.__name__] = cls
+                if '|' not in cls.__name__:
+                    GPBaseType._gp_type_mapping[cls.__name__] = cls
             except:
                 pass
     #: Mapping from Geoprocessing type to name
@@ -28,6 +29,9 @@ class GPBaseType(object):
 
     def __str__(self):
         return json.dumps(self._json_struct)
+    @classmethod
+    def _from_json_def(cls, json):
+        return cls
 
 class GPSimpleType(GPBaseType):
     """For geoprocessing types that simplify to base Python types, such as 
@@ -98,11 +102,15 @@ class GPFeatureRecordSetLayer(GPBaseType):
             Geometry = [Geometry]
         self.features = Geometry
         if sr:
-            self.spatialReference = sr
+            self.spatialReference = geometry.SpatialReference(sr)
         elif len(self.features):
-            self.spatialReference = self.features[0].spatialReference
+            self.spatialReference = geometry.SpatialReference(
+                                        self.features[0].spatialReference)
         else:
             raise ValueError("Could not determine spatial reference")
+        self.fields = set()
+        for row in self.features:
+            map(self.fields.add, set(getattr(row, 'attributes', {}).keys()))
     @property
     def _json_struct(self):
         geometry_types = set(geom.__geometry_type__ for geom in self.features)
@@ -163,7 +171,7 @@ class GPDate(GPBaseType):
                 formatstring = formatstring.replace(chr, '%'+chr)
             return cls(datestring, formatstring)
         elif isinstance(value, basestring):
-            return cls(value, self.__date_format)
+            return cls(value, cls.__date_format)
 
 class GPDataFile(GPBaseType):
     """A URL for a geoprocessing data file parameter"""
