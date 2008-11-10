@@ -287,11 +287,23 @@ class Service(RestURL):
 
     class __metaclass__(type):
         """Idea borrowed from http://effbot.org/zone/metaclass-plugins.htm
-           -- use the metaclass system to register derivative classes in the
+           -- use the metaclass system to register subclasses in the
            Folder's service type registry so when it hits a 
            {'name': 'x', 'type': 'y'} service entry in the services key in a
            folder's json data it knows to instantiate an instance of y to
-           represent a relative ./x/y/ URL."""
+           represent a relative ./x/y/ URL. That is, when you do
+           
+           class FooService(Service)
+               __service_type__ = "FooServer" 
+           
+           and
+           
+           afolder._json_struct['services'] = [{'name': 'MyFoo', 
+                                                'type': 'FooServer'}]
+           
+           then afolder.MyFoo will yield a FooService instance against the
+           relative URL of ./MyFoo/FooServer/
+           """
         def __init__(cls, name, bases, dict):
             type.__init__(name, bases, dict)
             if hasattr(cls, '__service_type__'):
@@ -358,7 +370,7 @@ class JsonResult(Result):
     def __init__(self, url):
         super(JsonResult, self).__init__(url)
         if 'error' in self._json_struct:
-            raise ServerError("ERROR %i: %r <%s>" % 
+            raise ServerError("ERROR %r: %r <%s>" % 
                                (self._json_struct['error']['code'], 
                                 self._json_struct['error']['message'] or
                                 ",".join(
@@ -398,6 +410,20 @@ class MapLayer(Layer):
            - esriSpatialRelOverlaps
            - esriSpatialRelTouches
            - esriSpatialRelWithin"""
+        if not inSR:
+            if Geometry:
+                inSR = Geometry.spatialReference
+        out = self._get_subfolder("./query", JsonResult, {
+                                               'text': text,
+                                               'geometry': geometry,
+                                               'inSR': inSR,
+                                               'spatialRel': spatialRel,
+                                               'where': where,
+                                               'outFields': outFields,
+                                               'returnGeometry': returnGeometry,
+                                               'outSR': outSR})
+        return gptypes.GPFeatureRecordSetLayer.from_json_struct(
+                                                               out._json_struct)
     @property
     def id(self):
         return self._json_struct['id']

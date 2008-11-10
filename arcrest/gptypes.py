@@ -142,6 +142,7 @@ class GPDate(GPBaseType):
        percent sign, as in the strftime function. For further information
        about Python strftime format strings, please refer to
        http://docs.python.org/library/time.html#time.strftime"""
+    #: default date format
     __date_format = "%a %b %d %H:%M:%S %Z %Y"
 
     def __init__(self, date, format="%Y-%m-%d"):
