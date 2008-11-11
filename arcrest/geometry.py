@@ -71,7 +71,9 @@ class SpatialReference(Geometry):
         elif wkid is None:
             self.wkid = None
             return
-        self.wkid = int(wkid)
+        if wkid is not None:
+            wkid = int(wkid)
+        self.wkid = wkid
     def __repr__(self):
         return "<Spatial Reference %r>" % self.wkid
     @property

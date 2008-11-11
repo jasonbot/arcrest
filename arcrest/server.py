@@ -292,16 +292,11 @@ class Service(RestURL):
            {'name': 'x', 'type': 'y'} service entry in the services key in a
            folder's json data it knows to instantiate an instance of y to
            represent a relative ./x/y/ URL. That is, when you do
-           
-              class FooService(Service)
+              class FooService(Service):
                   __service_type__ = "FooServer" 
-           
            and
-           
-              afolder._json_struct['services'] = [{'name': 'MyFoo', 
-                                                   'type': 'FooServer'}]
-
-           
+              afolder._json_struct['services'] = \
+                [{'name': 'MyFoo', 'type': 'FooServer'}]
            then afolder.MyFoo will yield a FooService instance against the
            relative URL of C{./MyFoo/FooServer/}
            """
