@@ -132,7 +132,6 @@ class RestURL(object):
         """The raw contents of the URL as fetched, this is done lazily.
            For non-lazy fetching this is accessed in the object constructor."""
         if self.__urldata__ is Ellipsis or self.__cache_request__ is False:
-            #print 'fetch', self.url
             handle = urllib2.urlopen(self.url)
             # Handle the special case of a redirect (only follow once) --
             # Note that only the first 3 components (protocol, hostname, path)
@@ -844,9 +843,14 @@ class GPJobStatus(RestURL):
                 for resref in self._json_struct['results'].itervalues():
                     rel = self._get_subfolder(resref['paramUrl'], RestURL)
                     result = rel._json_struct
-                    datatype = gptypes.GPBaseType._gp_type_mapping.get(
-                                                      result['dataType'], None)
-           
+                    #self.parent.parent.parameters
+                    #datatype = gptypes.GPBaseType._gp_type_mapping.get(
+                    #                                result['dataType'],None)
+                    datatype = None
+                    conversion = None
+                    for param in self.parent.parent.parameters:
+                        if param['name'] == result['paramName']:
+                            datatype = param['datatype']
                     if datatype is None:
                         conversion = str
                     else:
@@ -868,6 +872,7 @@ class GPJob(JsonResult):
        completed, it provides information about the result parameters as well
        as input parameters."""
 
+    _jobstatus = None
     def __init__(self, url):
         super(GPJob, self).__init__(url)
         self._jobstatus = self._get_subfolder('../jobs/%s/' % 
@@ -893,9 +898,9 @@ class GPJob(JsonResult):
         "Return a list of messages returned from the server."
         return self._jobstatus.messages
     def __getitem__(self, key):
-        return self.results[key]
+        return self._jobstatus.results[key]
     def __getattr__(self, attr):
-        return self[attr]
+        return self._jobstatus.results[attr]
 
 class GPExecutionResult(JsonResult):
     """The GPExecutionResult object represents the output of running a 
@@ -912,8 +917,11 @@ class GPExecutionResult(JsonResult):
             results = self._json_struct['results']
             def result_iterator():
                 for result in results:
-                    datatype = gptypes.GPBaseType._gp_type_mapping.get(
-                                                      result['dataType'], None)
+                    datatype = None
+                    conversion = None
+                    for param in self.parent.parameters:
+                        if param['name'] == result['paramName']:
+                            datatype = param['datatype']
                     if datatype is None:
                         conversion = str
                     else:
@@ -928,9 +936,9 @@ class GPExecutionResult(JsonResult):
         "For method compatibility with GPJob, always return false"
         return False
     def __getitem__(self, key):
-        return self.results[key]
+        return self.__class__.results.__get__(self)[key]
     def __getattr__(self, attr):
-        return self[attr]
+        return self.__class__.results.__get__(self)[attr]
 
 class GPTask(RestURL):
     """The GP task resource represents a single task in a GP service published
@@ -963,7 +971,6 @@ class GPTask(RestURL):
                 if not isinstance(val, param_to_convert['datatype']):
                     parametervalues[param_to_convert['name']] = \
                         param_to_convert['datatype'](val)._json_struct
-        #print parametervalues
         return parametervalues
     def Execute(self, *params, **kw):
         """Synchronously execute the specified GP task. Parameters are passed
@@ -999,7 +1006,8 @@ class GPTask(RestURL):
         for parameter in parameters:
             dt = parameter['dataType']
             parameter['datatype'] = \
-                gptypes.GPBaseType._gp_type_mapping.get(dt, str)
+                gptypes.GPBaseType._gp_type_mapping.get(dt,
+                        gptypes.GPString)._from_json_def(parameter)
         return parameters
     @property
     def executionType(self):
@@ -1432,19 +1440,19 @@ class GeoDataService(Service):
                                    self.defaultWorkingVersionName,
                                    GeoDataVersion)
     @property
-    def versionnames(self):
+    def versionNames(self):
         return self._json_struct['versions']
     @property
     def versions(self):
         return [self._get_subfolder("versions/%s/" % version, GeoDataVersion)
-                for version in self.versionnames]
+                for version in self.versionNames]
     @property
-    def replicanames(self):
+    def replicaNames(self):
         return self._json_struct['replicas']
     @property
     def replicas(self):
         return [self._get_subfolder("replicas/%s/" % version, GeoDataReplica)
-                for replica in self.replicanames]
+                for replica in self.replicaNames]
 
 class GlobeLayer(Layer):
     """The globe layer resource represents a single layer in a globe service

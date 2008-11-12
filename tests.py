@@ -189,6 +189,7 @@ class GPServerTests(unittest.TestCase):
                                     arcrest.geometry.Polyline),
                          "Expected polyline got %r" %
                             type(results.Output.features))
+        #print results.Output._columns
         #print results.messages
     def testExecuteAsynchronousGPTask(self):
         import time
@@ -257,6 +258,20 @@ class GPTypeTests(unittest.TestCase):
         r = job.results
         print type(r['Output_Raster_Layer'])
         print repr(r['Output_Raster_Layer'])
+    def testGPOutTableParam(self):
+        import sys
+        import time
+        otv = arcrest.GPService("http://nb2k3/ArcGIS/rest/services/GP/"
+                                "ByValTools/GPServer/")
+        job = otv.OutTblViewParamTests()
+        print job, job.jobId, dir(job)
+        while job.running:
+            print ".",
+            sys.stdout.flush()
+            time.sleep(0.25)
+        print "---"
+        print job.Output_Table_View
+        print job.Output_Table_View._columns
 
 class GeometryServerTests(unittest.TestCase):
     def testGetGeometryService(self):

@@ -13,6 +13,7 @@ except ImportError:
 
 import datetime
 import geometry
+import uuid
 
 class GPBaseType(object):
     """Base type for Geoprocessing argument types"""
@@ -86,6 +87,8 @@ class GPLinearUnit(GPBaseType):
         if unit is None:
             unit = 'esriMeters'
         else:
+            if not unit.startswith('esri'):
+                unit = 'esri' + unit
             assert unit in self.allowed_units, "Unit %r not valid" % unit
         self.distance, self.units = value, unit
     @property
@@ -95,8 +98,125 @@ class GPLinearUnit(GPBaseType):
     def from_json_struct(cls, val):
         return cls(val['distance'], val['units'])
 
+class FieldType(object):
+    """Base class for ESRI Field Types"""
+    class __metaclass__(type):
+        def __init__(cls, name, bases, dict):
+            type.__init__(name, bases, dict)
+            try:
+                FieldType._field_type_mapping[cls.__name__] = cls
+            except: # Throws if this is FieldType -- no FieldType.* yet
+                pass
+    #: Mapping from field type to name
+    _field_type_mapping = {}
+
+    @classmethod
+    def value_for_string(cls, string):
+        return string
+
+class esriFieldTypeSmallInteger(FieldType):
+    """0  Integer."""
+    @classmethod
+    def value_for_string(cls, string):
+        return int(string)
+
+class esriFieldTypeInteger(esriFieldTypeSmallInteger):
+    """1  Long Integer."""
+
+class esriFieldTypeSingle(FieldType):
+    """2  Single-precision floating-point number."""
+    @classmethod
+    def value_for_string(cls, string):
+        return double(string)
+
+class esriFieldTypeDouble(esriFieldTypeSingle):
+    """3  Double-precision floating-point number."""
+
+class esriFieldTypeString(FieldType):
+    """4  Character string."""
+    @classmethod
+    def value_for_string(cls, string):
+        return str(string)
+
+class esriFieldTypeDate(FieldType):
+    """5  Date."""
+    @classmethod
+    def value_for_string(cls, string):
+        return GPDate(string).date
+
+class esriFieldTypeOID(esriFieldTypeInteger):
+    """6  Long Integer representing an object identifier."""
+
+class esriFieldTypeGeometry(FieldType):
+    """7  Geometry."""
+    @classmethod
+    def value_for_string(cls, string):
+        raise ValueError("Cannot instantiate a geometry field in this manner.")
+
+class esriFieldTypeBlob(FieldType):
+    """8  Binary Large Object."""
+    @classmethod
+    def value_for_string(cls, string):
+        return str(string)
+
+class esriFieldTypeRaster(FieldType):
+    """9  Raster."""
+
+class esriFieldTypeGUID(FieldType):
+    """10  Globally Unique Identifier."""
+    @classmethod
+    def value_for_string(cls, string):
+        return uuid.UUID(string)
+
+class esriFieldTypeGlobalID(esriFieldTypeGUID):
+    """11  ESRI Global ID."""
+
+class esriFieldTypeXML(esriFieldTypeString):
+    """12  XML Document"""
+
+class RecordSetCursor(object):
+    """Base class for iteration over Record Sets. Implements a subset of the
+       Cursor section of the Python database API 2.0 (PEP 249)"""
+    def __init__(self, obj):
+        self.__recordset = obj
+        self.__index = 0
+        self.rowcount = len(obj.features)
+    def __len__(self):
+        return self.rowcount
+    def __iter__(self):
+        x = self.next()
+        while x:
+            yield x
+            x = self.next()
+    @property
+    def __row(self):
+        raise ImplementationError("Cursor cannot make a row")
+    def reset(self):
+        self.__index = 0
+    def next(self):
+        if self.__index < self.rowcount:
+            row = self.__row
+            self.__index += 1
+            return row
+        else:
+            return None
+    def fetchone(self):
+        return self.next()
+    def fetchmany(self, count=5):
+        return [row for row in (self.next() for ctr in range(count))
+                if row is not None]
+    def fetchall(self):
+        all = []
+        for row in self:
+            all.append(row)
+        return all
+
+class GPFeatureRecordSetCursor(RecordSetCursor):
+    """A Feature set cursor"""
+
 class GPFeatureRecordSetLayer(GPBaseType):
     """Represents a geoprocessing feature recordset parameter"""
+    _columns = None
     def __init__(self, Geometry, sr=None):
         if isinstance(Geometry, geometry.Geometry):
             Geometry = [Geometry]
@@ -108,9 +228,21 @@ class GPFeatureRecordSetLayer(GPBaseType):
                                         self.features[0].spatialReference)
         else:
             raise ValueError("Could not determine spatial reference")
-        self.fields = set()
-        for row in self.features:
-            map(self.fields.add, set(getattr(row, 'attributes', {}).keys()))
+        if self._columns is None:
+            fieldlist = []
+            fields = set()
+            def adder(fieldname):
+                if fieldname not in fields:
+                    fieldlist.append(fieldname)
+                    fields.add(fieldname)
+            for row in self.features:
+                map(adder, set(getattr(row, 'attributes', {}).keys()))
+            self._columns = tuple((name, esriFieldTypeString) 
+                                   for name in fieldlist)
+    def __iter__(self):
+        return iter(self.cursor())
+    def cursor(self):
+        return GPFeatureRecordSetCursor(self)
     @property
     def _json_struct(self):
         geometry_types = set(geom.__geometry_type__ for geom in self.features)
@@ -129,11 +261,63 @@ class GPFeatureRecordSetLayer(GPBaseType):
                                                  geo['attributes']) 
                         for geo in value['features']]
         return cls(geometries, spatialreference)
+    @classmethod
+    def _from_json_def(cls, json):
+        types = []
+        for field in json['defaultValue'].get(
+                'fields', json['defaultValue'].get('Fields', {})):
+            types.append((field['name'], 
+                          FieldType._field_type_mapping.get(
+                                           field['type'], esriFieldTypeString)))
+        nt = type("%s|%s" % (cls.__name__, 
+                             ','.join(field[0] for field in types)),
+                  (cls,), {})
+        tps = tuple(types)
+        nt._columns = tps
+        return nt
+
+class GPRecordSetCursor(RecordSetCursor):
+    """A cursor"""
 
 class GPRecordSet(GPBaseType):
     """Represents a geoprocessing recordset parameter"""
+    _columns = None
     def __init__(self, arg):
         self.features = arg
+        if self._columns is None:
+            fieldlist = []
+            fields = set()
+            def adder(fieldname):
+                if fieldname not in fields:
+                    fieldlist.append(fieldname)
+                    fields.add(fieldname)
+            for row in self.features:
+                map(adder, getattr(row, 'attributes', {}).keys())
+            self._columns = tuple((name, esriFieldTypeString) 
+                                  for name in fieldlist)
+    def __iter__(self):
+        return iter(self.cursor())
+    def cursor():
+        return GPRecordSetCursor(self)
+    @classmethod
+    def from_json_struct(cls, json):
+        return cls(json['features'])
+    @property
+    def _json_struct(self):
+        return { 'features': self.features }
+    @classmethod
+    def _from_json_def(cls, json):
+        types = []
+        for field in json['defaultValue'].get(
+                'fields', json['defaultValue'].get('Fields', {})):
+            types.append((field['name'], 
+                          FieldType._field_type_mapping.get(
+                                           field['type'], esriFieldTypeString)))
+        nt = type("%s|%s" % (cls.__name__, 
+                             ','.join(field[0] for field in types)),
+                  (cls,), {})
+        nt._columns = tuple(types)
+        return nt
 
 class GPDate(GPBaseType):
     """Represents a geoprocessing date parameter. The format parameter
