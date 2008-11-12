@@ -178,8 +178,8 @@ class RecordSetCursor(object):
     """Base class for iteration over Record Sets. Implements a subset of the
        Cursor section of the Python database API 2.0 (PEP 249)"""
     def __init__(self, obj):
-        self.__recordset = obj
-        self.__index = 0
+        self._recordset = obj
+        self._index = 0
         self.rowcount = len(obj.features)
     def __len__(self):
         return self.rowcount
@@ -189,14 +189,14 @@ class RecordSetCursor(object):
             yield x
             x = self.next()
     @property
-    def __row(self):
+    def _row(self):
         raise ImplementationError("Cursor cannot make a row")
     def reset(self):
-        self.__index = 0
+        self._index = 0
     def next(self):
-        if self.__index < self.rowcount:
-            row = self.__row
-            self.__index += 1
+        if self._index < self.rowcount:
+            row = self._row
+            self._index += 1
             return row
         else:
             return None
@@ -213,6 +213,23 @@ class RecordSetCursor(object):
 
 class GPFeatureRecordSetCursor(RecordSetCursor):
     """A Feature set cursor"""
+    @property
+    def _row(self):
+        feature = self._recordset.features[self._index]
+        attributes = getattr(feature[self._index], 'attributes', {})
+        used_shape = False
+        vals = []
+        for (columnname, columntype) in self._recordset._columns:
+            if columntype is esriFieldTypeGeometry and not used_shape:
+                vals.append(feature)
+                used_shape = True
+            else:
+                vals.append(
+                    columntype.value_for_string(
+                        attributes.get(columnname, '')))
+        if not used_shape:
+            vals.append(feature)
+        return tuple(vals)
 
 class GPFeatureRecordSetLayer(GPBaseType):
     """Represents a geoprocessing feature recordset parameter"""
@@ -278,6 +295,15 @@ class GPFeatureRecordSetLayer(GPBaseType):
 
 class GPRecordSetCursor(RecordSetCursor):
     """A cursor"""
+    @property
+    def _row(self):
+        feature = self._recordset.features[self._index]
+        attributes = getattr(feature[self._index], 'attributes', {})
+        vals = []
+        for (columnname, columntype) in self._recordset._columns:
+            vals.append(columntype.value_for_string(attributes.get(columnname, 
+                                                                   '')))
+        return tuple(vals)
 
 class GPRecordSet(GPBaseType):
     """Represents a geoprocessing recordset parameter"""
