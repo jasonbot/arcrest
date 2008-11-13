@@ -176,7 +176,7 @@ class GPFeatureRecordSetLayer(GPBaseType):
         else:
             raise ValueError("Could not determine spatial reference")
         if self._columns is None:
-            _columns = sorted(reduce(lambda x, y: x+y, 
+            _columns = sorted(reduce(lambda x, y: x | y, 
                                    (set(getattr(row, 'attributes', {}).keys())
                                    for row in self.features)))
             if 'shape' not in (col.lower() for col in _columns):
@@ -220,7 +220,7 @@ class GPRecordSet(GPBaseType):
     def __init__(self, arg):
         self.features = arg
         if self._columns is None:
-            _columns = sorted(reduce(lambda x, y: x+y, 
+            _columns = sorted(reduce(lambda x, y: x | y, 
                                    (set(row['attributes'].keys()) 
                                    for row in self.features)))
             self._columns = tuple(self._columns)
