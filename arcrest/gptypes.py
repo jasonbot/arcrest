@@ -95,8 +95,75 @@ class GPLinearUnit(GPBaseType):
     def from_json_struct(cls, val):
         return cls(val['distance'], val['units'])
 
+def rowtuple(colnames):
+    import operator
+    class RowTuple(tuple):
+        def __new__(cls, *values):
+            return tuple.__new__(cls, *values)
+    for i, col in enumerate(colnames):
+        setattr(RowTuple, col, property(operator.itemgetter(i)))
+    RowTuple.__slots__ = ()
+    return RowTuple
+
+class RecordSetCursor(object):
+    """Base class for iteration over Record Sets. Implements a subset of the
+       Cursor section of the Python database API 2.0 (PEP 249)"""
+    def __init__(self, obj):
+        self._recordset = obj
+        self._index = 0
+        self._rowtuple = rowtuple(self._recordset._columns)
+    def __len__(self):
+        return self.rowcount
+    def __iter__(self):
+        x = self.next()
+        while x:
+            yield x
+            x = self.next()
+    @property
+    def rowcount(self):
+        return len(self._recordset.features)
+    @property
+    def _row(self):
+        raise RuntimeError("Need to implement this.")
+    @property
+    def description(self):
+        return [(col, "esriColumn",
+                 None, None, None, None, None)
+                 for col in self._recordset._columns]
+    def reset(self):
+        self._index = 0
+    def next(self):
+        if self._index < self.rowcount:
+            row = self._row
+            self._index += 1
+            return row
+        else:
+            return None
+    def fetchone(self):
+        return self.next()
+    def fetchmany(self, count=5):
+        return [row for row in (self.next() for ctr in range(count))
+                if row is not None]
+    def fetchall(self):
+        all = []
+        for row in self:
+            all.append(row)
+        return all
+
+class GPFeatureRecordSetCursor(RecordSetCursor):
+    """A Feature set cursor"""
+    @property
+    def _row(self):
+        feature = self._recordset.features[self._index]
+        feature_attributes = feature.attributes
+        return self._rowtuple((feature_attributes.get(col, None)
+                               if col.lower() != 'shape' 
+                               else feature)
+                               for col in self._recordset._columns)
+
 class GPFeatureRecordSetLayer(GPBaseType):
     """Represents a geoprocessing feature recordset parameter"""
+    _columns = None
     def __init__(self, Geometry, sr=None):
         if isinstance(Geometry, geometry.Geometry):
             Geometry = [Geometry]
@@ -108,9 +175,17 @@ class GPFeatureRecordSetLayer(GPBaseType):
                                         self.features[0].spatialReference)
         else:
             raise ValueError("Could not determine spatial reference")
-        self.fields = set()
-        for row in self.features:
-            map(self.fields.add, set(getattr(row, 'attributes', {}).keys()))
+        if self._columns is None:
+            _columns = sorted(reduce(lambda x, y: x+y, 
+                                   (set(getattr(row, 'attributes', {}).keys())
+                                   for row in self.features)))
+            if 'shape' not in (col.lower() for col in _columns):
+                _columns = ['shape'] + _columns
+            self._columns = tuple(_columns)
+    def __iter__(self):
+        return iter(self.cursor())
+    def cursor(self):
+        return GPFeatureRecordSetCursor(self)    
     @property
     def _json_struct(self):
         geometry_types = set(geom.__geometry_type__ for geom in self.features)
@@ -124,16 +199,35 @@ class GPFeatureRecordSetLayer(GPBaseType):
                }
     @classmethod
     def from_json_struct(cls, value):
-        spatialreference = geometry.convert_from_json(value['spatialReference'])
+        spatialreference = geometry.convert_from_json(
+                                                    value['spatialReference'])
         geometries = [geometry.convert_from_json(geo['geometry'], 
                                                  geo['attributes']) 
                         for geo in value['features']]
         return cls(geometries, spatialreference)
 
+class GPRecordSetCursor(RecordSetCursor):
+    """Specialization of cursor for record sets"""
+    @property
+    def _row(self):
+        feature = self._recordset.features[self._index]
+        return self._rowtuple(feature['attributes'].get(col, None)
+                              for col in self._recordset._columns)
+
 class GPRecordSet(GPBaseType):
     """Represents a geoprocessing recordset parameter"""
+    _columns = None
     def __init__(self, arg):
         self.features = arg
+        if self._columns is None:
+            _columns = sorted(reduce(lambda x, y: x+y, 
+                                   (set(row['attributes'].keys()) 
+                                   for row in self.features)))
+            self._columns = tuple(self._columns)
+    def __iter__(self):
+        return iter(self.cursor())
+    def cursor():
+        return GPRecordSetCursor(self)    
 
 class GPDate(GPBaseType):
     """Represents a geoprocessing date parameter. The format parameter
@@ -157,7 +251,7 @@ class GPDate(GPBaseType):
                     self.format = self.__date_format
                 except ValueError:
                     self.date = datetime.datetime.strptime(date, 
-                                                   self.__secondary_date_format)
+                                                  self.__secondary_date_format)
                     self.format = self.__secondary_date_format
         elif isinstance(date, (datetime.date, datetime.datetime)):
             self.date = date

@@ -189,8 +189,17 @@ class GPServerTests(unittest.TestCase):
                                     arcrest.geometry.Polyline),
                          "Expected polyline got %r" %
                             type(results.Output.features))
-        #print results.Output._columns
-        #print results.messages
+        print
+        print "===="
+        print results.Output._columns
+        print results.Output.cursor().description
+        self.assert_(all(isinstance(row, tuple) for row in results.Output), 
+                     "Expected tuple values for all rows")
+        for row in results.Output:
+            print "ROW", row
+            print "    FID: ", row.fid
+        print "===="
+        print results.messages
     def testExecuteAsynchronousGPTask(self):
         import time
         url = "http://flame6:8399/arcgis/rest/services/"
@@ -248,6 +257,16 @@ class GPTypeTests(unittest.TestCase):
         rsl = arcrest.GPFeatureRecordSetLayer(arcrest.Point(1000000,1000000))
         repr(rsl)
         str(rsl)
+    def testGPRasterDataLayerType(self):
+        import time
+        bvt = arcrest.GPService("http://nb2k3/arcgis/rest/services/GP/"
+                                "ByValTools/GPServer/")
+        job = bvt.OutRasterLayerParamTest.SubmitJob()
+        while job.running:
+            time.sleep(0.25)
+        r = job.results
+        print type(r['Output_Raster_Layer'])
+        print repr(r['Output_Raster_Layer'])
     def testGPOutTableParam(self):
         import sys
         import time
