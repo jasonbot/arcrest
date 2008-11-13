@@ -247,16 +247,6 @@ class GPTypeTests(unittest.TestCase):
         rsl = arcrest.GPFeatureRecordSetLayer(arcrest.Point(1000000,1000000))
         repr(rsl)
         str(rsl)
-    def testGPRasterDataLayerType(self):
-        import time
-        bvt = arcrest.GPService("http://nb2k3/arcgis/rest/services/GP/"
-                                "ByValTools/GPServer/")
-        job = bvt.OutRasterLayerParamTest.SubmitJob()
-        while job.running:
-            time.sleep(0.25)
-        r = job.results
-        print type(r['Output_Raster_Layer'])
-        print repr(r['Output_Raster_Layer'])
 
 class GeometryServerTests(unittest.TestCase):
     def testGetGeometryService(self):

@@ -213,6 +213,6 @@ class GPUrlWithFormatType(GPBaseType):
 class GPRasterData(GPUrlWithFormatType):
     """A URL for a geoprocessing raster data file parameter, with format."""
 
-class GPRasterDataLayer(GPUrlWithFormatType):
+class GPRasterLayer(GPUrlWithFormatType):
     """A URL for a geoprocessing raster data layer file parameter,
        with format."""
