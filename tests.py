@@ -200,6 +200,14 @@ class GPServerTests(unittest.TestCase):
             print "    FID: ", row.fid
         print "===="
         print results.messages
+    def testExecuteSync2(self):
+        import time
+        bvt = arcrest.GPService("http://flame6:8399/arcgis/rest/services/"
+                                "GP/ByValTools/GPServer/?f=json")
+        job1 = bvt.OutFeatureLayerParamTest.SubmitJob()
+        while job1.running:
+            time.sleep(0.25)
+        r = job1.results
     def testExecuteAsynchronousGPTask(self):
         import time
         url = "http://flame6:8399/arcgis/rest/services/"
