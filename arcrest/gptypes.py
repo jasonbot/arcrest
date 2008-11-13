@@ -99,7 +99,7 @@ class GPLinearUnit(GPBaseType):
         return cls(val['distance'], val['units'])
 
 class FieldType(object):
-    """Base class for ESRI Field Types"""
+    """Base class for Record Set and Feature Record Set Field Types"""
     class __metaclass__(type):
         def __init__(cls, name, bases, dict):
             type.__init__(name, bases, dict)
@@ -115,64 +115,64 @@ class FieldType(object):
         return string
 
 class esriFieldTypeSmallInteger(FieldType):
-    """0  Integer."""
+    """Record set Integer field"""
     @classmethod
     def value_for_string(cls, string):
         return int(string)
 
 class esriFieldTypeInteger(esriFieldTypeSmallInteger):
-    """1  Long Integer."""
+    """Record Set Long Integer field"""
 
 class esriFieldTypeSingle(FieldType):
-    """2  Single-precision floating-point number."""
+    """Record Set Single-precision floating-point number field"""
     @classmethod
     def value_for_string(cls, string):
         return double(string)
 
 class esriFieldTypeDouble(esriFieldTypeSingle):
-    """3  Double-precision floating-point number."""
+    """Record Set Double-precision floating-point number field"""
 
 class esriFieldTypeString(FieldType):
-    """4  Character string."""
+    """Record Set Character string field"""
     @classmethod
     def value_for_string(cls, string):
         return str(string)
 
 class esriFieldTypeDate(FieldType):
-    """5  Date."""
+    """Record Set Date field"""
     @classmethod
     def value_for_string(cls, string):
         return GPDate(string).date
 
 class esriFieldTypeOID(esriFieldTypeInteger):
-    """6  Long Integer representing an object identifier."""
+    """Record Set Long Integer representing an object identifier field"""
 
 class esriFieldTypeGeometry(FieldType):
-    """7  Geometry."""
+    """Record Set Geometry field"""
     @classmethod
     def value_for_string(cls, string):
         raise ValueError("Cannot instantiate a geometry field in this manner.")
 
 class esriFieldTypeBlob(FieldType):
-    """8  Binary Large Object."""
+    """Record Set Binary Large Object field"""
     @classmethod
     def value_for_string(cls, string):
         return str(string)
 
 class esriFieldTypeRaster(FieldType):
-    """9  Raster."""
+    """Record Set Raster field"""
 
 class esriFieldTypeGUID(FieldType):
-    """10  Globally Unique Identifier."""
+    """Record Set Globally Unique Identifier field"""
     @classmethod
     def value_for_string(cls, string):
         return uuid.UUID(string)
 
 class esriFieldTypeGlobalID(esriFieldTypeGUID):
-    """11  ESRI Global ID."""
+    """Record Set ESRI Global ID field"""
 
 class esriFieldTypeXML(esriFieldTypeString):
-    """12  XML Document"""
+    """Record Set XML Document field"""
 
 class RecordSetCursor(object):
     """Base class for iteration over Record Sets. Implements a subset of the
@@ -191,6 +191,11 @@ class RecordSetCursor(object):
     @property
     def _row(self):
         raise ImplementationError("Cursor cannot make a row")
+    @property
+    def description(self):
+        return [(col[0], col[1].__name__,
+                 None, None, None, None, None)
+                 for col in self._recordset._columns]
     def reset(self):
         self._index = 0
     def next(self):
@@ -216,24 +221,44 @@ class GPFeatureRecordSetCursor(RecordSetCursor):
     @property
     def _row(self):
         feature = self._recordset.features[self._index]
-        attributes = getattr(feature[self._index], 'attributes', {})
+        attributes = getattr(feature, 'attributes', {})
         used_shape = False
         vals = []
-        for (columnname, columntype) in self._recordset._columns:
+        for column in self._recordset._columns:
+            (columnname, columntype) = column
             if columntype is esriFieldTypeGeometry and not used_shape:
                 vals.append(feature)
                 used_shape = True
             else:
+                print columnname
                 vals.append(
                     columntype.value_for_string(
-                        attributes.get(columnname, '')))
+                        attributes.get(columnname.lower(), '')))
         if not used_shape:
             vals.append(feature)
         return tuple(vals)
 
-class GPFeatureRecordSetLayer(GPBaseType):
+class ColumnHaver(object):
+    _columns_data = None
+    @apply
+    def _columns():
+        def _get(self):
+            import inspect
+            import traceback
+            print ''.join(traceback.format_stack(inspect.currentframe())[:-1])
+            print "GET", self._columns_data
+            return self._columns_data
+        def _set(self, val):
+            import inspect
+            import traceback
+            print ''.join(traceback.format_stack(inspect.currentframe())[:-1])
+            print "SET", val
+            self._columns_data = val
+        return property(_get, _set)
+
+class GPFeatureRecordSetLayer(ColumnHaver, GPBaseType):
     """Represents a geoprocessing feature recordset parameter"""
-    _columns = None
+    #_columns = None
     def __init__(self, Geometry, sr=None):
         if isinstance(Geometry, geometry.Geometry):
             Geometry = [Geometry]
@@ -245,17 +270,15 @@ class GPFeatureRecordSetLayer(GPBaseType):
                                         self.features[0].spatialReference)
         else:
             raise ValueError("Could not determine spatial reference")
-        if self._columns is None:
-            fieldlist = []
-            fields = set()
-            def adder(fieldname):
-                if fieldname not in fields:
-                    fieldlist.append(fieldname)
-                    fields.add(fieldname)
-            for row in self.features:
-                map(adder, set(getattr(row, 'attributes', {}).keys()))
-            self._columns = tuple((name, esriFieldTypeString) 
-                                   for name in fieldlist)
+        fieldlist = list(self._columns or [])
+        fields = set(col[0] for col in (self._columns or []))
+        def adder(fieldname):
+            if fieldname not in fields:
+                fieldlist.append((fieldname, esriFieldTypeString))
+                fields.add(fieldname)
+        for row in self.features:
+            map(adder, set(getattr(row, 'attributes', {}).keys()))
+        self._columns = tuple(fieldlist)
     def __iter__(self):
         return iter(self.cursor())
     def cursor(self):
@@ -294,20 +317,21 @@ class GPFeatureRecordSetLayer(GPBaseType):
         return nt
 
 class GPRecordSetCursor(RecordSetCursor):
-    """A cursor"""
+    """Specialization of cursor for record sets"""
     @property
     def _row(self):
         feature = self._recordset.features[self._index]
-        attributes = getattr(feature[self._index], 'attributes', {})
+        attributes = getattr(feature, 'attributes', {})
         vals = []
-        for (columnname, columntype) in self._recordset._columns:
-            vals.append(columntype.value_for_string(attributes.get(columnname, 
-                                                                   '')))
+        for column in self._recordset._columns:
+            (columnname, columntype) = column
+            vals.append(columntype.value_for_string(
+                            attributes.get(columnname.lower(), '')))
         return tuple(vals)
 
-class GPRecordSet(GPBaseType):
+class GPRecordSet(GPBaseType, ColumnHaver):
     """Represents a geoprocessing recordset parameter"""
-    _columns = None
+    #_columns = None
     def __init__(self, arg):
         self.features = arg
         if self._columns is None:
