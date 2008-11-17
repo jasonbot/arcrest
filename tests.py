@@ -185,19 +185,22 @@ class GPServerTests(unittest.TestCase):
                                 arcrest.gptypes.GPFeatureRecordSetLayer),
                      "Expected recordsetlayer, got %r" % type(results.Output))
         for feature in results.Output.features:
-            self.assert_(isinstance(feature, 
+            self.assert_(set(feature.keys()) == 
+                         set(['geometry', 'attributes']),
+                         "Expected two keys, got %r" % feature.keys())
+            self.assert_(isinstance(feature['geometry'],
                                     arcrest.geometry.Polyline),
                          "Expected polyline got %r" %
                             type(results.Output.features))
         print
         print "===="
         print results.Output._columns
-        print results.Output.cursor().description
-        self.assert_(all(isinstance(row, tuple) for row in results.Output), 
-                     "Expected tuple values for all rows")
+        self.assert_(all(isinstance(row['attributes'], dict) 
+                         for row in results.Output), 
+                     "Expected dict values for all attributes")
         for row in results.Output:
             print "ROW", row
-            print "    FID: ", row.fid
+            print "    FID: ", row['attributes']['fid']
         print "===="
         print results.messages
     def testExecuteSync2(self):

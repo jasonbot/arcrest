@@ -111,31 +111,38 @@ class GPFeatureRecordSetLayer(GPBaseType):
     def __init__(self, Geometry, sr=None):
         if isinstance(Geometry, geometry.Geometry):
             Geometry = [Geometry]
-        self.features = Geometry
+        self._features = Geometry
         if sr:
             self.spatialReference = geometry.SpatialReference(sr)
-        elif len(self.features):
+        elif len(self._features):
             self.spatialReference = geometry.SpatialReference(
-                                        self.features[0].spatialReference)
+                                        self._features[0].spatialReference)
         else:
             raise ValueError("Could not determine spatial reference")
-        if self._columns is None:
+        if self._columns is None and self._features:
             _columns = sorted(reduce(lambda x, y: x | y, 
                                    (set(getattr(row, 'attributes', {}).keys())
-                                   for row in self.features)))
+                                   for row in self._features)))
             if 'shape' not in (col.lower() for col in _columns):
                 _columns = ['shape'] + _columns
             self._columns = tuple(_columns)
     @property
+    def features(self):
+        return list(self)
+    def __iter__(self):
+        return ({'geometry': feature, 
+                 'attributes': getattr(feature, 'attributes', {})} 
+                 for feature in self._features)
+    @property
     def _json_struct(self):
-        geometry_types = set(geom.__geometry_type__ for geom in self.features)
+        geometry_types = set(geom.__geometry_type__ for geom in self._features)
         assert len(geometry_types) == 1, "Must have consistent geometries"
         geometry_type = list(geometry_types)[0]
         return {
                     'geometryType': geometry_type,
                     'spatialReference': self.spatialReference._json_struct,
                     'features': [
-                        x._json_struct_for_featureset for x in self.features]
+                        x._json_struct_for_featureset for x in self._features]
                }
     @classmethod
     def from_json_struct(cls, value):
@@ -156,6 +163,8 @@ class GPRecordSet(GPBaseType):
                                    (set(row['attributes'].keys()) 
                                    for row in self.features)))
             self._columns = tuple(self._columns)
+    def __iter__(self):
+        return (feature for feature in self.features)
 
 class GPDate(GPBaseType):
     """Represents a geoprocessing date parameter. The format parameter
