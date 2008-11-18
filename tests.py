@@ -235,6 +235,23 @@ class GPServerTests(unittest.TestCase):
         #print job.results
         #print job.messages
         #print job.results['Output_Feature_Layer'].features
+    def testExecuteAsync3(self):
+        import time
+
+        def writeJobInfo(job):
+            print job.jobId
+            while job.running:
+                time.sleep(0.25)
+            print job.jobStatus
+            print job.url
+            for msg in job.messages:
+                print msg
+
+        #run OutTableViewParamTest
+        bvt = arcrest.GPService("http://na2k3/arcgis/rest/services/GP/ByValTools/GPServer/?f=json")
+        job = bvt.OutTblViewParamTests.SubmitJob()
+        writeJobInfo(job)
+        r = job.results
 
 class GPTypeTests(unittest.TestCase):
     def testGPDate(self):

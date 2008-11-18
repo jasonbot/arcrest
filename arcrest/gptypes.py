@@ -162,9 +162,12 @@ class GPRecordSet(GPBaseType):
             _columns = sorted(reduce(lambda x, y: x | y, 
                                    (set(row['attributes'].keys()) 
                                    for row in self.features)))
-            self._columns = tuple(self._columns)
+            self._columns = tuple(_columns)
     def __iter__(self):
         return (feature for feature in self.features)
+    @classmethod
+    def from_json_struct(cls, json):
+        return cls(json['features'])
 
 class GPDate(GPBaseType):
     """Represents a geoprocessing date parameter. The format parameter
