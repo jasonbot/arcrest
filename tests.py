@@ -2,6 +2,16 @@ import arcrest
 import test.test_support
 import unittest
 
+class MultiUrl(object):
+    _urls = ["http://flame6:8399/arcgis/rest/services",
+             "http://flame5/arcgis/rest/services"]
+    @classmethod
+    def multiurltest(cls, fn):
+        def execute(self):
+            for url in cls._urls:
+                fn(self, url)
+        return execute
+
 class GeometryTests(unittest.TestCase):
     def testCreatePoint(self):
         pt = arcrest.geometry.Point(5.1, 5.5)
@@ -37,43 +47,47 @@ class GeometryTests(unittest.TestCase):
                         "Not a multipoint")
 
 class RestURLTests(unittest.TestCase):
-    def testURLInstatiatesAtAll(self):
-        url = "http://flame6:8399/arcgis/rest/services?f=json"
+    @MultiUrl.multiurltest
+    def testURLInstatiatesAtAll(self, url):
         urlobject = arcrest.RestURL(url)
-    def testUrlMakerHasContents(self):
-        url = "http://flame6:8399/arcgis/rest/services?f=json"
+    @MultiUrl.multiurltest
+    def testUrlMakerHasContents(self, url):
         urlobject = arcrest.RestURL(url)
         urlobject._contents
 
 class ServerTests(unittest.TestCase):
-    def testConnectToServer(self):
+    @MultiUrl.multiurltest
+    def testConnectToServer(self, url):
         server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
-    def testUrl(self):
-        server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
-        self.failUnless(server.url == 
-                        'http://flame6:8399/arcgis/rest/services/?f=json', 
+    @MultiUrl.multiurltest
+    def testUrl(self, url):
+        server = arcrest.Catalog(url)
+        self.failUnless(server.url == url + '/?f=json', 
                         "URL is not formed correctly")
-    def testServiceList(self):
-        server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
+    @MultiUrl.multiurltest
+    def testServiceList(self, url):
+        server = arcrest.Catalog(url)
         self.failUnless(set(server.servicenames) == set(["Geometry"]),
                         "Services list does not match")
-    def testFolderList(self):
-        server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
+    @MultiUrl.multiurltest
+    def testFolderList(self, url):
+        server = arcrest.Catalog(url)
         self.failUnless(set(server.foldernames) == 
                         set(["CachedMaps", "Geocode", "Geodata", "Globes",
                              "GP",  "Maps"]), 
                         "Folder list does not match")
-    def testSecondFolderTest(self):
-        server = arcrest.Catalog("http://flame5/ArcGIS/rest/services")
+    @MultiUrl.multiurltest
+    def testSecondFolderTest(self, url):
+        server = arcrest.Catalog(url)
         folders = server.folders
 
         known_400s = set([
-            "http://flame5/ArcGIS/rest/services/GP/ClosestFacilitiesService/"
-              "GPServer/Find Nearby Libraries/?f=json",
-            "http://flame5/ArcGIS/rest/services/GP/DriveTimePolygonsService/"
-              "GPServer/Calculate Drive Time Polygons/?f=json",
-            "http://flame5/ArcGIS/rest/services/GP/ShortestRouteService/"
-              "GPServer/Calculate Shortest Route and Text Directions/?f=json"
+            "%s/GP/ClosestFacilitiesService/GPServer/"
+            "Find Nearby Libraries/" % url,
+            "%s/GP/DriveTimePolygonsService/GPServer/"
+            "Calculate Drive Time Polygons/?f=json" % url,
+            "%s/GP/ShortestRouteService/GPServer/"
+            "Calculate Shortest Route and Text Directions/?f=json" % url
         ])
         for folder in folders:
             services = folder.services
@@ -87,26 +101,32 @@ class ServerTests(unittest.TestCase):
                         except:
                             self.assert_(task.url in known_400s,
                                          "Unknown failure: %r" % task.url)
-    def testHasContents(self):
-        server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
+    @MultiUrl.multiurltest
+    def testHasContents(self, url):
+        server = arcrest.Catalog(url)
         server._contents
-    def testHasJSON(self):
-        server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
+    @MultiUrl.multiurltest
+    def testHasJSON(self, url):
+        server = arcrest.Catalog(url)
         server._json_struct
-    def testGetService(self):
-        server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
+    @MultiUrl.multiurltest
+    def testGetService(self, url):
+        server = arcrest.Catalog(url)
         service = server.Geometry
         self.assert_(isinstance(service, arcrest.Service), "Not a service.")
-    def testGetFolder(self): 
-        server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
+    @MultiUrl.multiurltest
+    def testGetFolder(self, url): 
+        server = arcrest.Catalog(url)
         folder = server.Geocode
         self.assert_(isinstance(folder, arcrest.Folder), "Not a folder.")
-    def testFolderIsNotAServiceByAnyMeans(self): 
-        server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
+    @MultiUrl.multiurltest
+    def testFolderIsNotAServiceByAnyMeans(self, url): 
+        server = arcrest.Catalog(url)
         folder = server.Geocode
         self.failIf(isinstance(folder, arcrest.Service), "Not a service.")
-    def testGPServiceAmbiguity(self):
-        server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
+    @MultiUrl.multiurltest
+    def testGPServiceAmbiguity(self, url):
+        server = arcrest.Catalog(url)
         gp = server.GP
         self.assert_(not isinstance(gp.ByRefTools, 
                                      (arcrest.GPService, arcrest.MapService)),
@@ -118,32 +138,34 @@ class ServerTests(unittest.TestCase):
                                                            byreftools2.url))
 
 class MapServerTests(unittest.TestCase):
-    def testGetMapService(self):
-        url = "http://flame6:8399/arcgis/rest/services/"
+    @MultiUrl.multiurltest
+    def testGetMapService(self, url):
         server = arcrest.Catalog(url)
         mapservice = server.Maps.Redlands.MapServer
         self.assert_(isinstance(mapservice, arcrest.MapService),
                      "Not a map service")
-    def testLayerNames(self):
-        url = "http://flame6:8399/arcgis/rest/services/"
+    @MultiUrl.multiurltest
+    def testLayerNames(self, url):
         server = arcrest.Catalog(url)
         mapservice = server.Maps.Redlands.MapServer
         self.assert_(set(mapservice.layernames) ==
                      set(['Streets', 'Parcels', 'Redlands image']),
                      "Layer names did not match up")
-    def testLayers(self):
-        url = "http://flame6:8399/arcgis/rest/services/"
+    @MultiUrl.multiurltest
+    def testLayers(self, url):
         server = arcrest.Catalog(url)
         mapservice = server.Maps.Redlands.MapServer
         self.assert_(all(isinstance(layer, arcrest.MapLayer) 
                      for layer in mapservice.layers), "Layers aren't layers")
 
 class GeocodeServerTests(unittest.TestCase):
-    def testConnect(self):
-        server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
+    @MultiUrl.multiurltest
+    def testConnect(self, url):
+        server = arcrest.Catalog(url)
         geocoder = server.Geocode.California
-    def testFindCandidates(self):
-        server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
+    @MultiUrl.multiurltest
+    def testFindCandidates(self, url):
+        server = arcrest.Catalog(url)
         geocoder = server.Geocode.California
         # The Troubadour in Hollywood
         results = geocoder.FindAddressCandidates(
@@ -151,8 +173,8 @@ class GeocodeServerTests(unittest.TestCase):
                                              City="LOS ANGELES",
                                              Zip=90069)
         results.candidates
-    def testReverseGeocode(self):
-        url = "http://flame6:8399/arcgis/rest/services"
+    @MultiUrl.multiurltest
+    def testReverseGeocode(self, url):
         geocoder = arcrest.Catalog(url).Geocode.California
         # Some random spot in San Francisco
         point = arcrest.geometry.Point(-122.405634, 37.780959)
@@ -165,20 +187,21 @@ class GeocodeServerTests(unittest.TestCase):
                      "Expected point for location")
 
 class GPServerTests(unittest.TestCase):
-    def testGetGPService(self):
-        url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
+    @MultiUrl.multiurltest
+    def testGetGPService(self, url):
         server = arcrest.Catalog(url)
         gp = server.Elevation.ESRI_Elevation_World.GPServer
         self.assert_(isinstance(gp, arcrest.GPService), "Not a GP service")
-    def testGetGPTasks(self):
+    @MultiUrl.multiurltest
+    def testGetGPTasks(self, url):
         url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
         server = arcrest.Catalog(url)
         gp = server.Elevation.ESRI_Elevation_World.GPServer
         self.assert_(all(isinstance(task, arcrest.GPTask) 
                          for task in gp.tasks), "Tasks aren't tasks")
-    def testExecuteSynchronousGPTask(self):
-        url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
-        server = arcrest.Catalog(url)
+    def testExecuteMessageInABottle(self):
+        sampurl = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
+        server = arcrest.Catalog(sampurl)
         results = server.Specialty.ESRI_Currents_World.MessageInABottle(
             arcrest.geometry.Point(0, 0, spatialReference=4326), 5)
         self.assert_(isinstance(results.Output,
@@ -258,10 +281,10 @@ class GPTypeTests(unittest.TestCase):
         date = arcrest.GPDate("2008-11-5")
         date.format
         #print date._json_struct
-    def testGPDateGPCall(self):
+    @MultiUrl.multiurltest
+    def testGPDateGPCall(self, url):
         import time
-        bvt = arcrest.GPService("http://nb2k3/arcgis/rest/services/GP/"
-                                "ByValTools/GPServer/")
+        bvt = arcrest.GPService("%s/GP/ByValTools/GPServer/" % url)
         gpdt = arcrest.GPDate.from_json_struct({"date": "4/6/07", 
                                                 "format": "M/d/y"})
         job2 = bvt.SimpleParamTest(arcrest.GPString("hello"),
@@ -285,21 +308,21 @@ class GPTypeTests(unittest.TestCase):
         rsl = arcrest.GPFeatureRecordSetLayer(arcrest.Point(1000000,1000000))
         repr(rsl)
         str(rsl)
-    def testGPRasterDataLayerType(self):
+    @MultiUrl.multiurltest
+    def testGPRasterDataLayerType(self, url):
         import time
-        bvt = arcrest.GPService("http://nb2k3/arcgis/rest/services/GP/"
-                                "ByValTools/GPServer/")
+        bvt = arcrest.GPService("%s/GP/ByValTools/GPServer/" % url)
         job = bvt.OutRasterLayerParamTest.SubmitJob()
         while job.running:
             time.sleep(0.25)
         r = job.results
         print type(r['Output_Raster_Layer'])
         print repr(r['Output_Raster_Layer'])
-    def testGPOutTableParam(self):
+    @MultiUrl.multiurltest
+    def testGPOutTableParam(self, url):
         import sys
         import time
-        otv = arcrest.GPService("http://nb2k3/ArcGIS/rest/services/GP/"
-                                "ByValTools/GPServer/")
+        otv = arcrest.GPService("%s/GP/ByValTools/GPServer/" % url)
         job = otv.OutTblViewParamTests()
         print job, job.jobId, dir(job)
         while job.running:
@@ -311,14 +334,14 @@ class GPTypeTests(unittest.TestCase):
         print job.Output_Table_View._columns
 
 class GeometryServerTests(unittest.TestCase):
-    def testGetGeometryService(self):
-        url = "http://flame6:8399/arcgis/rest/services"
+    @MultiUrl.multiurltest
+    def testGetGeometryService(self, url):
         server = arcrest.Catalog(url)
         geo = server.Geometry
         self.assert_(isinstance(geo, arcrest.GeometryService),
                      "Not a geometry service")
-    def testBufferAPoint(self):
-        url = "http://flame6:8399/arcgis/rest/services"
+    @MultiUrl.multiurltest
+    def testBufferAPoint(self, url):
         server = arcrest.Catalog(url)
         geo = server.Geometry
         point = arcrest.geometry.Point(-122.405634, 37.780959,
