@@ -192,8 +192,7 @@ class GPServerTests(unittest.TestCase):
         server = arcrest.Catalog(url)
         gp = server.Elevation.ESRI_Elevation_World.GPServer
         self.assert_(isinstance(gp, arcrest.GPService), "Not a GP service")
-    @MultiUrl.multiurltest
-    def testGetGPTasks(self, url):
+    def testGetGPTasks(self):
         url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
         server = arcrest.Catalog(url)
         gp = server.Elevation.ESRI_Elevation_World.GPServer
