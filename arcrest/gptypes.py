@@ -168,6 +168,9 @@ class GPRecordSet(GPBaseType):
     @classmethod
     def from_json_struct(cls, json):
         return cls(json['features'])
+    @property
+    def _json_struct(self):
+        return { 'features': self.features }
 
 class GPDate(GPBaseType):
     """Represents a geoprocessing date parameter. The format parameter
