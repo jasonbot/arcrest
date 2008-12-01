@@ -17,8 +17,11 @@ import projections
 def pointlist(points, sr):
     """Convert a list of the form [[x, y] ...] to a list of Point instances
        with the given x, y coordinates."""
-    assert all(len(pt) == 2 for pt in points), "Point(s) not in [x, y] form"
-    return [Point(coord[0], coord[1], sr) for coord in points]
+    assert all(isinstance(pt, Point) or len(pt) == 2 
+               for pt in points), "Point(s) not in [x, y] form"
+    return [coord if isinstance(coord, Point) 
+                  else Point(coord[0], coord[1], sr)
+            for coord in points]
 
 def listofpointlist(ptlist, sr):
     """Convert a list of the form [[[x, y] ...] ...] to a list of lists of 
@@ -32,6 +35,9 @@ class Geometry(object):
        on geometry types."""
     def __init__(self):
         raise NotImplementedError("Cannot instantiate abstract geometry type")
+    def __len__(self):
+        raise NotImplementedError("Length not implemented for %r" % 
+                                   self.__class__.__name__)
     @property
     def _json_struct_without_sr(self):
         return self._json_struct
@@ -76,6 +82,11 @@ class SpatialReference(Geometry):
         self.wkid = wkid
     def __repr__(self):
         return "<Spatial Reference %r>" % self.wkid
+    def __len__(self):
+        if self.wkid is None:
+            return 0
+        else:
+            return 1
     @property
     def _json_struct(self):
         return {'wkid': self.wkid}
@@ -114,7 +125,12 @@ class Point(Geometry):
         self.x, self.y, self.spatialReference = \
             float(x), float(y), spatialReference
     def __repr__(self):
-        return "POINT(%i %i)" % (self.x, self.y)
+        return "POINT(%0.5f %0.5f)" %("%0.5f" % self.x if isinstance(self.x, float)
+                                                else str(self.x),
+                                      "%0.5f" % self.y if isinstance(self.y, float)
+                                                else str(self.y))
+    def __len__(self):
+        return 2
     @property
     def _json_struct_without_sr(self):
         return {'x': self.x,
@@ -145,12 +161,15 @@ class Polyline(Geometry):
         self.spatialReference = spatialReference
         self.paths = listofpointlist(paths, spatialReference)
     def __repr__(self):
-        return "MULTILINESTRING(%s)" % "".join(
-                                        "".join(
+        return "MULTILINESTRING(%s)" % " ".join(
+                                        "(%s)"%"".join(
                                            ",".join(
-                                                " ".join(str(x) for x in pt)
+                                                " ".join("%0.5f"%x if isinstance(x, float)
+                                                            else str(x) for x in pt)
                                             for pt in path)) 
                                         for path in self._json_paths)
+    def __len__(self):
+        return len(self.paths)
     @property
     def _json_paths(self):
         def fixpath(somepath):
@@ -187,12 +206,15 @@ class Polygon(Geometry):
         self.spatialReference = spatialReference
         self.rings = listofpointlist(rings, spatialReference)
     def __repr__(self):
-        return "POLYGON(%s)" % "".join(
-                                        "".join(
+        return "POLYGON(%s)" % " ".join(
+                                        "(%s)"%"".join(
                                            ",".join(
-                                                " ".join(str(x) for x in pt)
+                                                " ".join("%0.5f"%x if isinstance(x, float)
+                                                            else str(x) for x in pt)
                                             for pt in ring)) 
                                         for ring in self._json_rings)
+    def __len__(self):
+        return len(self.rings)
     @property
     def _json_rings(self):
         def fixring(somering):
@@ -226,8 +248,10 @@ class Multipoint(Geometry):
         self.spatialReference = spatialReference
         self.points = pointlist(points, spatialReference)
     def __repr__(self):
-        return "MULTIPOINT(%s)" % ",".join("%f %f" % map(float, pt)
+        return "MULTIPOINT(%s)" % ",".join("%0.5f %0.5f" % map(float, pt)
                                            for pt in self._json_points)
+    def __len__(self):
+        return len(self.points)
     @property
     def _json_points(self):
         def fixpoint(somepointarray):

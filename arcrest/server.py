@@ -982,7 +982,7 @@ class GPTask(RestURL):
            Geoprocessing Job object. Parameters are passed in either in order
            or as keywords."""
         fp = self.__expandparamstodict(params, kw)
-        return self._get_subfolder('submitJob/', GPJob, fp)
+        return self._get_subfolder('submitJob/', GPJob, fp)._jobstatus
     def __call__(self, *params, **kw):
         if self.synchronous:
             return self.Execute(*params, **kw)

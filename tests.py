@@ -1,4 +1,5 @@
 import arcrest
+import functools
 import test.test_support
 import unittest
 
@@ -7,16 +8,85 @@ class MultiUrl(object):
              "http://flame5/arcgis/rest/services"]
     @classmethod
     def multiurltest(cls, fn):
-        def execute(self):
-            for url in cls._urls:
-                fn(self, url)
-        return execute
+        @functools.wraps(fn)
+        def newcase(self):
+            for i, url in enumerate(cls._urls):
+                return fn(self, url)
+        return newcase
 
 class GeometryTests(unittest.TestCase):
+    def testSpatialReference(self):
+        sr = arcrest.SpatialReference(26944)
+        self.assert_((sr.name, sr.wkid) == 
+                        ('NAD_1983_StatePlane_California_IV_FIPS_0404', 26944))
     def testCreatePoint(self):
+        #create point with numbers
         pt = arcrest.geometry.Point(5.1, 5.5)
+        self.assert_((pt.x, pt.y) == (5.1, 5.5), "Bad point values")
+        #create a point with strings
         pt = arcrest.geometry.Point('10', '45.33')
-        self.assert_((pt.x, pt.y) == (10., 45.33))
+        self.assert_((pt.x, pt.y) == (10., 45.33), "Bad point values")
+        #create a point with a spatial reference
+        sr = arcrest.SpatialReference(26944)
+        pt = arcrest.Point(1959660, 640000, 26944)
+        self.assert_((pt.x, pt.y, pt.spatialReference) == 
+                        (1959660.0, 640000.0, sr), "Bad point created")
+    def testCreatePolyLine(self):
+        def testPolyLine(pl, pths):
+            self.assert_(isinstance(pl, arcrest.geometry.Polyline),
+                         "Not a line")
+            self.assert_(isinstance(pl.paths[0][0], arcrest.geometry.Point), 
+                         "path doesn't contain points")
+            for i in range(0, len(pl.paths)):
+                for j in range(0, len(pl.paths[i])):
+                    pt1a = pl.paths[i][j]
+                    pt1b = pths[i][j]
+                    if isinstance(pt1b, arcrest.geometry.Point):
+                        self.assert_((pt1a.x, pt1a.y, pt1a.spatialReference) ==
+                                     (pt1b.x, pt1b.y, pt1b.spatialReference), 
+                                     "Bad line created")
+                    else:
+                        self.assert_((pt1a.x, pt1a.y) ==
+                                     (pt1b[0], pt1b[1]), "Bad line created")
+            
+        sr = arcrest.SpatialReference(26944)
+        pt1 = arcrest.geometry.Point(1959660, 640000, 26944)
+        pt2 = arcrest.geometry.Point(1959800, 640500, 26944)
+        #create polyline from core structures (lists)
+        polyline = arcrest.geometry.Polyline([[[1959660, 640000],
+                                               [1959800, 640500]]], 26944)
+        testPolyLine(polyline, [[[1959660, 640000],[1959800, 640500]]])
+        #create polyline from arcrest classes (Points)
+        polyline = arcrest.geometry.Polyline([[pt1, pt2]], 26944)
+        testPolyLine(polyline, [[pt1, pt2]])
+    def testCreatePolygon(self):
+        def testPolygon(pl, rngs):
+            self.assert_(isinstance(pl, arcrest.geometry.Polygon),
+                         "Not a polygon")
+            self.assert_(isinstance(pl.rings[0][0], arcrest.geometry.Point),
+                         "ring doesn't contain points")
+            for i in range(0, len(pl.rings)):
+                for j in range(0, len(pl.rings[i])):
+                    pt1a = pl.rings[i][j]
+                    pt1b = rngs[i][j]
+                    if isinstance(pt1b, arcrest.geometry.Point):
+                        self.assert_((pt1a.x, pt1a.y, pt1a.spatialReference) ==
+                                     (pt1b.x, pt1b.y, pt1b.spatialReference), 
+                                     "Bad polygon created")
+                    else:
+                        self.assert_((pt1a.x, pt1a.y) ==
+                                     (pt1b[0], pt1b[1]), "Bad polygon created")
+            
+        sr = arcrest.SpatialReference(26944)
+        pt1 = arcrest.geometry.Point(1959660, 640000, 26944)
+        pt2 = arcrest.geometry.Point(1959800, 640500, 26944)
+        pt3 = arcrest.geometry.Point(1959925, 640250, 26944)
+        #create polyline from core structures (lists)
+        polygon = arcrest.geometry.Polygon([[[1959660, 640000],[1959800, 640500],[1959925, 640250]]], 26944)
+        testPolygon(polygon, [[[1959660, 640000],[1959800, 640500],[1959925, 640250]]])
+        #create polyline from arcrest classes (Points)
+        polygon = arcrest.geometry.Polygon([[pt1, pt2, pt3]], 26944)
+        testPolygon(polygon, [[pt1, pt2, pt3]])
     def testCreateFromJsonStructures(self):
         sr = {'wkid': '102113'}
         spatialref = arcrest.geometry.convert_from_json(sr)
@@ -58,7 +128,7 @@ class RestURLTests(unittest.TestCase):
 class ServerTests(unittest.TestCase):
     @MultiUrl.multiurltest
     def testConnectToServer(self, url):
-        server = arcrest.Catalog("http://flame6:8399/arcgis/rest/services")
+        server = arcrest.Catalog(url)
     @MultiUrl.multiurltest
     def testUrl(self, url):
         server = arcrest.Catalog(url)
@@ -190,12 +260,12 @@ class GPServerTests(unittest.TestCase):
     @MultiUrl.multiurltest
     def testGetGPService(self, url):
         server = arcrest.Catalog(url)
-        gp = server.Elevation.ESRI_Elevation_World.GPServer
+        gp = server.GP.ByValTools.GPServer
         self.assert_(isinstance(gp, arcrest.GPService), "Not a GP service")
-    def testGetGPTasks(self):
-        url = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/"
+    @MultiUrl.multiurltest
+    def testGetGPTasks(self, url):
         server = arcrest.Catalog(url)
-        gp = server.Elevation.ESRI_Elevation_World.GPServer
+        gp = server.GP.FunctionalityTools.GPServer
         self.assert_(all(isinstance(task, arcrest.GPTask) 
                          for task in gp.tasks), "Tasks aren't tasks")
     def testExecuteMessageInABottle(self):
@@ -205,7 +275,7 @@ class GPServerTests(unittest.TestCase):
             arcrest.geometry.Point(0, 0, spatialReference=4326), 5)
         self.assert_(isinstance(results.Output,
                                 arcrest.gptypes.GPFeatureRecordSetLayer),
-                     "Expected recordsetlayer, got %r" % type(results.Output))
+                     "Expected GPFeatureRecordSetLayer, got %r" % type(results.Output))
         for feature in results.Output.features:
             self.assert_(set(feature.keys()) == 
                          set(['geometry', 'attributes']),
@@ -225,54 +295,54 @@ class GPServerTests(unittest.TestCase):
             print "    FID: ", row['attributes']['fid']
         print "===="
         print results.messages
-    def testExecuteSync2(self):
+    @MultiUrl.multiurltest
+    def testASync1(self, url):
         import time
-        bvt = arcrest.GPService("http://flame6:8399/arcgis/rest/services/"
-                                "GP/ByValTools/GPServer/?f=json")
-        job1 = bvt.OutFeatureLayerParamTest.SubmitJob()
-        while job1.running:
+        bvt = arcrest.GPService("%s/GP/ByValTools/GPServer/?f=json" % url)
+        job = bvt.OutFeatureLayerParamTest.SubmitJob()
+        while job.running:
             time.sleep(0.25)
-        r = job1.results
-    def testExecuteAsynchronousGPTask(self):
+        self.assert_(job.jobStatus == "esriJobSucceeded",
+                     "testAsync1 (OutFeatureLayerParamTest) submitjob test failed")
+        r = job.results
+        self.assert_(isinstance(r['Output_Feature_Layer'],
+                                arcrest.gptypes.GPFeatureRecordSetLayer),
+                     "Expected GPFeatureRecordSetLayer, got %r" % type(r['Output_Feature_Layer']))
+    @MultiUrl.multiurltest
+    def testASync2(self, url):
         import time
-        url = "http://flame6:8399/arcgis/rest/services/"
-        server = arcrest.Catalog(url)
-        gp = server.GP.FunctionalityTools.GPServer.LongProcessTool
-        job = gp(2.0)
-        start = time.time()
-        while job.running and (time.time() - start < 4.0):
-            time.sleep(0.15)
-        self.assert_(time.time() - start < 4.0, "Took too long to execute")
-        self.assert_(job.Output_String == "Done Sleeping",
-                     "Output didn't match")
-    def testExecuteAsync2(self):
-        import time
-        task = arcrest.GPTask("http://flame6:8399/arcgis/rest/services/"
-                              "GP/ByValTools/GPServer/"
-                              "OutFeatureLayerParamTest")
+        task = arcrest.GPTask("%s/GP/ByValTools/GPServer/OutFeatureLayerParamTest" % url)
         job = task()
         while job.running:
             time.sleep(0.25)
-        #print "****"
-        #print job.results
-        #print job.messages
-        #print job.results['Output_Feature_Layer'].features
-    def testExecuteAsync3(self):
+        self.assert_(job.jobStatus == "esriJobSucceeded",
+                     "testAsync2 (OutFeatureLayerParamTest) submitjob test failed")
+        r = job.results
+    @MultiUrl.multiurltest
+    def testJobObject(self, url):
         import time
 
-        def writeJobInfo(job):
-            print job.jobId
+        def testJobInfo(job):
+            jobid = job.jobId
+            self.assert_(jobid.startswith("j") == True,
+                         "testJobObject Failed: Bad jobid")
             while job.running:
                 time.sleep(0.25)
-            print job.jobStatus
-            print job.url
+            if job.jobStatus == "esriJobSucceeded":
+                expjobid = "%s/GP/ByValTools/GPServer/OutTblViewParamTests/jobs/%s/?f=json" % (url, jobid)
+                self.assert_(job.url == expjobid,
+                             "testJobObject Failed: job.url is invalid.\nExpected job.url: %s \nReceived job.url: %s" % (expjobid, job.url))
+            else:
+                self.assert_(job.jobStatus == "esriJobSucceeded",
+                             "testJobObject can not be completed: job failed")
+            self.assert_(isinstance(job.messages, list), "testJobObject Failed: job.messages did not return a list")
             for msg in job.messages:
                 print msg
 
         #run OutTableViewParamTest
-        bvt = arcrest.GPService("http://na2k3/arcgis/rest/services/GP/ByValTools/GPServer/?f=json")
+        bvt = arcrest.GPService("%s/GP/ByValTools/GPServer/?f=json" % url)
         job = bvt.OutTblViewParamTests.SubmitJob()
-        writeJobInfo(job)
+        testJobInfo(job)
         r = job.results
 
 class GPTypeTests(unittest.TestCase):
