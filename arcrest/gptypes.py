@@ -181,6 +181,7 @@ class GPDate(GPBaseType):
        http://docs.python.org/library/time.html#time.strftime"""
     #: default date format
     __date_format = "%a %b %d %H:%M:%S %Z %Y"
+    #: secondary (fallback) date format
     __secondary_date_format = "%m/%d/%Y %I:%M:%S %p"
 
     def __init__(self, date, format="%Y-%m-%d"):
