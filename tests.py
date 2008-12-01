@@ -87,30 +87,30 @@ class GeometryTests(unittest.TestCase):
         testPolygon(polygon, [[pt1, pt2, pt3]])
     def testCreateFromJsonStructures(self):
         sr = {'wkid': '102113'}
-        spatialref = arcrest.geometry.convert_from_json(sr)
+        spatialref = arcrest.geometry.fromJson(sr)
         self.assert_(
             isinstance(spatialref, arcrest.geometry.SpatialReference),
                         "Not a spatial reference")
         pt = {'x': '-111.2', 'y': '110.3',
               'spatialReference': {'wkid': '102113'}}
-        point = arcrest.geometry.convert_from_json(pt)
+        point = arcrest.geometry.fromJson(pt)
         self.assert_(isinstance(point, arcrest.geometry.Point), "Not a point")
         pl = {'paths': [[[10, 10], [15, 15]], 
                        [[50, 50], [51, 51], [52, 52]]],
               'spatialReference': {'wkid': '102113'}}
-        polyline = arcrest.geometry.convert_from_json(pl)
+        polyline = arcrest.geometry.fromJson(pl)
         self.assert_(isinstance(polyline, arcrest.geometry.Polyline), 
                         "Not a polyline")
         pg = {'rings': [[[10, 10], [15, 15], [18, 18], [10, 10]], 
                        [[50, 50], [52, 51], [52, 54], [50, 50]]],
               'spatialReference': {'wkid': '102113'}}
-        polygon = arcrest.geometry.convert_from_json(pg)
+        polygon = arcrest.geometry.fromJson(pg)
         self.assert_(isinstance(polygon, arcrest.geometry.Polygon), 
                         "Not a polygon")
         mp = {'points': [[10, 10], [15, 15], [18, 18], [10, 10], 
                          [50, 50], [52, 51], [52, 54], [50, 50]],
               'spatialReference': {'wkid': '102113'}}
-        multipoint = arcrest.geometry.convert_from_json(mp)
+        multipoint = arcrest.geometry.fromJson(mp)
         self.assert_(isinstance(multipoint, arcrest.geometry.Multipoint), 
                         "Not a multipoint")
 

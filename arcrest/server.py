@@ -453,7 +453,7 @@ class MapLayer(Layer):
         return self._json_struct['maxScale']
     @property
     def extent(self):
-        return geometry.convert_from_json(self._json_struct['extent'])
+        return geometry.fromJson(self._json_struct['extent'])
     @property
     def displayField(self):
         return self._json_struct['displayField']
@@ -479,7 +479,7 @@ class ExportMapResult(JsonResult):
         return self._json_struct['height']
     @property
     def extent(self):
-        return geometry.convert_from_json(self._json_struct['extent'])
+        return geometry.fromJson(self._json_struct['extent'])
     @property
     def scale(self):
         return self._json_struct['scale']
@@ -608,17 +608,17 @@ class MapService(Service):
     @property
     def spatialReference(self):
         """This map's Spatial Reference"""
-        return geometry._convert_from_json(
+        return geometry._fromJson(
                                         self._json_struct['spatialReference'])
     @property
     def initialExtent(self):
         """This map's initial extent"""
-        return geometry._convert_from_json(
+        return geometry._fromJson(
                                         self._json_struct['initialExtent'])
     @property
     def fullExtent(self):
         """This map's full extent"""
-        return geometry._convert_from_json(
+        return geometry._fromJson(
                                         self._json_struct['fullExtent'])
     @property
     def layernames(self):
@@ -645,7 +645,7 @@ class FindAddressCandidatesResult(JsonResult):
             for candidate in self._json_struct['candidates']:
                 newcandidate = candidate.copy()
                 newcandidate['location'] = \
-                    geometry.convert_from_json(newcandidate['location'])
+                    geometry.fromJson(newcandidate['location'])
                 yield newcandidate
         return list(cditer())
 
@@ -660,7 +660,7 @@ class ReverseGeocodeResult(JsonResult):
         return self._json_struct['address']
     @property
     def location(self):
-        return geometry.convert_from_json(self._json_struct['location'])
+        return geometry.fromJson(self._json_struct['location'])
     def __getitem__(self, attr):
         return self._json_struct['address'][attr]
     def __getattr__(self, attr):
@@ -1027,7 +1027,7 @@ class GeometryResult(JsonResult):
 
     @property
     def geometries(self):
-        return [geometry.convert_from_json(geo) 
+        return [geometry.fromJson(geo) 
                 for geo in self._json_struct['geometries']]
 
 class LengthsResult(JsonResult):
@@ -1203,7 +1203,7 @@ class ExportImageResult(JsonResult):
         return self._json_struct['height']
     @property
     def extent(self):
-        return geometry.convert_from_json(self._json_struct['extent'])
+        return geometry.fromJson(self._json_struct['extent'])
     def save(self, outfile):
         """Save the image data to a file or file-like object"""
         if isinstance(outfile, basestring):
@@ -1413,7 +1413,7 @@ class GeoDataReplica(RestURL):
         return self._json_struct['queryGeometryType']
     @property
     def queryGeometry(self):
-        return geometry.convert_from_json(self._json_struct['queryGeometry'])
+        return geometry.fromJson(self._json_struct['queryGeometry'])
     @property
     def transferRelatedObjects(self):
         return self._json_struct['transferRelatedObjects']
@@ -1474,7 +1474,7 @@ class GlobeLayer(Layer):
         return self._json_struct['description']
     @property
     def extent(self):
-        return geometry.convert_from_json(self._json_struct['extent'])
+        return geometry.fromJson(self._json_struct['extent'])
     @property
     def dataType(self):
         return self._json_struct['dataType']

@@ -308,7 +308,7 @@ class Envelope(Geometry):
     def from_json_struct(cls, struct):
         return cls(**struct)
 
-def convert_from_json(struct, attributes=None):
+def fromJson(struct, attributes=None):
     "Convert a JSON struct to a Geometry based on its structure"
     indicative_attributes = {
         'x': Point,

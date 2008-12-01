@@ -146,9 +146,9 @@ class GPFeatureRecordSetLayer(GPBaseType):
                }
     @classmethod
     def from_json_struct(cls, value):
-        spatialreference = geometry.convert_from_json(
+        spatialreference = geometry.fromJson(
                                                     value['spatialReference'])
-        geometries = [geometry.convert_from_json(geo['geometry'], 
+        geometries = [geometry.fromJson(geo['geometry'], 
                                                  geo['attributes']) 
                         for geo in value['features']]
         return cls(geometries, spatialreference)
