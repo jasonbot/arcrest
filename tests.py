@@ -1,5 +1,4 @@
 import arcrest
-import functools
 import test.test_support
 import unittest
 
@@ -8,11 +7,10 @@ class MultiUrl(object):
              "http://flame5/arcgis/rest/services"]
     @classmethod
     def multiurltest(cls, fn):
-        @functools.wraps(fn)
-        def newcase(self):
-            for i, url in enumerate(cls._urls):
-                return fn(self, url)
-        return newcase
+        def execute(self):
+            for url in cls._urls:
+                fn(self, url)
+        return execute
 
 class GeometryTests(unittest.TestCase):
     def testSpatialReference(self):
