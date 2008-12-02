@@ -222,7 +222,7 @@ class Polygon(Geometry):
             assert (self.spatialReference is None or \
                     self.spatialReference.wkid is None) or \
                     (pt.spatialReference is None or \
-                     pt.spatialReference.wkid is None) or \ 
+                     pt.spatialReference.wkid is None) or \
                    self.spatialReference == pt.spatialReference, \
                    "Spatial references do not match."
         else:
