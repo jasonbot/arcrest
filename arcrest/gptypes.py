@@ -43,7 +43,7 @@ class GPSimpleType(GPBaseType):
     def _json_struct(self):
         return self.__conversion__(self.value)
     @classmethod
-    def from_json_struct(cls, value):
+    def fromJson(cls, value):
         return cls.__conversion__(value)
 
 class GPBoolean(GPSimpleType):
@@ -92,7 +92,7 @@ class GPLinearUnit(GPBaseType):
     def _json_struct(self):
         return {'distance': self.distance, 'units': self.units}
     @classmethod
-    def from_json_struct(cls, val):
+    def fromJson(cls, val):
         return cls(val['distance'], val['units'])
 
 def rowtuple(colnames):
@@ -145,7 +145,7 @@ class GPFeatureRecordSetLayer(GPBaseType):
                         x._json_struct_for_featureset for x in self._features]
                }
     @classmethod
-    def from_json_struct(cls, value):
+    def fromJson(cls, value):
         spatialreference = geometry.fromJson(
                                                     value['spatialReference'])
         geometries = [geometry.fromJson(geo['geometry'], 
@@ -166,7 +166,7 @@ class GPRecordSet(GPBaseType):
     def __iter__(self):
         return (feature for feature in self.features)
     @classmethod
-    def from_json_struct(cls, json):
+    def fromJson(cls, json):
         return cls(json['features'])
     @property
     def _json_struct(self):
@@ -208,7 +208,7 @@ class GPDate(GPBaseType):
                 'format': self.format.replace('%', '')}
         #return self.date.strftime(self.__date_format)
     @classmethod
-    def from_json_struct(cls, value):
+    def fromJson(cls, value):
         if isinstance(value, dict):
             datestring = value['date']
             formatstring = value['format']
@@ -229,7 +229,7 @@ class GPDataFile(GPBaseType):
     def _json_struct(self):
         return {'url': self.url}
     @classmethod
-    def from_json_struct(cls, value):
+    def fromJson(cls, value):
         return cls(value['url'])
 
 class GPUrlWithFormatType(GPBaseType):
@@ -245,7 +245,7 @@ class GPUrlWithFormatType(GPBaseType):
     def _json_struct(self):
         return {'url': self.url, 'format': self.format}
     @classmethod
-    def from_json_struct(cls, value):
+    def fromJson(cls, value):
         return cls(value['url'], value['format'])
 
 class GPRasterData(GPUrlWithFormatType):

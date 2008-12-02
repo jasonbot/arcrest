@@ -54,7 +54,7 @@ class Geometry(object):
     def __str__(self):
         return json.dumps(self._json_struct)
     @classmethod
-    def from_json_struct(cls, struct):
+    def fromJson(cls, struct):
         raise NotImplementedError("Unimplemented convert from JSON")
 
 class SpatialReference(Geometry):
@@ -113,7 +113,7 @@ class SpatialReference(Geometry):
                 raise KeyError("Not a known projection name.")
         return property(get_, set_)
     @classmethod
-    def from_json_struct(cls, struct):
+    def fromJson(cls, struct):
         return cls(int(struct['wkid']))
 
 class Point(Geometry):
@@ -143,7 +143,7 @@ class Point(Geometry):
                                     if self.spatialReference is None \
                                     else self.spatialReference._json_struct}
     @classmethod
-    def from_json_struct(cls, struct):
+    def fromJson(cls, struct):
         if isinstance(struct, (list, tuple)) and len(struct) == 2:
             return cls(*struct)
         else:
@@ -190,7 +190,7 @@ class Polyline(Geometry):
         return {'paths': self._json_paths,
                 'spatialReference': self.spatialReference._json_struct}
     @classmethod
-    def from_json_struct(cls, struct):
+    def fromJson(cls, struct):
         return cls(**struct)
 
 class Polygon(Geometry):
@@ -270,7 +270,7 @@ class Polygon(Geometry):
         return {'rings': self._json_rings,
                 'spatialReference': self.spatialReference._json_struct}
     @classmethod
-    def from_json_struct(cls, struct):
+    def fromJson(cls, struct):
         return cls(**struct)
 
 class Multipoint(Geometry):
@@ -307,7 +307,7 @@ class Multipoint(Geometry):
         return {'points': self._json_points,
                 'spatialReference': self.spatialReference._json_struct}
     @classmethod
-    def from_json_struct(cls, struct):
+    def fromJson(cls, struct):
         return cls(**struct)
 
 class Envelope(Geometry):
@@ -340,7 +340,7 @@ class Envelope(Geometry):
         return ",".join(str(attr) for attr in 
                             (self.xmin, self.ymin, self.xmax, self.ymax))
     @classmethod
-    def from_json_struct(cls, struct):
+    def fromJson(cls, struct):
         return cls(**struct)
 
 def fromJson(struct, attributes=None):
@@ -360,7 +360,7 @@ def fromJson(struct, attributes=None):
     if isinstance(struct, dict):
         for key, cls in indicative_attributes.iteritems():
             if key in struct:
-                ret = cls.from_json_struct(struct)
+                ret = cls.fromJson(struct)
                 if attributes:
                     ret.attributes = dict((key.lower(), val) 
                                            for key, val 

@@ -417,7 +417,7 @@ class MapLayer(Layer):
                                                'outFields': outFields,
                                                'returnGeometry': returnGeometry,
                                                'outSR': outSR})
-        return gptypes.GPFeatureRecordSetLayer.from_json_struct(
+        return gptypes.GPFeatureRecordSetLayer.fromJson(
                                                                out._json_struct)
     @property
     def id(self):
@@ -854,7 +854,7 @@ class GPJobStatus(RestURL):
                     if datatype is None:
                         conversion = str
                     else:
-                        conversion = datatype.from_json_struct
+                        conversion = datatype.fromJson
                     dt = result['paramName']
                     val = conversion(result['value'])
                     yield (dt, val)
@@ -929,7 +929,7 @@ class GPExecutionResult(JsonResult):
                     if datatype is None:
                         conversion = str
                     else:
-                        conversion = datatype.from_json_struct
+                        conversion = datatype.fromJson
                     dt = result['paramName']
                     val = conversion(result['value'])
                     yield (dt, val)
