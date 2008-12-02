@@ -864,6 +864,10 @@ class GPJobStatus(RestURL):
     def messages(self):
         "Return a list of messages returned from the server."
         return map(GPMessage, self._json_struct['messages'])
+    def __getitem__(self, key):
+        return self.__class__.results.__get__(self)[key]
+    def __getattr__(self, attr):
+        return self.__class__.results.__get__(self)[attr]
 
 class GPJob(JsonResult):
     """The GP job resource represents a job submitted using the submit job
