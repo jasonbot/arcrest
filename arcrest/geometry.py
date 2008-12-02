@@ -215,6 +215,34 @@ class Polygon(Geometry):
                                         for ring in self._json_rings)
     def __len__(self):
         return len(self.rings)
+    def contains(self, pt):
+        if isinstance(pt, Point):
+            ptx, pty = pt.x, pt.y
+        else:
+            ptx, pty = pt
+        in_shape = False
+        # Ported nearly line-for-line from ths JS
+        for ring in self._json_rings:
+            for idx in range(len(ring)):
+                idxp1 = idx + 1
+                if idxp1 >= len(ring):
+                    idxp1 -= len(ring)
+                pi, pj = ring[idx], ring[idxp1]
+                # Divide-by-zero checks
+                if (pi[1] == pj[1]) and pty >= min((pi[1], pj[1])):
+                    if ptx < max((pi[0], pj[0])):
+                        in_shape = not in_shape
+                elif (pi[0] == pj[0]) and pty >= min((pi[0], pj[0])):
+                    if ptx < max((pi[1], pj[1])):
+                        in_shape = not in_shape
+                elif (((pi[1] < pty and pj[1] >= pty) or 
+                     (pj[1] < pty and pi[1] >= pty)) and 
+                    (pi[0] + (pty - pi[1]) / 
+                     (pj[1] - pi[1]) * (pj[0] - pi[0]) < ptx)):
+                    in_shape = not in_shape
+        return in_shape
+    def __contains__(self, pt):
+        return self.contains(pt)
     @property
     def _json_rings(self):
         def fixring(somering):
