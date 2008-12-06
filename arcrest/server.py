@@ -303,6 +303,8 @@ class Service(RestURL):
             type.__init__(name, bases, dict)
             if hasattr(cls, '__service_type__'):
                 Folder._service_type_mapping[cls.__service_type__] = cls
+                if cls.__service_type__:
+                    setattr(cls, cls.__service_type__, property(lambda x: x))
     @property
     def serviceDescription(self):
         """Get a short description of the service. Will return None if there is
@@ -314,27 +316,6 @@ class Service(RestURL):
                                    if self.serviceDescription
                                    else '',
                                 self.url)
-    def __getattr__(self, attr):
-        # Special-cased __getattr__ -- if a folder has an unambiguous service
-        # by name it will return a Service instance, otherwise it will return
-        # an AmbiguousService instance with accessors. For example,
-        # http://flame6:8399/arcgis/rest/services/GP has ByRefTools as a
-        # MapServer and a GPServer, so
-        #    >>> server = Catalog("http://flame6:8399/arcgis/rest/services/")
-        #    >>> server.GP.ByRefTools
-        # has an ambiguous match, meaning you need to access
-        #    >>> server.GP.ByRefTools.GPServer
-        # to get to the GP version of the service, but
-        #    >>> server.GP.DriveTimePolygons
-        # gives you the GPServer. This gives and inconsistent interface,
-        # because then
-        #    >>> server.GP.DriveTimePolygons.GPServer
-        # doesn't work and that's inconsistent. Meant to be a balance between
-        # ease-of-use and explicitness.
-        if attr == self.__service_type__:
-            return self
-        raise AttributeError("%r does not have attribute %r" % 
-                             (self.__class__.__name__, attr))
 
 class ServerError(Exception):
     """Exception for server-side error responses"""
@@ -483,11 +464,16 @@ class ExportMapResult(JsonResult):
     @property
     def scale(self):
         return self._json_struct['scale']
+    @property
+    def data(self):
+        if not hasattr(self, '_data'):
+            self._data = urllib2.urlopen(self.href).read()
+        return self._data
     def save(self, outfile):
         """Save the image data to a file or file-like object"""
         if isinstance(outfile, basestring):
             outfile = open(outfile, 'wb')
-        outfile.write(urllib2.urlopen(self.href).read())
+        outfile.write(self.data)
 
 class IdentifyOrFindResult(JsonResult):
     """Represents the result of a Find or Identify operation performed on a
@@ -608,17 +594,17 @@ class MapService(Service):
     @property
     def spatialReference(self):
         """This map's Spatial Reference"""
-        return geometry._fromJson(
+        return geometry.fromJson(
                                         self._json_struct['spatialReference'])
     @property
     def initialExtent(self):
         """This map's initial extent"""
-        return geometry._fromJson(
+        return geometry.fromJson(
                                         self._json_struct['initialExtent'])
     @property
     def fullExtent(self):
         """This map's full extent"""
-        return geometry._fromJson(
+        return geometry.fromJson(
                                         self._json_struct['fullExtent'])
     @property
     def layernames(self):

@@ -125,12 +125,17 @@ class Point(Geometry):
         self.x, self.y, self.spatialReference = \
             float(x), float(y), spatialReference
     def __repr__(self):
-        return "POINT(%0.5f %0.5f)" %("%0.5f" % self.x if isinstance(self.x, float)
+        return "POINT(%0.5f %0.5f)" %("%0.5f" % self.x
+                                                if isinstance(self.x, float)
                                                 else str(self.x),
-                                      "%0.5f" % self.y if isinstance(self.y, float)
+                                      "%0.5f" % self.y 
+                                                if isinstance(self.y, float)
                                                 else str(self.y))
     def __len__(self):
         return 2
+    def __iter__(self):
+        yield self.x
+        yield self.y
     @property
     def _json_struct_without_sr(self):
         return {'x': self.x,
@@ -164,8 +169,9 @@ class Polyline(Geometry):
         return "MULTILINESTRING(%s)" % " ".join(
                                         "(%s)"%"".join(
                                            ",".join(
-                                                " ".join("%0.5f"%x if isinstance(x, float)
-                                                            else str(x) for x in pt)
+                                                " ".join("%0.5f"%x 
+                                                       if isinstance(x, float)
+                                                       else str(x) for x in pt)
                                             for pt in path)) 
                                         for path in self._json_paths)
     def __len__(self):
@@ -209,8 +215,9 @@ class Polygon(Geometry):
         return "POLYGON(%s)" % " ".join(
                                         "(%s)"%"".join(
                                            ",".join(
-                                                " ".join("%0.5f"%x if isinstance(x, float)
-                                                            else str(x) for x in pt)
+                                                " ".join("%0.5f"%x 
+                                                      if isinstance(x, float)
+                                                      else str(x) for x in pt)
                                             for pt in ring)) 
                                         for ring in self._json_rings)
     def __len__(self):
@@ -321,6 +328,24 @@ class Envelope(Geometry):
         self.spatialReference = spatialReference
         self.xmin, self.ymin, self.xmax, self.ymax = \
             float(xmin), float(ymin), float(xmax), float(ymax)
+    def __contains__(self, pt):
+        if isinstance(pt, Point):
+            assert pt.spatialReference is None or \
+                   self.spatialReference is None or\
+                   pt.spatialReference == self.spatialReference, \
+                   "Incompatible spatial reference for point"
+            x, y = pt.x, pt.y
+        else:
+            x, y = pt[:2]
+        return (self.xmax >= x >= self.xmin) and (self.ymax >= y >= self.ymin)
+    def __bool__(self):
+        return bool(self.wkid is not None)
+    @property
+    def top(self):
+        return Point(self.xmin, self.ymin, self.spatialReference)
+    @property
+    def bottom(self):
+        return Point(self.xmax, self.ymax, self.spatialReference)
     @property
     def _json_struct_without_sr(self):
         return {'xmin': self.xmin, 
