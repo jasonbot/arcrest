@@ -5,6 +5,8 @@ import server
 
 """A collection of Tkinter classes for displaying a dynamic map service"""
 
+
+
 class MapActionButton(object):
     action = True
     @staticmethod
@@ -223,8 +225,12 @@ class MapServiceWindow(Tkinter.Frame):
         self.mappanel = MapCanvas(self)
         self.toollabels = []
         for tool in self.tools:
-            label = Tkinter.Label(self.toolbar, text=tool.toolname, 
-                                  relief=Tkinter.RAISED, borderwidth=2)
+            config = {'relief': Tkinter.RAISED, 'borderwidth': 2}
+            if hasattr(tool, 'toolgraphic'):
+                config['image'] = Tkinter.PhotoImage(data=tool.toolgraphic)
+            else:
+                config['text'] = tool.toolname
+            label = Tkinter.Label(self.toolbar, **config)
             if not self.mappanel.action:
                 self.mappanel.action = tool
                 label.config(relief=Tkinter.SUNKEN)

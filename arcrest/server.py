@@ -316,6 +316,12 @@ class Service(RestURL):
                                    if self.serviceDescription
                                    else '',
                                 self.url)
+    @property
+    def url(self):
+        """The URL as a string of the resource."""
+        if not self._url[2].endswith('/'):
+            self._url[2] += '/'
+        return RestURL.url.__get__(self)
 
 class ServerError(Exception):
     """Exception for server-side error responses"""
@@ -473,6 +479,8 @@ class ExportMapResult(JsonResult):
         """Save the image data to a file or file-like object"""
         if isinstance(outfile, basestring):
             outfile = open(outfile, 'wb')
+        assert hasattr(outfile, 'write') and callable(outfile.write), \
+            "Expect a file or file-like object with a .write() method"
         outfile.write(self.data)
 
 class IdentifyOrFindResult(JsonResult):
