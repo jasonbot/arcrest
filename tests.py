@@ -352,7 +352,7 @@ class GPTypeTests(unittest.TestCase):
     def testGPDateGPCall(self, url):
         import time
         bvt = arcrest.GPService("%s/GP/ByValTools/GPServer/" % url)
-        gpdt = arcrest.GPDate.from_json_struct({"date": "4/6/07", 
+        gpdt = arcrest.GPDate.fromJson({"date": "4/6/07", 
                                                 "format": "M/d/y"})
         job2 = bvt.SimpleParamTest(arcrest.GPString("hello"),
                                    gpdt,

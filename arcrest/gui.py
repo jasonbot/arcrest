@@ -89,6 +89,10 @@ class PanTool(MapCanvasMethods):
         self.clickpair = (event.x, event.y)
     @staticmethod
     def unclick(self, event):
+        if not hasattr(self, 'graphicoffset'):
+            return
+        if not hasattr(self, '_graphicoffset'):
+            return
         oldx, oldy = self.graphicoffset
         newx, newy = self._graphicoffset
         pixdiff = abs(newx - oldx) + abs(newy - oldy)
@@ -173,12 +177,19 @@ class MapCanvas(Tkinter.Canvas):
                                 borderwidth=2,
                                 width=self.width, height=self.height)
         self.graphicoffset = (0, 0)
+        self.bind("<Configure>", self.configure)
         self.bind("<Motion>", self.move)
         self.bind("<B1-Motion>", self.drag)
         self.bind("<Button-1>", self.click)
         self.bind("<ButtonRelease-1>", self.unclick)
         self.bind("<Double-Button-1>", self.doubleclick)
         self.updateGraphics()
+    def configure(self, event):
+        #for k in sorted(key for key in dir(event) if not key.startswith('_')):
+        #    print k, getattr(event, k, "???")
+        if (self.width, self.height) != (event.width, event.height):
+            self.width, self.height = event.width, event.height
+        print "----"
     def move(self, event):
         self.action.move(self, event)
     def drag(self, event):
@@ -260,7 +271,10 @@ class MapServiceWindow(Tkinter.Frame):
                             tool_.unfocus(self)
                     if tool.action:
                         self.update()
-                        tool.do(self.mappanel)
+                        try:
+                            tool.do(self.mappanel)
+                        except:
+                            pass
                         lbl.config(relief=Tkinter.RAISED)
                         oldlbl.config(relief=Tkinter.SUNKEN)
                 return selection
@@ -288,7 +302,12 @@ class MapServiceWindow(Tkinter.Frame):
 
         self.labelframe.pack(side=Tkinter.LEFT, fill=Tkinter.Y)
         self.toolbar.pack(side=Tkinter.TOP, fill=Tkinter.X)
-        self.mappanel.pack(side=Tkinter.BOTTOM)
+        self.mappanel.pack(side=Tkinter.BOTTOM, fill=Tkinter.BOTH)
+    def conf(self, event):
+        for k in sorted(key for key in dir(event) if not key.startswith('_')):
+            print k, getattr(event, k, "???")
+        print "****"
+
     def __init__(self, service, width=800, height=600):
         root = Tkinter.Tk()
         assert isinstance(service, server.MapService)
@@ -300,8 +319,9 @@ class MapServiceWindow(Tkinter.Frame):
         root.title(self.service.mapName or self.service.description)
         Tkinter.Frame.__init__(self, root)
         self.createWidgets(width, height)
-        self.pack()
-        root.wm_resizable(None, None)        
+        self.pack(fill=Tkinter.BOTH)
+        root.wm_resizable(None, None)
+        self.bind('<Configure>', self.conf)
     def mapGraphic(self, extent=None, size="800,600"):
         exported = self.service.ExportMap(bbox=extent,
                                           format=('gif' 

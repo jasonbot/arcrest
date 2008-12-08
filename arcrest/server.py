@@ -305,6 +305,14 @@ class Service(RestURL):
                 Folder._service_type_mapping[cls.__service_type__] = cls
                 if cls.__service_type__:
                     setattr(cls, cls.__service_type__, property(lambda x: x))
+    def __init__(self, url):
+        if not isinstance(url, (tuple, list)):
+            url_ = list(urlparse.urlsplit(url))
+        else:
+            url_ = url
+        if not url_[2].endswith('/'):
+            url_[2] += "/"
+        super(Service, self).__init__(url_)
     @property
     def serviceDescription(self):
         """Get a short description of the service. Will return None if there is
@@ -316,12 +324,6 @@ class Service(RestURL):
                                    if self.serviceDescription
                                    else '',
                                 self.url)
-    @property
-    def url(self):
-        """The URL as a string of the resource."""
-        if not self._url[2].endswith('/'):
-            self._url[2] += '/'
-        return RestURL.url.__get__(self)
 
 class ServerError(Exception):
     """Exception for server-side error responses"""
@@ -404,8 +406,7 @@ class MapLayer(Layer):
                                                'outFields': outFields,
                                                'returnGeometry': returnGeometry,
                                                'outSR': outSR})
-        return gptypes.GPFeatureRecordSetLayer.fromJson(
-                                                               out._json_struct)
+        return gptypes.GPFeatureRecordSetLayer.fromJson(out._json_struct)
     @property
     def id(self):
         return self._json_struct['id']
