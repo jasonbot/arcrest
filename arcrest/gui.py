@@ -5,8 +5,6 @@ import server
 
 """A collection of Tkinter classes for displaying a dynamic map service"""
 
-
-
 class MapActionButton(object):
     action = True
     @staticmethod
@@ -96,8 +94,6 @@ class PanTool(MapCanvasMethods):
             bottom = newbox.bottom
             if top not in self.parent.service.fullExtent or \
                bottom not in self.parent.service.fullExtent:
-                print str(self.parent.service.fullExtent), \
-                      str(top), str(bottom)
                 self.graphicoffset = oldoffset
                 oldx, oldy = self.graphicoffset
                 self.coords(self.mapgraphicid, oldx, oldy)
@@ -157,23 +153,22 @@ class ZoomOut50Percent(MapActionButton):
         self.updateGraphics()
 
 class MapCanvas(Tkinter.Canvas):
-    def __init__(self, parent):
+    def __init__(self, parent, width=800, height=600):
         self.action = None
         self.parent = parent
+        self.width = width
+        self.height = height
+        self.extent = self.parent.service.fullExtent
         Tkinter.Canvas.__init__(self, parent, relief=Tkinter.SUNKEN,
                                 borderwidth=2,
-                                width=800, height=600)
-        self.extent, data = self.parent.mapGraphic(
-                                                self.parent.service.fullExtent)
-        self.mapgraphic = Tkinter.PhotoImage(data=data)
-        self.mapgraphicid = self.create_image(0, 0, anchor=Tkinter.NW, 
-                                              image=self.mapgraphic)
+                                width=self.width, height=self.height)
         self.graphicoffset = (0, 0)
         self.bind("<Motion>", self.move)
         self.bind("<B1-Motion>", self.drag)
         self.bind("<Button-1>", self.click)
         self.bind("<ButtonRelease-1>", self.unclick)
         self.bind("<Double-Button-1>", self.doubleclick)
+        self.updateGraphics()
     def move(self, event):
         self.action.move(self, event)
     def drag(self, event):
@@ -185,17 +180,17 @@ class MapCanvas(Tkinter.Canvas):
     def doubleclick(self, event):
         self.action.doubleclick(self, event)
     def pixelToPointCoord(self, x, y):
-        adjx, adjy = x - self.graphicoffset[0], (600 - y) - \
+        adjx, adjy = x - self.graphicoffset[0], (self.height - y) - \
                                                 self.graphicoffset[1]
         xoffset, xmultiplier = self.extent.xmin, \
                                self.extent.xmax - self.extent.xmin
         yoffset, ymultiplier = self.extent.ymin, \
                                self.extent.ymax - self.extent.ymin
-        posx = xoffset + (adjx/800. * xmultiplier)
-        posy = yoffset + (adjy/600. * ymultiplier)
+        posx = xoffset + (adjx/float(self.width) * xmultiplier)
+        posy = yoffset + (adjy/float(self.height) * ymultiplier)
         return geometry.Point(posx, posy, self.parent.extent.spatialReference)
     def panExtent(self):
-        ctr = self.pixelToPointCoord(400, 300)
+        ctr = self.pixelToPointCoord(self.width/2., self.height/2.)
         x = self.extent.xmin + (self.extent.xmax - self.extent.xmin)/2.
         y = self.extent.ymin + (self.extent.ymax - self.extent.ymin)/2.
         xd = x - ctr.x
@@ -204,7 +199,8 @@ class MapCanvas(Tkinter.Canvas):
         y1, y2 = (self.extent.ymin - yd, self.extent.ymax - yd)
         return geometry.Envelope(x1, y1, x2, y2, self.extent.spatialReference)
     def updateGraphics(self):
-        self.extent, data = self.parent.mapGraphic(self.extent)
+        self.extent, data = self.parent.mapGraphic(self.extent, "%i,%i"%
+                                                    (self.width, self.height))
         if hasattr(self, 'mapgraphic'):
             del self.mapgraphic
         if hasattr(self, 'mapgraphicid'):
@@ -219,11 +215,13 @@ class MapServiceWindow(Tkinter.Frame):
     tools = (PanTool, ZoomToExtent, 
              ZoomInTool, ZoomIn50Percent, 
              ZoomOutTool, ZoomOut50Percent)
-    def createWidgets(self):
+    def createWidgets(self, width, height):
         self.toolbar = Tkinter.Frame(self, relief=Tkinter.RAISED, 
                                      borderwidth=2)
-        self.mappanel = MapCanvas(self)
+        self.mappanel = MapCanvas(self, width, height)
+        self.labelframe = Tkinter.Frame(self)
         self.toollabels = []
+        # Set up top toolbar buttons
         for tool in self.tools:
             config = {'relief': Tkinter.RAISED, 'borderwidth': 2}
             if hasattr(tool, 'toolgraphic'):
@@ -260,25 +258,48 @@ class MapServiceWindow(Tkinter.Frame):
             label.bind("<Button-1>", selector(tool))
             self.toollabels.append((label, tool))
 
+        # Set up layer view
+        for layer in self.service.layers:
+            def command(layer, var):
+                def cmd():
+                    if var.get() == "ON":
+                        self.visiblelayers.add(layer.id)
+                    else:
+                        self.visiblelayers.remove(layer.id)
+                    self.mappanel.updateGraphics()
+                return cmd
+            labelbutton = Tkinter.Checkbutton(self.labelframe, 
+                                              text=layer.name,
+                                              onvalue="ON",
+                                              offvalue="OFF")
+            var = Tkinter.StringVar(master=labelbutton, value="ON")
+            labelbutton.config(command=command(layer, var), variable=var)
+            labelbutton.pack(side=Tkinter.TOP)
+
+        self.labelframe.pack(side=Tkinter.LEFT, fill=Tkinter.Y)
         self.toolbar.pack(side=Tkinter.TOP, fill=Tkinter.X)
         self.mappanel.pack(side=Tkinter.BOTTOM)
     def rp(self, event):
         self.pack()
-    def __init__(self, service):
+    def __init__(self, service, width=800, height=600):
         root = Tkinter.Tk()
         assert isinstance(service, server.MapService)
         assert service._json_struct['singleFusedMapCache'] is False, \
             "This sample only works with dynamic map services"
         self.service = service
+        self.visiblelayers = set(layer.id for layer in self.service.layers)
         self.extent = self.service.fullExtent
         root.title(self.service.mapName or self.service.description)
         Tkinter.Frame.__init__(self, root)
-        self.createWidgets()
+        self.createWidgets(width, height)
         self.pack()
         self.bind('<Configure>', self.rp)
-    def mapGraphic(self, extent=None):
+    def mapGraphic(self, extent=None, size="800,600"):
         exported = self.service.ExportMap(bbox=extent,
-                                          format='gif', size="800,600")
+                                          format='gif', size=size,
+                                          layers='show:%s'%','.join(
+                                                sorted(str(id) for id in
+                                                        self.visiblelayers)))
         self.width = exported.width
         self.height = exported.height
         self.extent = exported.extent
