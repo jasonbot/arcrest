@@ -1,7 +1,14 @@
-import base64
 import geometry
 import Tkinter
 import server
+
+try:
+    from PIL.ImageTk import PhotoImage
+    has_PIL = True
+except ImportError, e:
+    from Tkinter import PhotoImage
+    import base64
+    has_PIL = False
 
 """A collection of Tkinter classes for displaying a dynamic map service"""
 
@@ -115,12 +122,18 @@ class ZoomOutTool(BoxSelection):
     toolname = "Zoom Out"
     @staticmethod
     def selectedExtent(self, extent):
-        x1d = extent.xmin + (self.extent.xmin - extent.xmin)
-        y1d = extent.ymin + (self.extent.ymin - extent.ymin)
-        x2d = extent.xmax + (self.extent.xmax - extent.xmax)
-        y2d = extent.ymax + (self.extent.ymax - extent.ymax)
+        xmin, xmax = sorted((self.extent.xmin, self.extent.xmax))
+        ymin, ymax = sorted((self.extent.ymin, self.extent.ymax))
+        x1d = xmin - (xmin - extent.xmin)
+        y1d = ymin + (ymin - extent.ymin)
+        x2d = xmax - (xmax - extent.xmax)
+        y2d = ymax + (ymax - extent.ymax)
+        oe = self.extent
         self.extent = geometry.Envelope(x1d, y1d, x2d, y2d, 
                                         self.extent.spatialReference)
+        for atr in ('xmin' , 'ymin', 'xmax', 'ymax'):
+            print "\t", atr, getattr(oe, atr), getattr(self.extent, atr)
+        print "----"
         self.updateGraphics()
 
 class ZoomToExtent(MapActionButton):
@@ -205,7 +218,7 @@ class MapCanvas(Tkinter.Canvas):
             del self.mapgraphic
         if hasattr(self, 'mapgraphicid'):
             self.delete(self.mapgraphicid)
-        self.mapgraphic = Tkinter.PhotoImage(data=data)
+        self.mapgraphic = PhotoImage(data=data)
         self.mapgraphicid = self.create_image(0, 0, anchor=Tkinter.NW, 
                                               image=self.mapgraphic)
         self.graphicoffset = (0, 0)
@@ -225,7 +238,7 @@ class MapServiceWindow(Tkinter.Frame):
         for tool in self.tools:
             config = {'relief': Tkinter.RAISED, 'borderwidth': 2}
             if hasattr(tool, 'toolgraphic'):
-                config['image'] = Tkinter.PhotoImage(data=tool.toolgraphic)
+                config['image'] = PhotoImage(data=tool.toolgraphic)
             else:
                 config['text'] = tool.toolname
             label = Tkinter.Label(self.toolbar, **config)
@@ -279,8 +292,6 @@ class MapServiceWindow(Tkinter.Frame):
         self.labelframe.pack(side=Tkinter.LEFT, fill=Tkinter.Y)
         self.toolbar.pack(side=Tkinter.TOP, fill=Tkinter.X)
         self.mappanel.pack(side=Tkinter.BOTTOM)
-    def rp(self, event):
-        self.pack()
     def __init__(self, service, width=800, height=600):
         root = Tkinter.Tk()
         assert isinstance(service, server.MapService)
@@ -293,14 +304,20 @@ class MapServiceWindow(Tkinter.Frame):
         Tkinter.Frame.__init__(self, root)
         self.createWidgets(width, height)
         self.pack()
-        self.bind('<Configure>', self.rp)
+        root.wm_resizable(None, None)        
     def mapGraphic(self, extent=None, size="800,600"):
         exported = self.service.ExportMap(bbox=extent,
-                                          format='gif', size=size,
+                                          format=('gif' 
+                                                   if not has_PIL 
+                                                   else 'png24'), size=size,
                                           layers='show:%s'%','.join(
                                                 sorted(str(id) for id in
                                                         self.visiblelayers)))
         self.width = exported.width
         self.height = exported.height
         self.extent = exported.extent
-        return exported.extent, base64.b64encode(exported.data)
+        if not has_PIL:
+            data = base64.b64encode(exported.data)
+        else:
+            data = exported.data
+        return exported.extent, data
