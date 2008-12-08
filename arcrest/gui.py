@@ -131,9 +131,6 @@ class ZoomOutTool(BoxSelection):
         oe = self.extent
         self.extent = geometry.Envelope(x1d, y1d, x2d, y2d, 
                                         self.extent.spatialReference)
-        for atr in ('xmin' , 'ymin', 'xmax', 'ymax'):
-            print "\t", atr, getattr(oe, atr), getattr(self.extent, atr)
-        print "----"
         self.updateGraphics()
 
 class ZoomToExtent(MapActionButton):
