@@ -1,4 +1,4 @@
-import arcrest.gui
+import gui
 import arcrest.server
 import time
 import Tkinter
@@ -8,7 +8,7 @@ message_in_a_bottle_service = \
                              "ArcGIS/rest/services/Specialty/"
                              "ESRI_Currents_World/GPServer/MessageInABottle")
 
-class MessageInABottleButton(arcrest.gui.MapSelectPoint):
+class MessageInABottleButton(gui.MapSelectPoint):
     toolname = "Run message in a bottle"
     @staticmethod
     def do(mapcanvas, point):
@@ -33,15 +33,15 @@ class MessageInABottleButton(arcrest.gui.MapSelectPoint):
             time.sleep(2)
         mapcanvas.delete(text)
 
-class MessageInABottle(arcrest.gui.DynamicMapServiceWindow):
-    tools = arcrest.gui.DynamicMapServiceWindow.tools + \
+class MessageInABottle(gui.DynamicMapServiceWindow):
+    tools = gui.DynamicMapServiceWindow.tools + \
                 (MessageInABottleButton,)
     def __init__(self):
         service = arcrest.server.MapService("http://flame6:8399/arcgis/rest/"
                                             "services/Maps/world/MapServer")
-        arcrest.gui.DynamicMapServiceWindow.__init__(self, service, 800, 600)
+        gui.DynamicMapServiceWindow.__init__(self, service, 800, 600)
     def createWidgets(self, width, height):
-        arcrest.gui.DynamicMapServiceWindow.createWidgets(self, width, height)
+        gui.DynamicMapServiceWindow.createWidgets(self, width, height)
         self.days = Tkinter.IntVar()
         self.days.set(360)
         label = Tkinter.Label(self.toolbar, text="Days:")

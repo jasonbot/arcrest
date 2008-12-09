@@ -1,8 +1,6 @@
-import geometry
-import gptypes
+from arcrest import geometry, gptypes, server
 import time
 import Tkinter
-import server
 
 try:
     from PIL.ImageTk import PhotoImage

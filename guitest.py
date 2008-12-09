@@ -1,4 +1,5 @@
 import arcrest
+import gui
 import random
 
 if __name__ == "__main__":
@@ -9,5 +10,5 @@ if __name__ == "__main__":
           "http://flame4:8399/arcgis/rest/services/Maps/"
             "SanFrancisco-SimpleRoute/MapServer"]
     service = arcrest.server.MapService(random.choice(urls))
-    gui = arcrest.gui.DynamicMapServiceWindow(service, 1000, 800)
-    gui.mainloop()
+    guiwin = gui.DynamicMapServiceWindow(service, 1000, 800)
+    guiwin.mainloop()
