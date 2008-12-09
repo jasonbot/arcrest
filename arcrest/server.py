@@ -69,6 +69,7 @@ class RestURL(object):
         # Set the f= flag to json (so we can interface with it)
         if self.__has_json__ is True:
             query_dict['f'] = 'json'
+        query_dict['v'] = '9.3'
         # Hack our modified query string back into URL components
         urllist[3] = urllib.urlencode(query_dict)
         self._url = urllist
