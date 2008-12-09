@@ -1,4 +1,5 @@
 import geometry
+import gptypes
 import time
 import Tkinter
 import server
@@ -16,159 +17,169 @@ except ImportError, e:
 class MapActionButton(object):
     action = True
     @staticmethod
-    def do(self):
+    def do(mapcanvas):
         pass
 
 class MapCanvasMethods(object):
     action = False
     @staticmethod
-    def move(self, event):
+    def move(mapcanvas, event):
         pass
     @staticmethod
-    def drag(self, event):
+    def drag(mapcanvas, event):
         pass
     @staticmethod
-    def click(self, event):
+    def click(mapcanvas, event):
         pass
     @staticmethod
-    def unclick(self, event):
+    def unclick(mapcanvas, event):
         pass
     @staticmethod
-    def doubleclick(self, event):
+    def doubleclick(mapcanvas, event):
         pass
     @staticmethod
-    def unfocus(self):
+    def unfocus(mapcanvas):
+        pass
+
+class MapSelectPoint(MapCanvasMethods):
+    @classmethod
+    def unclick(cls, mapcanvas, event):
+        point = mapcanvas.pixelToPointCoord(event.x, event.y)
+        cls.do(mapcanvas, point)
+    @staticmethod
+    def do(mapcanvas, pt):
         pass
 
 class BoxSelection(MapCanvasMethods):
     @classmethod
-    def click(cls, self, event):
-        if hasattr(self, 'boxselection'):
-            self.delete(self.boxselection['rect'])
-            del self.boxselection
-        self.boxselection = {}
-        self.boxselection['rect'] = self.create_rectangle(event.x, event.y, 
-                                                          event.x, event.y)
-        self.boxselection['start'] = (event.x, event.y)
-        self.boxselection['end'] = (event.x, event.y)
-        self.boxselection['cls'] = cls
+    def click(cls, mapcanvas, event):
+        if hasattr(mapcanvas, 'boxselection'):
+            mapcanvas.delete(mapcanvas.boxselection['rect'])
+            del mapcanvas.boxselection
+        mapcanvas.boxselection = {}
+        mapcanvas.boxselection['rect'] = mapcanvas.create_rectangle(
+                                                                event.x, event.y,
+                                                                event.x, event.y)
+        mapcanvas.boxselection['start'] = (event.x, event.y)
+        mapcanvas.boxselection['end'] = (event.x, event.y)
+        mapcanvas.boxselection['cls'] = cls
     @staticmethod
-    def drag(self, event):
-        self.boxselection['end'] = (event.x, event.y)
-        x1, y1 = self.boxselection['start']
-        x2, y2 = self.boxselection['end']
-        self.coords(self.boxselection['rect'], x1, y1, x2, y2)
+    def drag(mapcanvas, event):
+        mapcanvas.boxselection['end'] = (event.x, event.y)
+        x1, y1 = mapcanvas.boxselection['start']
+        x2, y2 = mapcanvas.boxselection['end']
+        mapcanvas.coords(mapcanvas.boxselection['rect'], x1, y1, x2, y2)
     @staticmethod
-    def unclick(self, event):
-        self.delete(self.boxselection['rect'])
-        x1, y1 = self.pixelToPointCoord(*self.boxselection['start'])
-        x2, y2 = self.pixelToPointCoord(*self.boxselection['end'])
+    def unclick(mapcanvas, event):
+        mapcanvas.delete(mapcanvas.boxselection['rect'])
+        x1, y1 = mapcanvas.pixelToPointCoord(*mapcanvas.boxselection['start'])
+        x2, y2 = mapcanvas.pixelToPointCoord(*mapcanvas.boxselection['end'])
         x1, x2 = sorted((x1, x2))
         y1, y2 = sorted((y1, y2))
         newextent = geometry.Envelope(x1, y1, x2, y2, 
-                                      self.parent.extent.spatialReference)
-        cls = self.boxselection['cls']
-        del self.boxselection
-        cls.selectedExtent(self, newextent)
+                                      mapcanvas.parent.extent.spatialReference)
+        cls = mapcanvas.boxselection['cls']
+        del mapcanvas.boxselection
+        cls.selectedExtent(mapcanvas, newextent)
     @staticmethod
-    def unfocus(self):
-        if hasattr(self, 'boxselection'):
-            self.delete(self.boxselection['rect'])
-            del self.boxseelction
+    def unfocus(mapcanvas):
+        if hasattr(mapcanvas, 'boxselection'):
+            mapcanvas.delete(mapcanvas.boxselection['rect'])
+            del mapcanvas.boxseelction
 
 class PanTool(MapCanvasMethods):
     toolname = "Pan"
     @staticmethod
-    def drag(self, event):
-        oldx, oldy = self.graphicoffset
-        newx, newy = (oldx - (self.clickpair[0] - event.x), 
-                      oldy - (self.clickpair[1] - event.y))
-        self.coords(self.mapgraphicid, newx, newy)
-        self._graphicoffset = (newx, newy)
+    def drag(mapcanvas, event):
+        oldx, oldy = mapcanvas.graphicoffset
+        newx, newy = (oldx - (mapcanvas.clickpair[0] - event.x), 
+                      oldy - (mapcanvas.clickpair[1] - event.y))
+        mapcanvas.coords(mapcanvas.mapgraphicid, newx, newy)
+        mapcanvas._graphicoffset = (newx, newy)
     @staticmethod
-    def click(self, event):
-        self.clickpair = (event.x, event.y)
+    def click(mapcanvas, event):
+        mapcanvas.clickpair = (event.x, event.y)
     @staticmethod
-    def unclick(self, event):
-        oldx, oldy = self.graphicoffset
-        newx, newy = self._graphicoffset
+    def unclick(mapcanvas, event):
+        oldx, oldy = mapcanvas.graphicoffset
+        newx, newy = mapcanvas._graphicoffset
         pixdiff = abs(newx - oldx) + abs(newy - oldy)
         # Don't need to refresh map, just snap back if it's a small move
         if pixdiff > 8:
-            oldoffset = self.graphicoffset
-            self.graphicoffset = self._graphicoffset
-            newbox = self.panExtent()
+            oldoffset = mapcanvas.graphicoffset
+            mapcanvas.graphicoffset = mapcanvas._graphicoffset
+            newbox = mapcanvas.panExtent()
             top = newbox.top
             bottom = newbox.bottom
-            if top not in self.parent.service.fullExtent or \
-               bottom not in self.parent.service.fullExtent:
-                self.graphicoffset = oldoffset
-                oldx, oldy = self.graphicoffset
-                self.coords(self.mapgraphicid, oldx, oldy)
+            if top not in mapcanvas.parent.service.fullExtent or \
+               bottom not in mapcanvas.parent.service.fullExtent:
+                mapcanvas.graphicoffset = oldoffset
+                oldx, oldy = mapcanvas.graphicoffset
+                mapcanvas.coords(mapcanvas.mapgraphicid, oldx, oldy)
             else:
-                self.extent = newbox
-                self.updateGraphics()
+                mapcanvas.extent = newbox
+                mapcanvas.updateGraphics()
         else:
-            oldx, oldy = self.graphicoffset
-            self.coords(self.mapgraphicid, oldx, oldy)
+            oldx, oldy = mapcanvas.graphicoffset
+            mapcanvas.coords(mapcanvas.mapgraphicid, oldx, oldy)
 
 class ZoomInTool(BoxSelection):
     toolname = "Zoom In"
     @staticmethod
-    def selectedExtent(self, extent):
-        self.extent = extent
-        self.updateGraphics()
+    def selectedExtent(mapcanvas, extent):
+        mapcanvas.extent = extent
+        mapcanvas.updateGraphics()
 
 class ZoomOutTool(BoxSelection):
     toolname = "Zoom Out"
     @staticmethod
-    def selectedExtent(self, extent):
-        xmin, xmax = sorted((self.extent.xmin, self.extent.xmax))
-        ymin, ymax = sorted((self.extent.ymin, self.extent.ymax))
+    def selectedExtent(mapcanvas, extent):
+        xmin, xmax = sorted((mapcanvas.extent.xmin, mapcanvas.extent.xmax))
+        ymin, ymax = sorted((mapcanvas.extent.ymin, mapcanvas.extent.ymax))
         x1d = xmin - (xmin - extent.xmin)
         y1d = ymin + (ymin - extent.ymin)
         x2d = xmax - (xmax - extent.xmax)
         y2d = ymax + (ymax - extent.ymax)
-        oe = self.extent
-        self.extent = geometry.Envelope(x1d, y1d, x2d, y2d, 
-                                        self.extent.spatialReference)
-        self.updateGraphics()
+        oe = mapcanvas.extent
+        mapcanvas.extent = geometry.Envelope(x1d, y1d, x2d, y2d, 
+                                             mapcanvas.extent.spatialReference)
+        mapcanvas.updateGraphics()
 
 class ZoomToExtent(MapActionButton):
     toolname = "Zoom to Full Extent"
     @staticmethod
-    def do(self):
-        self.extent = self.parent.service.fullExtent
-        self.updateGraphics()
+    def do(mapcanvas):
+        mapcanvas.extent = mapcanvas.parent.service.fullExtent
+        mapcanvas.updateGraphics()
 
 class ZoomToInitialExtent(MapActionButton):
     toolname = "Zoom to Initial Extent"
     @staticmethod
-    def do(self):
-        self.extent = self.parent.service.initialExtent
-        self.updateGraphics()
+    def do(mapcanvas):
+        mapcanvas.extent = mapcanvas.parent.service.initialExtent
+        mapcanvas.updateGraphics()
 
 class ZoomIn50Percent(MapActionButton):
     toolname = "Zoom in 50%"
     @staticmethod
-    def do(self):
-        x1, y1, x2, y2 = self.extent.xmin, self.extent.ymin, \
-                         self.extent.xmax, self.extent.ymax
+    def do(mapcanvas):
+        x1, y1, x2, y2 = mapcanvas.extent.xmin, mapcanvas.extent.ymin, \
+                         mapcanvas.extent.xmax, mapcanvas.extent.ymax
         qx = (x2 - x1)/4.
         qy = (y2 - y1)/4.
-        self.extent = geometry.Envelope(x1+qx, y1+qy, x2-qx, y2-qy)
-        self.updateGraphics()
+        mapcanvas.extent = geometry.Envelope(x1+qx, y1+qy, x2-qx, y2-qy)
+        mapcanvas.updateGraphics()
 
 class ZoomOut50Percent(MapActionButton):
     toolname = "Zoom out 50%"
     @staticmethod
-    def do(self):
-        x1, y1, x2, y2 = self.extent.xmin, self.extent.ymin, \
-                         self.extent.xmax, self.extent.ymax
+    def do(mapcanvas):
+        x1, y1, x2, y2 = mapcanvas.extent.xmin, mapcanvas.extent.ymin, \
+                         mapcanvas.extent.xmax, mapcanvas.extent.ymax
         qx = (x2 - x1)/4.
         qy = (y2 - y1)/4.
-        self.extent = geometry.Envelope(x1-qx, y1-qy, x2+qx, y2+qy)
-        self.updateGraphics()
+        mapcanvas.extent = geometry.Envelope(x1-qx, y1-qy, x2+qx, y2+qy)
+        mapcanvas.updateGraphics()
 
 class MapCanvas(Tkinter.Canvas):
     def __init__(self, parent, width=800, height=600):
@@ -188,6 +199,12 @@ class MapCanvas(Tkinter.Canvas):
         self.bind("<ButtonRelease-1>", self.unclick)
         self.bind("<Double-Button-1>", self.doubleclick)
         self.graphics_stale = None
+        self.feature_sets = []
+        self.feature_set_ids = []
+    def addFeatureSet(self, fs):
+        assert isinstance(fs, gptypes.GPFeatureRecordSetLayer)
+        self.feature_sets.append(fs)
+        self.updateFeatureSets()
     def configure(self, event):
         if (self.width, self.height) != (event.width, event.height):
             self.width, self.height = event.width, event.height
@@ -215,6 +232,15 @@ class MapCanvas(Tkinter.Canvas):
         posx = xoffset + (adjx/float(self.width) * xmultiplier)
         posy = yoffset + (adjy/float(self.height) * ymultiplier)
         return geometry.Point(posx, posy, self.parent.extent.spatialReference)
+    def pointToPixelCoord(self, pt):
+        x, y = pt.x, pt.y
+        xoffset, xmultiplier = self.extent.xmin, \
+                               self.extent.xmax - self.extent.xmin
+        yoffset, ymultiplier = self.extent.ymin, \
+                               self.extent.ymax - self.extent.ymin
+        projx = self.width*((x - xoffset)/xmultiplier)
+        projy = self.height - self.height*((y - yoffset)/ymultiplier)
+        return (projx, projy)
     def panExtent(self):
         ctr = self.pixelToPointCoord(self.width/2., self.height/2.)
         x = self.extent.xmin + (self.extent.xmax - self.extent.xmin)/2.
@@ -244,8 +270,42 @@ class MapCanvas(Tkinter.Canvas):
                                               image=self.mapgraphic)
         self.graphicoffset = (0, 0)
         self.graphics_stale = None
+        self.updateFeatureSets()
+    def updateFeatureSets(self):
+        for fs in self.feature_set_ids:
+            self.delete(fs)
+        for featureset in self.feature_sets:
+            for geom in (row['geometry'] for row in featureset):
+                if isinstance(geom, geometry.Point):
+                    x, y = self.pointToPixelCoord(geom)
+                    self.feature_set_ids.append(
+                            self.create_rectangle(x-1,y-1,x+1,y+1,
+                                                 color="red",
+                                                 width=2))
+                elif isinstance(geom, geometry.Polyline):
+                    for path in geom.paths:
+                        pl = []
+                        for pt in path:
+                            map(pl.append, self.pointToPixelCoord(pt))
+                        self.feature_set_ids.append(self.create_line(*pl,
+                                                   **{'fill':'red', 'width':3}))
+                elif isinstance(geom, geometry.Polygon):
+                    for ring in geom.rings:
+                        pl = []
+                        for pt in ring:
+                            map(pl.append, self.pointToPixelCoord(pt))
+                        self.feature_set_ids.append(self.create_polygon(*pl,
+                                                **{'color': 'red', 'width': 2}))
+                elif isinstance(geom, geometry.Multipoint):
+                    for point in geom.points:
+                        x, y = self.pointToPixelCoord(geom)
+                        self.feature_set_ids.append(
+                                self.create_rectangle(x-1,y-1,x+1,y+1,
+                                                          color='red', width=2))
+                else:
+                    print "???", geom
 
-class MapServiceWindow(Tkinter.Frame):
+class DynamicMapServiceWindow(Tkinter.Frame):
     """A pre-built GUI class for displaying non-tiled map services."""
     tools = (PanTool, ZoomToExtent, ZoomToInitialExtent,
              ZoomInTool, ZoomIn50Percent, 
@@ -314,6 +374,7 @@ class MapServiceWindow(Tkinter.Frame):
             labelbutton.config(command=command(layer, var), variable=var)
             labelbutton.pack(side=Tkinter.TOP)
 
+    def doPack(self):
         self.labelframe.pack(side=Tkinter.LEFT, fill=Tkinter.Y)
         self.toolbar.pack(side=Tkinter.TOP, fill=Tkinter.X)
         self.mappanel.pack(side=Tkinter.BOTTOM, fill=Tkinter.BOTH)
@@ -328,6 +389,7 @@ class MapServiceWindow(Tkinter.Frame):
         self.root.title(self.service.mapName or self.service.description)
         Tkinter.Frame.__init__(self, self.root)
         self.createWidgets(width, height)
+        self.doPack()
         self.pack(fill=Tkinter.BOTH)
         self.last_conf = time.time()
         self.later_id = None

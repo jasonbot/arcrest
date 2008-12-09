@@ -340,6 +340,11 @@ class BinaryResult(Result):
        JsonResult, which has an immediately accessible data structure."""
     __has_json__ = False
 
+    @property
+    def data(self):
+        """Return the raw data from this request"""
+        return self._contents
+
     def save(self, outfile):
         """Save the image data to a file or file-like object"""
         if isinstance(outfile, basestring):
