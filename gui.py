@@ -1,4 +1,6 @@
 from arcrest import geometry, gptypes, server
+import base64
+import graphics
 import time
 import Tkinter
 
@@ -87,6 +89,7 @@ class BoxSelection(MapCanvasMethods):
 
 class PanTool(MapCanvasMethods):
     toolname = "Pan"
+    #toolgraphic = graphics.pan
     @staticmethod
     def drag(mapcanvas, event):
         oldx, oldy = mapcanvas.graphicoffset
@@ -123,6 +126,7 @@ class PanTool(MapCanvasMethods):
 
 class ZoomInTool(BoxSelection):
     toolname = "Zoom In"
+    #toolgraphic = graphics.zoominframe
     @staticmethod
     def selectedExtent(mapcanvas, extent):
         mapcanvas.extent = extent
@@ -130,6 +134,7 @@ class ZoomInTool(BoxSelection):
 
 class ZoomOutTool(BoxSelection):
     toolname = "Zoom Out"
+    #toolgraphic = graphics.zoomoutframe
     @staticmethod
     def selectedExtent(mapcanvas, extent):
         xmin, xmax = sorted((mapcanvas.extent.xmin, mapcanvas.extent.xmax))
@@ -145,6 +150,7 @@ class ZoomOutTool(BoxSelection):
 
 class ZoomToExtent(MapActionButton):
     toolname = "Zoom to Full Extent"
+    #toolgraphic = graphics.zoomtoextent
     @staticmethod
     def do(mapcanvas):
         mapcanvas.extent = mapcanvas.parent.service.fullExtent
@@ -159,6 +165,7 @@ class ZoomToInitialExtent(MapActionButton):
 
 class ZoomIn50Percent(MapActionButton):
     toolname = "Zoom in 50%"
+    #toolgraphic = graphics.zoomin
     @staticmethod
     def do(mapcanvas):
         x1, y1, x2, y2 = mapcanvas.extent.xmin, mapcanvas.extent.ymin, \
@@ -170,6 +177,7 @@ class ZoomIn50Percent(MapActionButton):
 
 class ZoomOut50Percent(MapActionButton):
     toolname = "Zoom out 50%"
+    #toolgraphic = graphics.zoomout
     @staticmethod
     def do(mapcanvas):
         x1, y1, x2, y2 = mapcanvas.extent.xmin, mapcanvas.extent.ymin, \
@@ -199,9 +207,9 @@ class MapCanvas(Tkinter.Canvas):
         self.graphics_stale = None
         self.feature_sets = []
         self.feature_set_ids = []
-    def addFeatureSet(self, fs):
+    def addFeatureSet(self, fs, **rendering):
         assert isinstance(fs, gptypes.GPFeatureRecordSetLayer)
-        self.feature_sets.append(fs)
+        self.feature_sets.append((fs, rendering or {'width': 2,'fill': black}))
         self.updateFeatureSets()
     def configure(self, event):
         if (self.width, self.height) != (event.width, event.height):
@@ -272,36 +280,34 @@ class MapCanvas(Tkinter.Canvas):
     def updateFeatureSets(self):
         for fs in self.feature_set_ids:
             self.delete(fs)
-        for featureset in self.feature_sets:
+        for featureset, style in self.feature_sets:
             for geom in (row['geometry'] for row in featureset):
                 if isinstance(geom, geometry.Point):
                     x, y = self.pointToPixelCoord(geom)
                     self.feature_set_ids.append(
-                            self.create_rectangle(x-1,y-1,x+1,y+1,
-                                                 color="red",
-                                                 width=2))
+                            self.create_rectangle(x-1,y-1,x+1,y+1, **style))
                 elif isinstance(geom, geometry.Polyline):
                     for path in geom.paths:
                         pl = []
                         for pt in path:
                             map(pl.append, self.pointToPixelCoord(pt))
-                        self.feature_set_ids.append(self.create_line(*pl,
-                                                   **{'fill':'red', 'width':3}))
+                        self.feature_set_ids.append(self.create_line(*pl, 
+                                                                     **style))
                 elif isinstance(geom, geometry.Polygon):
                     for ring in geom.rings:
                         pl = []
                         for pt in ring:
                             map(pl.append, self.pointToPixelCoord(pt))
                         self.feature_set_ids.append(self.create_polygon(*pl,
-                                                **{'color': 'red', 'width': 2}))
+                                                                      **style))
                 elif isinstance(geom, geometry.Multipoint):
                     for point in geom.points:
                         x, y = self.pointToPixelCoord(geom)
                         self.feature_set_ids.append(
-                                self.create_rectangle(x-1,y-1,x+1,y+1,
-                                                          color='red', width=2))
+                                self.create_rectangle(x-1,y-1,x+1,y+1, 
+                                                      **style))
                 else:
-                    print "???", geom
+                    raise ValueError("What is %r?" % geom)
 
 class DynamicMapServiceWindow(Tkinter.Frame):
     """A pre-built GUI class for displaying non-tiled map services."""
@@ -318,7 +324,13 @@ class DynamicMapServiceWindow(Tkinter.Frame):
         for tool in self.tools:
             config = {'relief': Tkinter.RAISED, 'borderwidth': 2}
             if hasattr(tool, 'toolgraphic'):
-                config['image'] = PhotoImage(data=tool.toolgraphic)
+                if not hasattr(tool, 'toolimage'):
+                    if has_PIL:
+                        tool.toolimage = PhotoImage(data=base64.b64decode(
+                                                            tool.toolgraphic))
+                    else:
+                        tool.toolimage = PhotoImage(data=tool.toolgraphic)
+                config['image'] = tool.toolimage
             else:
                 config['text'] = tool.toolname
             label = Tkinter.Label(self.toolbar, **config)

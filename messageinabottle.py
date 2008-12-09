@@ -26,7 +26,8 @@ class MessageInABottleButton(gui.MapSelectPoint):
                 mapcanvas.itemconfigure(text, text="Running" + "."*runs)
                 runs %= 10
                 mapcanvas.parent.update()
-            mapcanvas.addFeatureSet(job.Output)
+            mapcanvas.addFeatureSet(job.Output, width=3, fill='red',
+                                    arrow=Tkinter.LAST)
         except Exception, e:
             mapcanvas.itemconfigure(text, text=str(e), fill='red')
             mapcanvas.parent.update()
