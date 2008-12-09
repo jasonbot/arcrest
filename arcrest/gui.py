@@ -89,10 +89,6 @@ class PanTool(MapCanvasMethods):
         self.clickpair = (event.x, event.y)
     @staticmethod
     def unclick(self, event):
-        if not hasattr(self, 'graphicoffset'):
-            return
-        if not hasattr(self, '_graphicoffset'):
-            return
         oldx, oldy = self.graphicoffset
         newx, newy = self._graphicoffset
         pixdiff = abs(newx - oldx) + abs(newy - oldy)
@@ -172,7 +168,7 @@ class MapCanvas(Tkinter.Canvas):
         self.parent = parent
         self.width = width
         self.height = height
-        self.extent = self.parent.service.fullExtent
+        self.extent = self.parent.service.initialExtent
         Tkinter.Canvas.__init__(self, parent, relief=Tkinter.SUNKEN,
                                 borderwidth=2,
                                 width=self.width, height=self.height)
