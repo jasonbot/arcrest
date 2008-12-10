@@ -45,8 +45,8 @@ class MapSelectPoint(MapCanvasMethods):
     @classmethod
     def unclick(cls, mapcanvas, event):
         indicator = mapcanvas.create_oval(event.x-3,event.y-3,
-                                       event.x+3,event.y+3,
-                                       outline='blue', width='2')
+                                          event.x+3,event.y+3,
+                                          outline='blue', width=2)
         mapcanvas.parent.update()
         point = mapcanvas.pixelToPointCoord(event.x, event.y)
         try:
@@ -74,9 +74,16 @@ class IdentifyTool(MapSelectPoint):
                                                      mapExtent=mapcanvas.extent,
                                     sr=mapcanvas.parent.service.spatialReference
                                                      )
-        for result in response.results:
-            print result['attributes']['layerName'], "=",
-            print result['attributes']['value']
+        identifyfeatures = []
+        identifyfeatures.append(
+            mapcanvas.addFeatureSet(response.results,
+                                    width=4, outline='black',
+                                    fill=''))
+        mapcanvas.parent.update()
+        time.sleep(0.5)
+        for feature in identifyfeatures:
+            mapcanvas.removeFeatureSet(feature)
+        mapcanvas.parent.update()
 
 class BoxSelection(MapCanvasMethods):
     @classmethod
@@ -235,10 +242,27 @@ class MapCanvas(Tkinter.Canvas):
         self.graphics_stale = None
         self.feature_sets = []
         self.feature_set_ids = []
+        self.feature_set_next_external_id = 1
+        self.feature_set_external_ids = {}
     def addFeatureSet(self, fs, **rendering):
         assert isinstance(fs, gptypes.GPFeatureRecordSetLayer)
-        self.feature_sets.append((fs, rendering or {'width': 2,'fill': black}))
+        self.feature_sets.append((fs,
+                                  rendering or {'width':2, 'outline':'black'}))
+        id = self.feature_set_next_external_id
+        self.feature_set_next_external_id += 1
+        index = len(self.feature_sets) - 1
+        self.feature_set_external_ids[id] = index
         self.updateFeatureSets()
+        return id
+    def removeFeatureSet(self, fsid):
+        if fsid in self.feature_set_external_ids:
+            index = self.feature_set_external_ids[fsid]
+            fs = self.feature_sets.pop(index)[0]
+            for k in self.feature_set_external_ids:
+                if self.feature_set_external_ids[k] >= index:
+                    self.feature_set_external_ids[k] -= 1
+            self.updateFeatureSets()
+            return fs
     def configure(self, event):
         if (self.width, self.height) != (event.width, event.height):
             self.width, self.height = event.width, event.height
@@ -308,13 +332,20 @@ class MapCanvas(Tkinter.Canvas):
     def updateFeatureSets(self):
         for fs in self.feature_set_ids:
             self.delete(fs)
-        for featureset, style in self.feature_sets:
+        for featureset, style_ in self.feature_sets:
+            style = style_.copy()
             for geom in (row['geometry'] for row in featureset):
                 if isinstance(geom, geometry.Point):
+                    if 'outline' in style:
+                        style['fill'] = style['outline']
+                        del style['outline']
                     x, y = self.pointToPixelCoord(geom)
                     self.feature_set_ids.append(
                             self.create_rectangle(x-1,y-1,x+1,y+1, **style))
                 elif isinstance(geom, geometry.Polyline):
+                    if 'outline' in style:
+                        style['fill'] = style['outline']
+                        del style['outline']
                     for path in geom.paths:
                         pl = []
                         for pt in path:
@@ -329,6 +360,9 @@ class MapCanvas(Tkinter.Canvas):
                         self.feature_set_ids.append(self.create_polygon(*pl,
                                                                       **style))
                 elif isinstance(geom, geometry.Multipoint):
+                    if 'outline' in style:
+                        style['fill'] = style['outline']
+                        del style['outline']
                     for point in geom.points:
                         x, y = self.pointToPixelCoord(geom)
                         self.feature_set_ids.append(
@@ -410,7 +444,7 @@ class DynamicMapServiceWindow(Tkinter.Frame):
                                               offvalue="OFF")
             var = Tkinter.StringVar(master=labelbutton, value="ON")
             labelbutton.config(command=command(layer, var), variable=var)
-            labelbutton.pack(side=Tkinter.TOP)
+            labelbutton.pack(side=Tkinter.TOP, anchor=Tkinter.W)
 
     def doPack(self):
         self.labelframe.pack(side=Tkinter.LEFT, fill=Tkinter.Y)
