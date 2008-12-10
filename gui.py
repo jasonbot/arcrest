@@ -44,11 +44,39 @@ class MapCanvasMethods(object):
 class MapSelectPoint(MapCanvasMethods):
     @classmethod
     def unclick(cls, mapcanvas, event):
+        indicator = mapcanvas.create_oval(event.x-3,event.y-3,
+                                       event.x+3,event.y+3,
+                                       outline='blue', width='2')
+        mapcanvas.parent.update()
         point = mapcanvas.pixelToPointCoord(event.x, event.y)
-        cls.do(mapcanvas, point)
+        try:
+            cls.do(mapcanvas, point)
+        except:
+            mapcanvas.delete(indicator)
+            mapcanvas.parent.update()
+            raise
+        mapcanvas.delete(indicator)
+        mapcanvas.parent.update()
     @staticmethod
     def do(mapcanvas, pt):
         pass
+
+class IdentifyTool(MapSelectPoint):
+    toolname = "Identify"
+    @staticmethod
+    def do(mapcanvas, pt):
+        response = mapcanvas.parent.service.Identify(pt,
+                                                     tolerance=3, 
+                                                     imageDisplay="%i,%i,96" % 
+                                                            (mapcanvas.height,
+                                                             mapcanvas.width),
+                                                     layers="all",
+                                                     mapExtent=mapcanvas.extent,
+                                    sr=mapcanvas.parent.service.spatialReference
+                                                     )
+        for result in response.results:
+            print result['attributes']['layerName'], "=",
+            print result['attributes']['value']
 
 class BoxSelection(MapCanvasMethods):
     @classmethod
@@ -58,8 +86,8 @@ class BoxSelection(MapCanvasMethods):
             del mapcanvas.boxselection
         mapcanvas.boxselection = {}
         mapcanvas.boxselection['rect'] = mapcanvas.create_rectangle(
-                                                                event.x, event.y,
-                                                                event.x, event.y)
+                                                              event.x, event.y,
+                                                              event.x, event.y)
         mapcanvas.boxselection['start'] = (event.x, event.y)
         mapcanvas.boxselection['end'] = (event.x, event.y)
         mapcanvas.boxselection['cls'] = cls
@@ -313,7 +341,7 @@ class DynamicMapServiceWindow(Tkinter.Frame):
     """A pre-built GUI class for displaying non-tiled map services."""
     tools = (PanTool, ZoomToExtent, ZoomToInitialExtent,
              ZoomInTool, ZoomIn50Percent, 
-             ZoomOutTool, ZoomOut50Percent)
+             ZoomOutTool, ZoomOut50Percent, IdentifyTool)
     def createWidgets(self, width, height):
         self.toolbar = Tkinter.Frame(self, relief=Tkinter.RAISED, 
                                      borderwidth=2)

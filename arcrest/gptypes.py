@@ -146,11 +146,9 @@ class GPFeatureRecordSetLayer(GPBaseType):
                }
     @classmethod
     def fromJson(cls, value):
-        spatialreference = geometry.fromJson(
-                                                    value['spatialReference'])
-        geometries = [geometry.fromJson(geo['geometry'], 
-                                                 geo['attributes']) 
-                        for geo in value['features']]
+        spatialreference = geometry.fromJson(value['spatialReference'])
+        geometries = [geometry.fromJson(geo['geometry'], geo['attributes']) 
+                      for geo in value['features']]
         return cls(geometries, spatialreference)
 
 class GPRecordSet(GPBaseType):

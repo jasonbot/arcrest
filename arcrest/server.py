@@ -495,7 +495,16 @@ class IdentifyOrFindResult(JsonResult):
 
     @property
     def results(self):
-        return self._json_struct['results']
+        def resiter():
+            for result in self._json_struct['results']:
+                geom = geometry.fromJson(result['geometry'])
+                geom.attributes = result.get('attributes')
+                for key in ('displayFieldName', 'value', 
+                            'layerId', 'layerName'):
+                    geom.attributes[key] = result[key]
+                yield geom
+        return gptypes.GPFeatureRecordSetLayer(list(resiter()),
+                                               self.parent.spatialReference)
 
 class ExportKMLResult(BinaryResult):
     """Represents the result of an Export KML operation performed on a Map
@@ -539,7 +548,7 @@ class MapService(Service):
         gt = Geometry.__geometry_type__
         if sr is None:
             sr = Geometry.spatialReference.wkid
-        geo_json = json.dumps(Geometry._json_struct_without_srReference.wkid)
+        geo_json = json.dumps(Geometry._json_struct_without_sr)
         return self._get_subfolder('identify/', IdentifyOrFindResult,
                                                 {'geometry': geo_json,
                                                  'geometryType': gt,
