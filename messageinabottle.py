@@ -21,11 +21,7 @@ class MessageInABottleButton(gui.MapSelectPoint):
                                               mapcanvas.parent.days.get())
             runs = 0
             while job.running:
-                runs += 1
-                time.sleep(0.125)
-                mapcanvas.itemconfigure(text, text="Running" + "."*runs)
-                runs %= 10
-                mapcanvas.parent.update()
+                pass
             mapcanvas.addFeatureSet(job.Output, width=3, fill='red',
                                     arrow=Tkinter.LAST)
         except Exception, e:
