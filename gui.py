@@ -1,6 +1,4 @@
 from arcrest import geometry, gptypes, server
-#import base64
-#import graphics
 import time
 import Tkinter
 
