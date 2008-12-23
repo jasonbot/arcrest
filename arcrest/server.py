@@ -266,7 +266,7 @@ class Catalog(Folder):
     _pwdmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
     """Class-level password manager -- if a Catalog is constructed with a 
     username/password pair for HTTP auth it will be handled by this."""
-    opener = urllib2.build_handler(_pwdmgr)
+    opener = urllib2.build_opener(_pwdmgr)
     urllib2.install_opener(opener)
 
     def __init__(self, url, username=None, password=None):
