@@ -263,7 +263,15 @@ class Catalog(Folder):
        ArcGIS Server host. This resource represents a catalog of folders and 
        services published on the host."""
 
-    def __init__(self, url):
+    _pwdmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+    """Class-level password manager -- if a Catalog is constructed with a 
+    username/password pair for HTTP auth it will be handled by this."""
+    opener = urllib2.build_handler(_pwdmgr)
+    urllib2.install_opener(opener)
+
+    def __init__(self, url, username=None, password=None):
+        if username is not None and password is not None:
+            self.__class__._pwdmgr.add_password(None, url, username, password)
         url_ = list(urlparse.urlsplit(url))
         if not url_[2].endswith('/'):
             url_[2] += "/"
