@@ -43,6 +43,7 @@ class RestURL(object):
     __json_struct__ = Ellipsis # Cache for json.loads(self.__urldata__)
     __has_json__ = True        # Parse the data as a json struct? Set to
                                # false for binary data, html, etc.
+    __token__ = None           # For token-based auth
     __lazy_fetch__ = True      # Fetch when constructed, or later on?
     __parent_type__ = None     # For automatically generated parent URLs
     _parent = None
@@ -66,6 +67,8 @@ class RestURL(object):
         # it doesn't enclose all values in []
         for k, v in cgi.parse_qs(urllist[3]).iteritems():
             query_dict[k] = v[0]
+            if k.lower() == 'token':
+                self.__token__ = v[0]
         # Set the f= flag to json (so we can interface with it)
         if self.__has_json__ is True:
             query_dict['f'] = 'json'
@@ -115,6 +118,8 @@ class RestURL(object):
                 # everything sent in to a query has a sane __str__)
                 elif val is not None:
                     query_dict[key] = str(val)
+            if self.__token__ is not None:
+                query_dict['token'] = self.__token__
             # Replace URL query component with newly altered component
             urllist[3] = urllib.urlencode(query_dict)
             newurl = urllist
@@ -270,12 +275,14 @@ class Catalog(Folder):
     _opener = urllib2.build_opener(_handler)
     urllib2.install_opener(_opener)
 
-    def __init__(self, url, username=None, password=None):
+    def __init__(self, url, username=None, password=None, token=None):
         if username is not None and password is not None:
             self.__class__._pwdmgr.add_password(None, url, username, password)
         url_ = list(urlparse.urlsplit(url))
         if not url_[2].endswith('/'):
             url_[2] += "/"
+        if token is not None:
+            self.__token__ = token
         super(Catalog, self).__init__(url_)
         # Basically a Folder, but do some really, really rudimentary sanity
         # checking (look for folders/services, make sure format is JSON) so we
