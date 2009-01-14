@@ -264,10 +264,11 @@ class Catalog(Folder):
        services published on the host."""
 
     _pwdmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+    _handler = urllib2.HTTPBasicAuthHandler(_pwdmgr)    
     """Class-level password manager -- if a Catalog is constructed with a 
     username/password pair for HTTP auth it will be handled by this."""
-    opener = urllib2.build_opener(_pwdmgr)
-    urllib2.install_opener(opener)
+    _opener = urllib2.build_opener(_handler)
+    urllib2.install_opener(_opener)
 
     def __init__(self, url, username=None, password=None):
         if username is not None and password is not None:
