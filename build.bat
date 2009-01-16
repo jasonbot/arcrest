@@ -1,3 +1,4 @@
+c:\python25\python.exe setup.py clean
 c:\python25\python.exe setup.py install
 c:\python25\python.exe setup.py bdist_wininst
 c:\python25\python.exe setup.py sdist --formats=gztar,zip

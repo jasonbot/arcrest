@@ -72,6 +72,8 @@ class RestURL(object):
         # Set the f= flag to json (so we can interface with it)
         if self.__has_json__ is True:
             query_dict['f'] = 'json'
+        if self.__token__ is not None:
+            query_dict['token'] = self.__token__
         # Hack our modified query string back into URL components
         urllist[3] = urllib.urlencode(query_dict)
         self._url = urllist
@@ -91,9 +93,11 @@ class RestURL(object):
         #print "    ", self.url, "(", foldername, ")", newurl
         # Add the key-value pairs sent in params to query string if they
         # are so defined.
+        query_dict = {}
+        url_tuple = urlparse.urlsplit(newurl)
+        urllist = list(url_tuple)
+
         if params:
-            url_tuple = urlparse.urlsplit(newurl)
-            urllist = list(url_tuple)
             # As above, pull out first element from parse_qs' values
             query_dict = dict((k, v[0]) for k, v in 
                                cgi.parse_qs(urllist[3]).iteritems())
@@ -118,11 +122,11 @@ class RestURL(object):
                 # everything sent in to a query has a sane __str__)
                 elif val is not None:
                     query_dict[key] = str(val)
-            if self.__token__ is not None:
-                query_dict['token'] = self.__token__
-            # Replace URL query component with newly altered component
-            urllist[3] = urllib.urlencode(query_dict)
-            newurl = urllist
+        if self.__token__ is not None:
+            query_dict['token'] = self.__token__
+        # Replace URL query component with newly altered component
+        urllist[3] = urllib.urlencode(query_dict)
+        newurl = urllist
         # Instantiate new RestURL or subclass
         rt = returntype(newurl)
         # Remind the resource where it came from
