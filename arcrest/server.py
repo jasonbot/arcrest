@@ -109,6 +109,10 @@ class RestURL(object):
                 # parameter
                 elif isinstance(val, geometry.Envelope):
                     query_dict[key] = val.bbox
+                # Another special case: strings can't be quoted/escaped at the
+                # top level
+                elif isinstance(val, gptypes.GPString):
+                    query_dict[key] = val.value
                 # Just use the wkid of SpatialReferences
                 elif isinstance(val, geometry.SpatialReference): 
                     query_dict[key] = val.wkid
