@@ -125,12 +125,12 @@ class Point(Geometry):
         self.x, self.y, self.spatialReference = \
             float(x), float(y), spatialReference
     def __repr__(self):
-        return "POINT(%0.5f %0.5f)" %("%0.5f" % self.x
-                                                if isinstance(self.x, float)
-                                                else str(self.x),
-                                      "%0.5f" % self.y 
-                                                if isinstance(self.y, float)
-                                                else str(self.y))
+        return "POINT(%s %s)" %(("%0.5f" % self.x)
+                                           if isinstance(self.x, float)
+                                           else str(self.x),
+                                ("%0.5f" % self.y)
+                                           if isinstance(self.y, float)
+                                           else str(self.y))
     def __len__(self):
         return 2
     def __iter__(self):
@@ -290,7 +290,7 @@ class Multipoint(Geometry):
         self.spatialReference = spatialReference
         self.points = pointlist(points, spatialReference)
     def __repr__(self):
-        return "MULTIPOINT(%s)" % ",".join("%0.5f %0.5f" % map(float, pt)
+        return "MULTIPOINT(%s)" % ",".join("%0.5f %0.5f" % tuple(map(float, pt))
                                            for pt in self._json_points)
     def __len__(self):
         return len(self.points)
@@ -305,7 +305,7 @@ class Multipoint(Geometry):
                     yield [pt.x, pt.y]
                 else:
                     yield list(pt)
-        return list(fixpoints(self.points))
+        return list(fixpoint(self.points))
     @property
     def _json_struct_without_sr(self):
         return {'points': self._json_points}
