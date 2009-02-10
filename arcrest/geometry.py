@@ -30,9 +30,14 @@ def listofpointlist(ptlist, sr):
 
 class Geometry(object):
     """Represents an abstract base for json-represented geometries on
-       the ArcGIS Server REST API. Please refer to Point, Multipoint,
-       Polygon, Polyline and Envelope in this module for more information
-       on geometry types."""
+       the ArcGIS Server REST API. Please refer to 
+       L{Point<arcrest.geometry.Point>}, 
+       L{Multipoint<arcrest.geometry.Multipoint>},
+       L{Polygon<arcrest.geometry.Polygon>},
+       L{Polyline<arcrest.geometry.Polyline>} and 
+       L{Envelope<arcrest.geometry.Envelope>} in this module for more
+       information on geometry types. Calling the str() operator on any
+       geometry subclass will return a WKT string for the geometry."""
     def __init__(self):
         raise NotImplementedError("Cannot instantiate abstract geometry type")
     def __len__(self):
@@ -66,6 +71,20 @@ class SpatialReference(Geometry):
        For a list of valid WKID values, see projections.Projected and 
        projections.Graphic in this package."""
     def __init__(self, wkid):
+        """@param wkid: The Well-known ID of the target spatial reference
+                        (or another instance of SpatialReference)
+           
+                >>> import arcrest
+                >>> mysr = arcrest.geometry.SpatialReference(4326)
+                >>> mysr.name
+                'GCS_WGS_1984'
+                >>> mysr.wkid
+                4326
+                >>> myothersr = arcrest.geometry.SpatialReference(mysr)
+                >>> myothersr.wkid
+                4326
+                >>>           
+           """
         if isinstance(wkid, SpatialReference):
             wkid = wkid.wkid
         elif isinstance(wkid, dict):
@@ -120,6 +139,18 @@ class Point(Geometry):
     """A point contains x and y fields along with a spatialReference field."""
     __geometry_type__ = "esriGeometryPoint"
     def __init__(self, x, y, spatialReference=None):
+        """
+        @param x: The X coordinate of the Point
+        @param y: The Y coordinate of the Point
+        @param spatialReference: The spatial reference, either as an instance
+               of L{SpatialReference<arcpy.geometry.SpatialReference>} or the
+               WKID of a spatial reference. If left as None, the point will not
+               have a spatial reference.
+               
+                    >>> mysr = arcrest.geometry.SpatialReference(4326)
+                    >>> arcrest.geometry.Point(10, 10, mysr)
+                    POINT(10.00000 10.00000)
+               """
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
         self.x, self.y, self.spatialReference = \

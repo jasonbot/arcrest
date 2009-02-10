@@ -311,15 +311,22 @@ class Service(RestURL):
     class __metaclass__(type):
         """Idea borrowed from http://effbot.org/zone/metaclass-plugins.htm
            -- use the metaclass system to register subclasses in the
-           Folder's service type registry so when it hits a 
-           {'name': 'x', 'type': 'y'} service entry in the services key in a
-           folder's json data it knows to instantiate an instance of y to
-           represent a relative ./x/y/ URL. That is, when you do
+           Folder's service type registry so when it hits a:: 
+
+              {'name': 'x', 'type': 'y'} 
+
+           service entry in the services key in a folder's json data it knows
+           to instantiate an instance of y to represent a relative ./x/y/ URL.
+           That is, when you do::
+
               class FooService(Service):
                   __service_type__ = "FooServer" 
-           and
+
+           and::
+
               afolder._json_struct['services'] = \
                 [{'name': 'MyFoo', 'type': 'FooServer'}]
+
            then afolder.MyFoo will yield a FooService instance against the
            relative URL of C{./MyFoo/FooServer/}
            """
@@ -356,7 +363,7 @@ class Result(RestURL):
     """Abstract class representing the result of an operation performed on a
        REST service"""
     __cache_request__ = True # Only request the URL once
-    __lazy_fetch__ = False # Force-fetch immediately
+    __lazy_fetch__ = False   # Force-fetch immediately
 
 class BinaryResult(Result):
     """Class representing the result of an operation perfomed on a service with
