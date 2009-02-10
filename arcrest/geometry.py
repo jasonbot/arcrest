@@ -72,8 +72,6 @@ class SpatialReference(Geometry):
        projections.Graphic in this package."""
     def __init__(self, wkid):
         """Create a new Spatial Reference.
-           @param wkid: The Well-known ID of the target spatial reference
-                        (or another instance of SpatialReference)
            
                 >>> import arcrest
                 >>> mysr = arcrest.geometry.SpatialReference(4326)
@@ -84,7 +82,9 @@ class SpatialReference(Geometry):
                 >>> myothersr = arcrest.geometry.SpatialReference(mysr)
                 >>> myothersr.wkid
                 4326
-                >>>           
+
+           @param wkid: The Well-known ID of the target spatial reference
+                        (or another instance of SpatialReference)
            """
         if isinstance(wkid, SpatialReference):
             wkid = wkid.wkid

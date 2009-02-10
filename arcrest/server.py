@@ -420,16 +420,15 @@ class MapLayer(Layer):
            requested by the user. If you request geometry information, the
            geometry of each result is also returned in the resultset.
 
-           Spatial Relation Options:
-           =========================
-           - esriSpatialRelIntersects
-           - esriSpatialRelContains
-           - esriSpatialRelCrosses
-           - esriSpatialRelEnvelopeIntersects
-           - esriSpatialRelIndexIntersects
-           - esriSpatialRelOverlaps
-           - esriSpatialRelTouches
-           - esriSpatialRelWithin"""
+           B{Spatial Relation Options:}
+             - esriSpatialRelIntersects
+             - esriSpatialRelContains
+             - esriSpatialRelCrosses
+             - esriSpatialRelEnvelopeIntersects
+             - esriSpatialRelIndexIntersects
+             - esriSpatialRelOverlaps
+             - esriSpatialRelTouches
+             - esriSpatialRelWithin"""
         if not inSR:
             if Geometry:
                 inSR = Geometry.spatialReference
@@ -613,13 +612,12 @@ class MapService(Service):
            file. The document contains a network link to the KML Service 
            endpoint with properties and parameters you specify.
 
-           Layer Options:
-           ==============
-           - composite: (default) All layers as a single composite image.
-                        Layers cannot be turned on and off in the client.
-           - separateImage: Each layer as a separate image.
-           - nonComposite: Vector layers as vectors and raster layers as
-                           images."""
+           B{Layer Options:}
+             - composite: (default) All layers as a single composite image.
+                          Layers cannot be turned on and off in the client.
+             - separateImage: Each layer as a separate image.
+             - nonComposite: Vector layers as vectors and raster layers as
+                             images."""
         return self._get_subfolder('generateKml/', GenerateKMLResult,
                                        {'docName': docName, 
                                         'layers': layers,
@@ -1022,12 +1020,25 @@ class GPTask(RestURL):
         fp = self.__expandparamstodict(params, kw)
         return self._get_subfolder('execute/', GPExecutionResult, fp)
     def SubmitJob(self, *params, **kw):
-        """Synchronously execute the specified GP task. This will return a 
+        """Asynchronously execute the specified GP task. This will return a 
            Geoprocessing Job object. Parameters are passed in either in order
            or as keywords."""
         fp = self.__expandparamstodict(params, kw)
         return self._get_subfolder('submitJob/', GPJob, fp)._jobstatus
     def __call__(self, *params, **kw):
+        """Either submit a job, if the task is synchronous, or execute it,
+           if it is synchronous. Note that the GPJob and GPExecutionResult
+           objects both have the C{.running} property that will return True
+           while the job is running in the case of a job, and always return
+           True with the case of the execution result. This can be used to
+           treat both types of execution as the same in your code; with the
+           idiom
+           
+              >>> result = task(Param_1, Param_2, Param_3, ...)
+              >>> while result.running:
+              ...     time.sleep(0.125)
+              >>> print result.Output1
+        """
         if self.synchronous:
             return self.Execute(*params, **kw)
         else:
