@@ -71,7 +71,8 @@ class SpatialReference(Geometry):
        For a list of valid WKID values, see projections.Projected and 
        projections.Graphic in this package."""
     def __init__(self, wkid):
-        """@param wkid: The Well-known ID of the target spatial reference
+        """Create a new Spatial Reference.
+           @param wkid: The Well-known ID of the target spatial reference
                         (or another instance of SpatialReference)
            
                 >>> import arcrest
@@ -192,6 +193,23 @@ class Polyline(Geometry):
        the 1-index is the y-coordinate."""
     __geometry_type__ = "esriGeometryPolyline"
     def __init__(self, paths=[], spatialReference=None):
+        """
+        @param paths: A list of lists of points. Actual acceptable values are
+                      fairly permissive, allowing for any iterable item 
+                      (list, tuple, generator) containing any number of 
+                      iterables containing instances of 
+                      L{Point<arcrest.geometry.Point>} or lists/tuples of
+                      exactly two items, representing a coordinate pair.
+
+        @param spatialReference: A spatial reference passed in as an instance
+                                 of SpatialReference or the WKID of a spatial
+                                 reference. If this is not set, the Polyline
+                                 will not have a spatial reference and if the
+                                 polyline is used in a context where a spatial
+                                 reference is required, it will attempt to
+                                 guess the spatial reference from the set
+                                 spatial reference of a constitutent point.
+        """
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
@@ -238,6 +256,25 @@ class Polygon(Geometry):
        the 1-index is the y-coordinate."""
     __geometry_type__ = "esriGeometryPolygon"
     def __init__(self, rings=[], spatialReference=None):
+        """
+        @param rings: A list of lists of points. Actual acceptable values are
+                      fairly permissive, allowing for any iterable item 
+                      (list, tuple, generator) containing any number of 
+                      iterables containing instances of 
+                      L{Point<arcrest.geometry.Point>} or lists/tuples of
+                      exactly two items, representing a coordinate pair. Note
+                      that the first and last point of each ring I{must} be
+                      the same.
+
+        @param spatialReference: A spatial reference passed in as an instance
+                                 of SpatialReference or the WKID of a spatial
+                                 reference. If this is not set, the Polyline
+                                 will not have a spatial reference and if the
+                                 polyline is used in a context where a spatial
+                                 reference is required, it will attempt to
+                                 guess the spatial reference from the set
+                                 spatial reference of a constitutent point.
+        """
         if not isinstance(spatialReference, SpatialReference):
             spatialReference = SpatialReference(spatialReference)
         self.spatialReference = spatialReference
