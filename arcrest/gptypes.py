@@ -18,7 +18,7 @@ class GPBaseType(object):
     """Base type for Geoprocessing argument types"""
     class __metaclass__(type):
         def __init__(cls, name, bases, dict):
-            type.__init__(name, bases, dict)
+            type.__init__(cls, name, bases, dict)
             try:
                 if '|' not in cls.__name__:
                     GPBaseType._gp_type_mapping[cls.__name__] = cls

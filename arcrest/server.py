@@ -331,7 +331,7 @@ class Service(RestURL):
            relative URL of C{./MyFoo/FooServer/}
            """
         def __init__(cls, name, bases, dict):
-            type.__init__(name, bases, dict)
+            type.__init__(cls, name, bases, dict)
             if hasattr(cls, '__service_type__'):
                 Folder._service_type_mapping[cls.__service_type__] = cls
                 if cls.__service_type__:
