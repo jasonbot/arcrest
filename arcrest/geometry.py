@@ -126,7 +126,7 @@ class SpatialReference(Geometry):
             "Get/view the name for the well known ID of a Projection"
             if self.wkid in projections.projected:
                 return projections.projected[self.wkid]
-            elif self.wkid in projections.peographic:
+            elif self.wkid in projections.geographic:
                 return projections.geographic[self.wkid]
             else:
                 raise KeyError("Not a known WKID.")
@@ -565,8 +565,18 @@ def fromGeoJson(struct, attributes=None):
         s = struct['geometry'].copy()
         if 'properties' in struct:
             s['properties'] = struct['properties']
-        struct = s
-    if struct['type'] in type_map and hasattr(type_map[struct['type']], 
+        return fromGeoJson(s)
+    elif struct['type'] == "FeatureCollection":
+        sr = None
+        if 'crs' in struct:
+            sr = SpatialReference(struct['crs']['properties']['code'])
+            members = map(fromGeoJson, struct['members'])
+            for member in members:
+                member.spatialReference = sr
+            return members
+        else:
+            return map(fromGeoJson, struct['members'])
+    elif struct['type'] in type_map and hasattr(type_map[struct['type']], 
                                               'fromGeoJson'):
         instances = type_map[struct['type']].fromGeoJson(struct)
         i = []
