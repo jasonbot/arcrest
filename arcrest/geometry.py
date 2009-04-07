@@ -561,6 +561,11 @@ def fromGeoJson(struct, attributes=None):
         'MultiPoint': Multipoint,
         'Box': Envelope
     }
+    if struct['type'] == "Feature":
+        s = struct['geometry'].copy()
+        if 'properties' in struct:
+            s['properties'] = struct['properties']
+        struct = s
     if struct['type'] in type_map and hasattr(type_map[struct['type']], 
                                               'fromGeoJson'):
         instances = type_map[struct['type']].fromGeoJson(struct)
