@@ -44,6 +44,9 @@ class Geometry(object):
         raise NotImplementedError("Length not implemented for %r" % 
                                    self.__class__.__name__)
     @property
+    def __geo_interface__(self):
+        raise NotImplementedError("Unimplemented conversion to GeoJSON")
+    @property
     def _json_struct_without_sr(self):
         return self._json_struct
     @property
@@ -61,6 +64,9 @@ class Geometry(object):
     @classmethod
     def fromJson(cls, struct):
         raise NotImplementedError("Unimplemented convert from JSON")
+    @classmethod
+    def fromGeoJson(cls, struct):
+        raise NotImplementedError("Unimplemented convert from GeoJSON")
 
 class SpatialReference(Geometry):
     """The REST API only supports spatial references that have well-known 
@@ -169,6 +175,17 @@ class Point(Geometry):
         yield self.x
         yield self.y
     @property
+    def __geo_interface__(self):
+        retval = {
+            'type': 'Point',
+            'coordinates': [self.x, self.y]
+        }
+        if hasattr(self, 'attributes'):
+            retval['properties'] = self.attributes
+        if self.spatialReference:
+            retval['@esri.sr'] = self.spatialReference._json_struct
+        return retval
+    @property
     def _json_struct_without_sr(self):
         return {'x': self.x,
                 'y': self.y}
@@ -185,6 +202,10 @@ class Point(Geometry):
             return cls(*struct)
         else:
             return cls(**struct)
+    @classmethod
+    def fromGeoJson(cls, struct):
+        (x, y) = struct['coordinates']
+        return [cls(x, y)]
 
 class Polyline(Geometry):
     """A polyline contains an array of paths and a spatialReference. Each 
@@ -226,13 +247,25 @@ class Polyline(Geometry):
     def __len__(self):
         return len(self.paths)
     @property
+    def __geo_interface__(self):
+        retval = {
+            'type': 'MultiLineString',
+            'coordinates': self._json_paths
+        }
+        if hasattr(self, 'attributes'):
+            retval['properties'] = self.attributes
+        if self.spatialReference:
+            retval['@esri.sr'] = self.spatialReference._json_struct
+        return retval
+    @property
     def _json_paths(self):
         def fixpath(somepath):
             for pt in somepath:
                 if isinstance(pt, Point):
-                    assert pt.spatialReference is None or \
+                    assert pt.spatialReference == None or\
                         pt.spatialReference == self.spatialReference, \
-                        "Point is not in same spatial reference as Polyline"
+                        "Point is not in same spatial reference as Polyline"\
+                        "(%r, %r)" % (pt.spatialReference, self.spatialReference)
                     yield [pt.x, pt.y]
                 else:
                     yield list(pt)
@@ -247,6 +280,12 @@ class Polyline(Geometry):
     @classmethod
     def fromJson(cls, struct):
         return cls(**struct)
+    @classmethod
+    def fromGeoJson(cls, struct):
+        if struct['type'] == "LineString":
+            return [cls([struct['coordinates']])]
+        elif struct['type'] == "MultiLineString":
+            return [cls(struct['coordinates'])]
 
 class Polygon(Geometry):
     """A polygon contains an array of rings and a spatialReference. Each ring 
@@ -290,6 +329,17 @@ class Polygon(Geometry):
                                         for ring in self._json_rings)
     def __len__(self):
         return len(self.rings)
+    @property
+    def __geo_interface__(self):
+        retval = {
+            'type': 'Polygon',
+            'coordinates': self._json_rings
+        }
+        if hasattr(self, 'attributes'):
+            retval['properties'] = self.attributes
+        if self.spatialReference:
+            retval['@esri.sr'] = self.spatialReference._json_struct
+        return retval
     def contains(self, pt):
         "Tests if the provided point is in the polygon."
         if isinstance(pt, Point):
@@ -330,7 +380,7 @@ class Polygon(Geometry):
         def fixring(somering):
             for pt in somering:
                 if isinstance(pt, Point):
-                    assert pt.spatialReference is None or \
+                    assert pt.spatialReference == None or \
                         pt.spatialReference == self.spatialReference, \
                         "Point is not in the same spatial reference as Polygon"
                     yield [pt.x, pt.y]
@@ -347,6 +397,12 @@ class Polygon(Geometry):
     @classmethod
     def fromJson(cls, struct):
         return cls(**struct)
+    @classmethod
+    def fromGeoJson(cls, struct):
+        if struct['type'] == "MultiPolygon":
+            return [cls(x) for x in struct['coordinates']]
+        else:
+            return [cls(struct['coordinates'])]
 
 class Multipoint(Geometry):
     """A multipoint contains an array of points and a spatialReference. Each
@@ -363,11 +419,22 @@ class Multipoint(Geometry):
     def __len__(self):
         return len(self.points)
     @property
+    def __geo_interface__(self):
+        retval = {
+            'type': 'MultiPoint',
+            'coordinates': self._json_points
+        }
+        if hasattr(self, 'attributes'):
+            retval['properties'] = self.attributes
+        if self.spatialReference:
+            retval['@esri.sr'] = self.spatialReference._json_struct
+        return retval
+    @property
     def _json_points(self):
         def fixpoint(somepointarray):
             for pt in somepointarray:
                 if isinstance(pt, Point):
-                    assert pt.spatialReference is None or \
+                    assert pt.spatialReference == None or \
                         pt.spatialReference == self.spatialReference, \
                         "Point is not in same spatial reference as Multipoint"
                     yield [pt.x, pt.y]
@@ -384,6 +451,9 @@ class Multipoint(Geometry):
     @classmethod
     def fromJson(cls, struct):
         return cls(**struct)
+    @classmethod
+    def fromGeoJson(cls, struct):
+        return [cls(struct['coordinates'])]
 
 class Envelope(Geometry):
     """An envelope contains the corner points of an extent and is represented
@@ -409,6 +479,17 @@ class Envelope(Geometry):
     def __bool__(self):
         return bool(self.wkid is not None)
     @property
+    def __geo_interface__(self):
+        retval = {
+            'type': 'Box',
+            'coordinates': [[self.xmin, self.ymin], [self.xmax, self.ymax]]
+        }
+        if hasattr(self, 'attributes'):
+            retval['properties'] = self.attributes
+        if self.spatialReference:
+            retval['@esri.sr'] = self.spatialReference._json_struct
+        return retval
+    @property
     def top(self):
         return Point(self.xmin, self.ymin, self.spatialReference)
     @property
@@ -422,7 +503,7 @@ class Envelope(Geometry):
                 'ymax': self.ymax}
     @property
     def _json_struct(self):
-        return {'xmin': self.xmin, 
+        return {'xmin': self.xmin,
                 'ymin': self.ymin,
                 'xmax': self.xmax,
                 'ymax': self.ymax,
@@ -435,9 +516,15 @@ class Envelope(Geometry):
     @classmethod
     def fromJson(cls, struct):
         return cls(**struct)
+    @classmethod
+    def fromGeoJson(cls, struct):
+        ((xmin, ymin), (xmax, ymax)) = struct['coordinates']
+        return [cls(xmin, ymin, xmax, ymax)]
 
 def fromJson(struct, attributes=None):
     "Convert a JSON struct to a Geometry based on its structure"
+    if isinstance(struct, basestring):
+        struct = json.loads(struct)
     indicative_attributes = {
         'x': Point,
         'wkid': SpatialReference,
@@ -459,4 +546,41 @@ def fromJson(struct, attributes=None):
                                            for key, val 
                                            in attributes.iteritems())
                 return ret
+    raise ValueError("Unconvertible to geometry")
+
+def fromGeoJson(struct, attributes=None):
+    "Convert a GeoJSON-like struct to a Geometry based on its structure"
+    if isinstance(struct, basestring):
+        struct = json.loads(struct)
+    type_map = {
+        'Point': Point,
+        'MultiLineString': Polyline,
+        'LineString': Polyline,
+        'Polygon': Polygon,
+        'MultiPolygon': Polygon,
+        'MultiPoint': Multipoint,
+        'Box': Envelope
+    }
+    if struct['type'] in type_map and hasattr(type_map[struct['type']], 
+                                              'fromGeoJson'):
+        instances = type_map[struct['type']].fromGeoJson(struct)
+        i = []
+        assert instances is not None, "GeoJson conversion returned a Null geom"
+        for instance in instances:
+            if 'properties' in struct:
+                instance.attributes = struct['properties'].copy()
+                if '@esri.sr' in instance.attributes:
+                    instance.spatialReference = SpatialReference.fromJson(
+                                               instance.attributes['@esri.sr'])
+                    del instance.attributes['@esri.sr']
+            if attributes:
+                if not hasattr(instance, 'attributes'):
+                    instance.attributes = {}
+                for k, v in attributes.iteritems():
+                    instance.attributes[k] = v
+            i.append(instance)
+        if i:
+            if len(i) > 1:
+                return i
+            return i[0]
     raise ValueError("Unconvertible to geometry")
