@@ -705,7 +705,7 @@ class ReverseGeocodeResult(JsonResult):
         try:
             return self[attr]
         except KeyError, e:
-            raise AttributError(str(e))
+            raise AttributeError(str(e))
 
 class GeocodeService(Service):
     """Geocoding is the process of assigning a location, usually in the form
@@ -875,7 +875,7 @@ class GPJobStatus(RestURL):
     def results(self):
         assert (not self.running), "Task is still executing."
         if self.jobStatus in self._error_status:
-            raise ServerError("Error: job status %r" % js['jobStatus'])
+            raise ServerError("Error: job status %r" % self.jobStatus['jobStatus'])
         if self._results is None:
             def item_iterator():
                 for resref in self._json_struct['results'].itervalues():
