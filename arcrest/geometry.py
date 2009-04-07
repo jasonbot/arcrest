@@ -562,10 +562,7 @@ def fromGeoJson(struct, attributes=None):
         'Box': Envelope
     }
     if struct['type'] == "Feature":
-        s = struct['geometry'].copy()
-        if 'properties' in struct:
-            s['properties'] = struct['properties']
-        return fromGeoJson(s)
+        return fromGeoJson(struct, struct.get('properties', None))
     elif struct['type'] == "FeatureCollection":
         sr = None
         if 'crs' in struct:
