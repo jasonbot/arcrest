@@ -59,7 +59,7 @@ class GPLong(GPSimpleType):
     __conversion__ = long
 
 class GPString(GPSimpleType):
-    """Represents a geoprocessing long parameter"""
+    """Represents a geoprocessing string parameter"""
     __conversion__ = str
 
 class GPLinearUnit(GPBaseType):
