@@ -113,6 +113,40 @@ class GeometryTests(unittest.TestCase):
         multipoint = arcrest.geometry.fromJson(mp)
         self.assert_(isinstance(multipoint, arcrest.geometry.Multipoint), 
                         "Not a multipoint")
+    def testCreateFromGeoJsonStructures(self):
+        pt = {'type': 'Point', 'coordinates': [5, 10]}
+        point = arcrest.geometry.fromGeoJson(pt)
+        print point
+        self.assert_(isinstance(point, arcrest.geometry.Point), "Not a point")
+        pl = {'type': 'MultiLineString',
+              'coordinates': [[[10, 10], [15, 15]], 
+                              [[50, 50], [51, 51], [52, 52]]],
+              'properties': {'@esri.sr': {'wkid': 102113}}}
+        polyline = arcrest.geometry.fromGeoJson(pl)
+        print polyline
+        self.assert_(isinstance(polyline, arcrest.geometry.Polyline), 
+                        "Not a polyline")
+        pl2 = {'type': 'LineString',
+              'coordinates': [[10, 10], [15, 15], 
+                              [50, 50], [51, 51], [52, 52]]}
+        polyline2 = arcrest.geometry.fromGeoJson(pl2)
+        print polyline2
+        self.assert_(isinstance(polyline2, arcrest.geometry.Polyline), 
+                        "Not a polyline")
+        pg = {'type': 'Polygon',
+              'coordinates': [[[10, 10], [15, 15], [18, 18], [10, 10]], 
+                       [[50, 50], [52, 51], [52, 54], [50, 50]]]}
+        polygon = arcrest.geometry.fromGeoJson(pg)
+        print polygon
+        self.assert_(isinstance(polygon, arcrest.geometry.Polygon), 
+                        "Not a polygon")
+        mp = {'type': 'MultiPoint',
+              'coordinates': [[10, 10], [15, 15], [18, 18], [10, 10], 
+                              [50, 50], [52, 51], [52, 54], [50, 50]]}
+        multipoint = arcrest.geometry.fromGeoJson(mp)
+        print multipoint
+        self.assert_(isinstance(multipoint, arcrest.geometry.Multipoint), 
+                        "Not a multipoint")
 
 class RestURLTests(unittest.TestCase):
     @MultiUrl.multiurltest

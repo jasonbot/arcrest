@@ -875,7 +875,7 @@ class GPJobStatus(RestURL):
     def results(self):
         assert (not self.running), "Task is still executing."
         if self.jobStatus in self._error_status:
-            raise ServerError("Error: job status %r" % self.jobStatus['jobStatus'])
+            raise ServerError("Error: job status %r" % self.jobStatus)
         if self._results is None:
             def item_iterator():
                 for resref in self._json_struct['results'].itervalues():
