@@ -1,6 +1,6 @@
 import os
 
-class projection(object):
+class Projection(object):
     def __init__(self):
         self._name_mapping = {}
         for key, val in self._projections.iteritems():
@@ -11,7 +11,7 @@ class projection(object):
     def __contains__(self, index):
         return index in self._name_mapping
 
-class projected(projection):
+class projected(Projection):
     _projections = {
        'Anguilla_1957_British_West_Indies_Grid': 2000,
        'Antigua_1943_British_West_Indies_Grid': 2001,
@@ -3626,7 +3626,7 @@ class projected(projection):
        'NAD_1983_HARN_Adj_WI_Wood_Feet': 103971
     }
 
-class geographic(projection):
+class geographic(Projection):
    _projections = {
        'GCS_Airy_1830': 4001,
        'GCS_Airy_Modified': 4002,
@@ -4371,5 +4371,5 @@ class geographic(projection):
        'GCS_Charon_2000': 104970
     }
 
-Projected = projected()
-Geographic = geographic()
+geographic = geographic()
+projected = projected()

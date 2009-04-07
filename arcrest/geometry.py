@@ -74,8 +74,8 @@ class SpatialReference(Geometry):
        object only contains one field - wkid (i.e. the well-known ID of the
        spatial reference).
 
-       For a list of valid WKID values, see projections.Projected and 
-       projections.Graphic in this package."""
+       For a list of valid WKID values, see projections.projected and 
+       projections.graphic in this package."""
     def __init__(self, wkid):
         """Create a new Spatial Reference.
            
@@ -96,9 +96,9 @@ class SpatialReference(Geometry):
             wkid = wkid.wkid
         elif isinstance(wkid, dict):
             wkid = wkid['wkid']
-        elif hasattr(projections.Projected, str(wkid)):
+        elif hasattr(projections.projected, str(wkid)):
             wkid = getattr(projections.Projected, str(wkid))
-        elif hasattr(projections.Geographic, str(wkid)):
+        elif hasattr(projections.geographic, str(wkid)):
             wkid = getattr(projections.Geographic, str(wkid))
         elif wkid is None:
             self.wkid = None
@@ -124,17 +124,17 @@ class SpatialReference(Geometry):
     def name():
         def get_(self):
             "Get/view the name for the well known ID of a Projection"
-            if self.wkid in projections.Projected:
-                return projections.Projected[self.wkid]
-            elif self.wkid in projections.Geographic:
-                return projections.Geographic[self.wkid]
+            if self.wkid in projections.projected:
+                return projections.projected[self.wkid]
+            elif self.wkid in projections.peographic:
+                return projections.geographic[self.wkid]
             else:
                 raise KeyError("Not a known WKID.")
         def set_(self, wkid):
-            if hasattr(projections.Projected, wkid):
-                self.wkid = getattr(projections.Projected, wkid)
-            elif hasattr(projections.Geographic, wkid):
-                self.wkid = getattr(projections.Geographic, wkid)
+            if hasattr(projections.projected, wkid):
+                self.wkid = getattr(projections.projected, wkid)
+            elif hasattr(projections.geographic, wkid):
+                self.wkid = getattr(projections.geographic, wkid)
             else:
                 raise KeyError("Not a known projection name.")
         return property(get_, set_)

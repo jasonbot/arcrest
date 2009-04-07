@@ -54,7 +54,7 @@
 
    Executing a job:
 
-      >>> results = service.MessageInABottle(arcrest.Point(-11, 38, arcrest.projections.Geographic.GCS_WGS_1984), 2)
+      >>> results = service.MessageInABottle(arcrest.Point(-11, 38, arcrest.projections.geographic.GCS_WGS_1984), 2)
       >>> import time
       >>> while results.running:
       ...   time.sleep(0.25)
@@ -67,4 +67,4 @@
 from geometry import *
 from gptypes import *
 from server import *
-from projections import Projected, Geographic
+from projections import projected, geographic
