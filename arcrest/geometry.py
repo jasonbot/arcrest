@@ -306,6 +306,26 @@ class Polyline(Geometry):
         if attributes:
             retval.attributes = attributes
         return retval
+    def asCompressedGeometry(self, multiplier=55000):
+        def base32(num):
+            sign = "+" if num >= 0 else "-"
+            if num < 0:
+                num = -num
+            digits = "0123456789abcdefghijklmnopqrstuv"
+            nums = []
+            while num:
+                nums.append(num & 0x1F)
+                num = num >> 5
+            return sign + ''.join(digits[x] for x in reversed(nums))
+        def compressedstring():
+            yield base32(multiplier)
+            oldx, oldy = 0, 0
+            for ints in self._json_paths:
+                for (x, y) in ints:
+                    yield base32(int((x - oldx)*multiplier))
+                    yield base32(int((y - oldy)*multiplier))
+                    oldx, oldy = x, y
+        return ''.join(compressedstring())
 
 class Polygon(Geometry):
     """A polygon contains an array of rings and a spatialReference. Each ring 
