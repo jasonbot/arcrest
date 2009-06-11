@@ -146,16 +146,21 @@ class GPFeatureRecordSetLayer(GPBaseType):
                }
     @classmethod
     def fromJson(cls, value):
-        spatialreference = geometry.fromJson(value['spatialReference'])
-        geometries = [geometry.fromJson(geo['geometry'], geo['attributes']) 
+        spatialreference = geometry.fromJson(value['spatialReference']) \
+            if 'spatialReference' in value else None
+        geometries = [geometry.Polyline.fromCompressedGeometry(
+                            geo['compressedGeometry'], geo['attributes'])
+                      if "compressedGeometry" in geo
+                      else geometry.fromJson(geo['geometry'], geo['attributes']) 
                       for geo in value['features']]
         return cls(geometries, spatialreference)
 
 class GPRecordSet(GPBaseType):
     """Represents a geoprocessing recordset parameter"""
     _columns = None
-    def __init__(self, arg):
+    def __init__(self, arg, exceededTransferLimit=None):
         self.features = arg
+        self._exceededTransferLimit = exceededTransferLimit
         if self._columns is None:
             _columns = sorted(reduce(lambda x, y: x | y, 
                                    (set(row['attributes'].keys()) 
@@ -163,9 +168,12 @@ class GPRecordSet(GPBaseType):
             self._columns = tuple(_columns)
     def __iter__(self):
         return (feature for feature in self.features)
+    @property
+    def exceededTransferLimit(self):
+        return self._exceededTransferLimit
     @classmethod
     def fromJson(cls, json):
-        return cls(json['features'])
+        return cls(json['features'], json.get('exceededTransferLimit', None))
     @property
     def _json_struct(self):
         return { 'features': self.features }

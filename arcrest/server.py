@@ -298,6 +298,9 @@ class Catalog(Folder):
         # before any other manipulations go on.
         assert 'folders' in self._json_struct, "No folders in catalog root"
         assert 'services' in self._json_struct, "No services in catalog root"
+    @property
+    def currentVersion(self):
+        return self._json_struct.get('currentVersion', 9.3)
 
 # Definitions for classes calling/manipulating services
 
@@ -667,6 +670,10 @@ class MapService(Service):
         """Return a list of this map's layer objects"""
         return [self._get_subfolder("%s/" % layer['id'], MapLayer)
                 for layer in self._json_struct['layers']]
+    @property
+    def supportedImageFormatTypes(self):
+        """Return a list of supported image formats for this Map Service"""
+        return [x.strip() for x in self._json_struct['supportedImageFormatTypes'].split(',')]
 
 class FindAddressCandidatesResult(JsonResult):
     """Represents the result from a geocode operation. The .candidates
@@ -1030,7 +1037,7 @@ class GPTask(RestURL):
            if it is synchronous. Note that the GPJob and GPExecutionResult
            objects both have the C{.running} property that will return True
            while the job is running in the case of a job, and always return
-           True with the case of the execution result. This can be used to
+           False with the case of the execution result. This can be used to
            treat both types of execution as the same in your code; with the
            idiom
            
@@ -1100,6 +1107,16 @@ class AreasAndLengthsResult(LengthsResult):
     @property
     def areas(self):
         return map(float(area) for area in self._json_struct['areas'])
+
+class LabelPointsResult(JsonResult):
+    """Represents the output of a Label Points operation
+       performed by an ArcGIS REST API Geometry service."""
+
+    @property
+    def labelPoints(self):
+        """Label points for the provided polygon(s)."""
+        return [geometry.fromJson(geo) 
+                for geo in self._json_struct['labelPoints']]
 
 class GeometryService(Service):
     """A geometry service contains utility methods, which provide access to
@@ -1244,6 +1261,28 @@ class GeometryService(Service):
                                      'sr': sr
                                     })
 
+    def LabelPoints(self, polygons, sr):
+        """The labelPoints operation is performed on a geometry service
+           resource. This operation calculates an interior point for each
+           polygon specified in the input array. These interior points can be
+           used by clients for labeling the polygons."""
+        if isinstance(polygons, geometry.Geometry):
+            polygons = [polygons]
+
+        assert all(isinstance(polygon, geometry.Polygon)
+                   for polygon in polygons), "Must use polygons"
+
+        if sr is None:
+            sr = polygons[0].spatialReference.wkid
+
+        geo_json = json.dumps([polygon._json_struct_without_sr
+                                 for polygon in polygons])
+
+        return self._get_subfolder('labelPoints', LabelPointsResult, 
+                                    {'polygons': geo_json,
+                                     'sr': sr
+                                    })
+
 class ExportImageResult(JsonResult):
     """Represents the output of an Image Service exportImage call."""
 
@@ -1304,7 +1343,7 @@ class NetworkService(Service):
 
     @property
     def routeLayers(self):
-        return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
+        return [self._get_subfolder("%s/" % layer, RouteNetworkLayer) for layer in 
                 self._json_struct['routeLayers']]
     @property
     def serviceAreaLayers(self):
@@ -1326,6 +1365,45 @@ class NetworkService(Service):
             return self[attr]
         except KeyError, e:
             raise AttributeError(str(e))
+
+class DirectionResult(object):
+    """Represents an individual directions entry in a Network Solve operation
+       result."""
+    def __init__(self, direction):
+        self._json_struct = direction
+    @property
+    def routeId(self):
+        return self._json_struct["routeId"]
+    @property
+    def routeName(self):
+        return self._json_struct["routeName"]
+    @property
+    def summary(self):
+        return self._json_struct["summary"]
+    @property
+    def features(self):
+        return gptypes.GPFeatureRecordSetLayer.fromJson(self._json_struct)
+
+class NetworkSolveResult(JsonResult):
+    """Represents a solve operation's output performed on a Route Network
+       layer."""
+
+    @property
+    def directions(self):
+        return [DirectionResult(direction)
+                for direction in self._json_struct['directions']]
+    @property
+    def routes(self):
+        return gptypes.GPFeatureRecordSetLayer.fromJson(self._json_struct['routes'])
+    @property
+    def stops(self):
+        return gptypes.GPFeatureRecordSetLayer.fromJson(self._json_struct['stops'])
+    @property
+    def barriers(self):
+        return gptypes.GPFeatureRecordSetLayer.fromJson(self._json_struct['barriers'])
+    @property
+    def messages(self):
+        return self._json_struct['messages']
 
 class NetworkLayer(Layer):
     """The network layer resource represents a single network layer in a
@@ -1382,7 +1460,53 @@ class NetworkLayer(Layer):
     def networkClasses(self):
         return self._json_struct['networkClasses']
 
+class RouteNetworkLayer(NetworkLayer):
+    """Represents a Route Network Layer"""
+    def Solve(self, stops=None, barriers=None, returnDirections=None,
+              returnRoutes=None, returnStops=None, returnBarriers=None,
+              outSR=None, ignoreInvalidLocations=None, outputLines=None,
+              findBestSequence=None, preserveFirstStop=None,
+              preserveLastStop=None, useTimeWindows=None, startTime=None, 
+              accumulateAttributeNames=None, impedanceAttributeName=None,
+              restrictionAttributeNames=None, restrictUTurns=None,
+              useHierarchy=None, directionsLanguage=None,
+              outputGeometryPrecision=None, directionsLengthUnits=None):
+        """The solve operation is performed on a network layer resource.
 
+           At 9.3.1, the solve operation is supported only on the route layer.
+           Or specifically, on a network layer whose layerType is
+           esriNAServerRouteLayer.
+
+           You can provide arguments to the solve route operation as query
+           parameters defined in the parameters table below.
+        """
+        if self.layerType != "esriNAServerRouteLayer":
+            raise TypeError("Layer is of type %s; Solve is not available."
+                            % self.layerType)
+        return self._get_subfolder('solve/', NetworkSolveResult,
+                       {'stops': stops,
+                        'barriers': barriers,
+                        'returnDirections': returnDirections,
+                        'returnRoutes': returnRoutes,
+                        'returnStops': returnStops,
+                        'returnBarriers': returnBarriers,
+                        'outSR': outSR,
+                        'ignoreInvalidLocations': ignoreInvalidLocations,
+                        'outputLines': outputLines,
+                        'findBestSequence': findBestSequence,
+                        'preserveFirstStop': preserveFirstStop,
+                        'preserveLastStop': preserveLastStop,
+                        'useTimeWindows': useTimeWindows,
+                        'startTime': startTime,
+                        'accumulateAttributeNames': accumulateAttributeNames,
+                        'impedanceAttributeName': impedanceAttributeName,
+                        'restrictionAttributeNames': restrictionAttributeNames,
+                        'restrictUTurns': restrictUTurns,
+                        'useHierarchy': useHierarchy,
+                        'directionsLanguage': directionsLanguage,
+                        'outputGeometryPrecision': outputGeometryPrecision,
+                        'directionsLengthUnits': directionsLengthUnits,
+                        'directionsTimeAttributeName': directionsTimeAttributeName})
 
 class GeoDataVersion(RestURL):
     """The geodata version resource represents a single version in a geodata

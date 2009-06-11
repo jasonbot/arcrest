@@ -286,6 +286,26 @@ class Polyline(Geometry):
             return [cls([struct['coordinates']])]
         elif struct['type'] == "MultiLineString":
             return [cls(struct['coordinates'])]
+    @classmethod
+    def fromCompressedGeometry(cls, compressedstring, attributes=None):
+        result = []
+        import re
+        ints = [(-1 if number[0] == '-' else 1) * int(number[1:], 32)
+                   for number in re.findall("([+-][a-v0-9]+)",
+                                            compressedstring)]
+        multiplier = float(ints.pop(0))
+        oldx, oldy = 0, 0
+        while ints:
+            x, y = ints[:2]
+            ints = ints[2:]
+            x += oldx
+            y += oldy
+            result.append(Point(x/multiplier, y/multiplier))
+            oldx, oldy = x, y
+        retval = cls([result])
+        if attributes:
+            retval.attributes = attributes
+        return retval
 
 class Polygon(Geometry):
     """A polygon contains an array of rings and a spatialReference. Each ring 
