@@ -1488,7 +1488,7 @@ class RouteNetworkLayer(NetworkLayer):
             if isinstance(lst, geometry.Point):
                 lst = [lst]
             if isinstance(lst, (list, tuple)):
-                return ";".join("%s,%s" % (str(pt.x), str(pt.y)) for pt in lst)
+                return ";".join(','.join(str(x) for x in pt) for pt in lst)
             return lst
         if self.layerType != "esriNAServerRouteLayer":
             raise TypeError("Layer is of type %s; Solve is not available."
