@@ -197,6 +197,9 @@ class Folder(RestURL):
     _service_type_mapping = {}
 
     @property
+    def __members__(self):
+        return sorted(self.foldernames + list(self.servicenames))
+    @property
     def foldernames(self):
         "Returns a list of folder names available from this folder."
         return [folder.strip('/').split('/')[-1] for folder 
@@ -1470,7 +1473,8 @@ class RouteNetworkLayer(NetworkLayer):
               accumulateAttributeNames=None, impedanceAttributeName=None,
               restrictionAttributeNames=None, restrictUTurns=None,
               useHierarchy=None, directionsLanguage=None,
-              outputGeometryPrecision=None, directionsLengthUnits=None):
+              outputGeometryPrecision=None, directionsLengthUnits=None,
+              directionsTimeAttributeName=None):
         """The solve operation is performed on a network layer resource.
 
            At 9.3.1, the solve operation is supported only on the route layer.
@@ -1480,12 +1484,18 @@ class RouteNetworkLayer(NetworkLayer):
            You can provide arguments to the solve route operation as query
            parameters defined in the parameters table below.
         """
+        def ptlist_as_semilist(lst):
+            if isinstance(lst, geometry.Point):
+                lst = [lst]
+            if isinstance(lst, (list, tuple)):
+                return ";".join("%s,%s" % (str(pt.x), str(pt.y)) for pt in lst)
+            return lst
         if self.layerType != "esriNAServerRouteLayer":
             raise TypeError("Layer is of type %s; Solve is not available."
                             % self.layerType)
         return self._get_subfolder('solve/', NetworkSolveResult,
-                       {'stops': stops,
-                        'barriers': barriers,
+                       {'stops': ptlist_as_semilist(stops),
+                        'barriers': ptlist_as_semilist(barriers),
                         'returnDirections': returnDirections,
                         'returnRoutes': returnRoutes,
                         'returnStops': returnStops,

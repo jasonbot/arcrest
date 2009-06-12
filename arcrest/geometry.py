@@ -174,6 +174,8 @@ class Point(Geometry):
     def __iter__(self):
         yield self.x
         yield self.y
+    def __getitem__(self, index):
+        return [self.x, self.y][index]
     @property
     def __geo_interface__(self):
         retval = {
@@ -580,10 +582,11 @@ def fromJson(struct, attributes=None):
     if isinstance(struct, dict):
         for key, cls in indicative_attributes.iteritems():
             if key in struct:
-                ret = cls.fromJson(struct)
+                ret = cls.fromJson(dict((str(key), value)
+                                   for (key, value) in struct.iteritems()))
                 if attributes:
-                    ret.attributes = dict((key.lower(), val) 
-                                           for key, val 
+                    ret.attributes = dict((str(key.lower()), val) 
+                                           for (key, val)
                                            in attributes.iteritems())
                 return ret
     raise ValueError("Unconvertible to geometry")
