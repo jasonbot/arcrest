@@ -8,7 +8,7 @@ def mergeifneeded(file1, file2):
         os.popen(r'"C:\Program Files\WinMerge\WinMergeU.exe" %s %s' % 
                    (file1, file2))
 
-mergeifneeded(r"tests.py", r"\\ironpaw\pub\jasons\arcrest\tests.py")
-mergeifneeded(r"gui.py", r"\\ironpaw\pub\jasons\arcrest\gui.py")
-mergeifneeded(r"guitest.py", r"\\ironpaw\pub\jasons\arcrest\guitest.py")
-mergeifneeded(r"messageinabottle.py", r"\\ironpaw\pub\jasons\arcrest\messageinabottle.py")
+mergeifneeded(r"tests.py", r"c:\pub\arcrest\tests.py")
+mergeifneeded(r"gui.py", r"c:\pub\arcrest\gui.py")
+mergeifneeded(r"guitest.py", r"c:\pub\arcrest\guitest.py")
+mergeifneeded(r"messageinabottle.py", r"c:\pub\arcrest\messageinabottle.py")
