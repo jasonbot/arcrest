@@ -293,7 +293,7 @@ class Polyline(Geometry):
         result = []
         import re
         ints = [(-1 if number[0] == '-' else 1) * int(number[1:], 32)
-                   for number in re.findall("([+-][a-v0-9]+)",
+                   for number in re.findall("([+-][a-v0-9]*)",
                                             compressedstring)]
         multiplier = float(ints.pop(0))
         oldx, oldy = 0, 0
