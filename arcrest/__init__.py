@@ -64,7 +64,7 @@
 
    """
 
-from geometry import *
-from gptypes import *
-from server import *
-from projections import projected, geographic
+from .geometry import *
+from .gptypes import *
+from .server import *
+from .projections import projected, geographic

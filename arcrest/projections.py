@@ -3,7 +3,7 @@ import os
 class Projection(object):
     def __init__(self):
         self._name_mapping = {}
-        for key, val in self._projections.iteritems():
+        for key, val in self._projections.items():
             self._name_mapping[int(val)] = key
             setattr(self, key.replace('-', '_'), val)
     def __getitem__(self, index):
