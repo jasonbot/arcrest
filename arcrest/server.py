@@ -714,7 +714,7 @@ class ReverseGeocodeResult(JsonResult):
     def __getattr__(self, attr):
         try:
             return self[attr]
-        except KeyError, e:
+        except KeyError as e:
             raise AttributeError(str(e))
 
 class GeocodeService(Service):
@@ -1366,7 +1366,7 @@ class NetworkService(Service):
     def __getattr__(self, attr):
         try:
             return self[attr]
-        except KeyError, e:
+        except KeyError as e:
             raise AttributeError(str(e))
 
 class DirectionResult(object):
