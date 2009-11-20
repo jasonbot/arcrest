@@ -12,12 +12,7 @@ except ImportError:
                           "or use arcrest with Python 2.6")
 
 import datetime
-from .geometry import Geometry as GGeometry, Polyline as GPolyline, fromJson as GfromJason
-
-try:
-    long
-except NameError:
-    long = int
+import geometry
 
 class GPBaseType(object):
     """Base type for Geoprocessing argument types"""
@@ -114,13 +109,13 @@ class GPFeatureRecordSetLayer(GPBaseType):
     """Represents a geoprocessing feature recordset parameter"""
     _columns = None
     def __init__(self, Geometry, sr=None):
-        if isinstance(Geometry, GGeometry):
+        if isinstance(Geometry, geometry.Geometry):
             Geometry = [Geometry]
         self._features = Geometry
         if sr:
-            self.spatialReference = GSpatialReference(sr)
+            self.spatialReference = geometry.SpatialReference(sr)
         elif len(self._features):
-            self.spatialReference = GSpatialReference(
+            self.spatialReference = geometry.SpatialReference(
                                         self._features[0].spatialReference)
         else:
             raise ValueError("Could not determine spatial reference")
@@ -151,12 +146,12 @@ class GPFeatureRecordSetLayer(GPBaseType):
                }
     @classmethod
     def fromJson(cls, value):
-        spatialreference = GfromJson(value['spatialReference']) \
+        spatialreference = geometry.fromJson(value['spatialReference']) \
             if 'spatialReference' in value else None
-        geometries = [GPolyline.fromCompressedGeometry(
+        geometries = [geometry.Polyline.fromCompressedGeometry(
                             geo['compressedGeometry'], geo['attributes'])
                       if "compressedGeometry" in geo
-                      else GfromJson(geo['geometry'], geo['attributes']) 
+                      else geometry.fromJson(geo['geometry'], geo['attributes']) 
                       for geo in value['features']]
         return cls(geometries, spatialreference)
 

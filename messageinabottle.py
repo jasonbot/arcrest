@@ -34,8 +34,10 @@ class MessageInABottle(gui.DynamicMapServiceWindow):
     tools = gui.DynamicMapServiceWindow.tools + \
                 (MessageInABottleButton,)
     def __init__(self):
-        service = arcrest.server.MapService("http://flame6:8399/arcgis/rest/"
-                                            "services/Maps/world/MapServer")
+        service = arcrest.server.MapService("http://sampleserver1c.arcgisonline"
+                                            ".com/ArcGIS/rest/services/"
+                                            "Demographics/ESRI_Population_World"
+                                            "/MapServer")
         gui.DynamicMapServiceWindow.__init__(self, service, 800, 600)
     def createWidgets(self, width, height):
         gui.DynamicMapServiceWindow.createWidgets(self, width, height)
