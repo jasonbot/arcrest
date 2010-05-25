@@ -399,7 +399,7 @@ class JsonResult(Result):
             detailstring = ", ".join(self._json_struct['error'].get('details', []))
             if detailstring:
                 detailstring = " -- " + detailstring
-            raise ServerError("ERROR %r: %r <%s%s>" % 
+            raise ServerError("ERROR %r: %r%s <%s>" % 
                                (self._json_struct['error']['code'], 
                                 self._json_struct['error']['message'] or 'Unspecified',
                                 detailstring,
