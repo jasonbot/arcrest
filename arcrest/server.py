@@ -396,11 +396,13 @@ class JsonResult(Result):
     def __init__(self, url):
         super(JsonResult, self).__init__(url)
         if 'error' in self._json_struct:
-            raise ServerError("ERROR %r: %r <%s>" % 
+            detailstring = ", ".join(self._json_struct['error'].get('details', []))
+            if detailstring:
+                detailstring = " -- " + detailstring
+            raise ServerError("ERROR %r: %r <%s%s>" % 
                                (self._json_struct['error']['code'], 
-                                self._json_struct['error']['message'] or
-                                ",".join(
-                                    self._json_struct['error']['details']),
+                                self._json_struct['error']['message'] or 'Unspecified',
+                                detailstring),
                                 self.url))
 
 class Layer(RestURL):
@@ -677,14 +679,6 @@ class MapService(Service):
     def supportedImageFormatTypes(self):
         """Return a list of supported image formats for this Map Service"""
         return [x.strip() for x in self._json_struct['supportedImageFormatTypes'].split(',')]
-    @property
-    def tileInfo(self):
-        """If this map service is tiled, return a dictionary of tiling information"""
-        return self._json_struct['tileInfo']
-    @property
-    def singleFusedMapCache(self):
-        """Returns true if tiled, false if dynamic"""
-        return self._json_struct['singleFusedMapCache']
 
 class FindAddressCandidatesResult(JsonResult):
     """Represents the result from a geocode operation. The .candidates
