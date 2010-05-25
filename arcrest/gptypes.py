@@ -187,9 +187,11 @@ class GPDate(GPBaseType):
        http://docs.python.org/library/time.html#time.strftime"""
     #: default date format
     __date_format = "%a %b %d %H:%M:%S %Z %Y"
-    #: secondary (fallback) date format
-    __secondary_date_format = "%m/%d/%Y %I:%M:%S %p"
-
+    #: secondary (fallback) date formats
+    __secondary_date_formats = ["%c",
+                                "%Y%m%dT%H:%M:%S",
+                                "%Y-%m-%d %H:%M:%S",
+                                "%m/%d/%Y %I:%M:%S %p"]
     def __init__(self, date, format="%Y-%m-%d"):
         if isinstance(date, basestring):
             try:
@@ -200,9 +202,13 @@ class GPDate(GPBaseType):
                                                            self.__date_format)
                     self.format = self.__date_format
                 except ValueError:
-                    self.date = datetime.datetime.strptime(date, 
-                                                  self.__secondary_date_format)
-                    self.format = self.__secondary_date_format
+                    for format in self__secondary_date_formats:
+                        try:
+                            self.date = datetime.datetime.strptime(date, format)
+                            self.format = format
+                        except ValueError:
+                            pass
+                    raise ValueError("Cannot convert %r to date" % date)
         elif isinstance(date, (datetime.date, datetime.datetime)):
             self.date = date
         else:

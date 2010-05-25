@@ -396,12 +396,14 @@ class JsonResult(Result):
     def __init__(self, url):
         super(JsonResult, self).__init__(url)
         if 'error' in self._json_struct:
-            detailstring = ", ".join(self._json_struct['error'].get('details', []))
+            detailstring = ", ".join(self._json_struct['error'].get('details', 
+                                                                    []))
             if detailstring:
                 detailstring = " -- " + detailstring
             raise ServerError("ERROR %r: %r%s <%s>" % 
                                (self._json_struct['error']['code'], 
-                                self._json_struct['error']['message'] or 'Unspecified',
+                                self._json_struct['error']['message'] or 
+                                    'Unspecified',
                                 detailstring,
                                 self.url))
 
@@ -447,7 +449,8 @@ class MapLayer(Layer):
                                                'spatialRel': spatialRel,
                                                'where': where,
                                                'outFields': outFields,
-                                               'returnGeometry': returnGeometry,
+                                               'returnGeometry': 
+                                                    returnGeometry,
                                                'outSR': outSR})
         return gptypes.GPFeatureRecordSetLayer.fromJson(out._json_struct)
     @property
@@ -678,7 +681,9 @@ class MapService(Service):
     @property
     def supportedImageFormatTypes(self):
         """Return a list of supported image formats for this Map Service"""
-        return [x.strip() for x in self._json_struct['supportedImageFormatTypes'].split(',')]
+        return [x.strip() 
+                  for x in 
+                    self._json_struct['supportedImageFormatTypes'].split(',')]
 
 class FindAddressCandidatesResult(JsonResult):
     """Represents the result from a geocode operation. The .candidates

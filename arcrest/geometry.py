@@ -273,7 +273,8 @@ class Polyline(Geometry):
                     assert pt.spatialReference == None or\
                         pt.spatialReference == self.spatialReference, \
                         "Point is not in same spatial reference as Polyline"\
-                        "(%r, %r)" % (pt.spatialReference, self.spatialReference)
+                        "(%r, %r)" % (pt.spatialReference, 
+                                      self.spatialReference)
                     yield [pt.x, pt.y]
                 else:
                     yield list(pt)
@@ -462,7 +463,8 @@ class Multipoint(Geometry):
         self.spatialReference = spatialReference
         self.points = pointlist(points, spatialReference)
     def __repr__(self):
-        return "MULTIPOINT(%s)" % ",".join("%0.5f %0.5f" % tuple(map(float, pt))
+        return "MULTIPOINT(%s)" % ",".join("%0.5f %0.5f" % tuple(map(float,
+                                                                     pt))
                                            for pt in self._json_points)
     def __len__(self):
         return len(self.points)
