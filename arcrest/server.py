@@ -402,7 +402,7 @@ class JsonResult(Result):
             raise ServerError("ERROR %r: %r <%s%s>" % 
                                (self._json_struct['error']['code'], 
                                 self._json_struct['error']['message'] or 'Unspecified',
-                                detailstring),
+                                detailstring,
                                 self.url))
 
 class Layer(RestURL):
