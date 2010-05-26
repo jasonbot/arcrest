@@ -538,7 +538,10 @@ class IdentifyOrFindResult(JsonResult):
     def results(self):
         def resiter():
             for result in self._json_struct['results']:
-                geom = geometry.fromJson(result['geometry'])
+                if 'geometry' in result:
+                    geom = geometry.fromJson(result['geometry'])
+                else:
+                    geom = geometry.NullGeometry()
                 geom.attributes = result.get('attributes')
                 for key in ('displayFieldName', 'value', 
                             'layerId', 'layerName'):

@@ -74,6 +74,18 @@ class Geometry(object):
     def fromGeoJson(cls, struct):
         raise NotImplementedError("Unimplemented convert from GeoJSON")
 
+def NullGeometry(Geometry):
+    def __init__(self, struct=None):
+        pass
+    @property
+    def __geo_interface__(self):
+        return None
+    @property
+    def _json_struct(self):
+        return None
+    def __repr__(self):
+        return "NULL GEOMETRY"
+
 class SpatialReference(Geometry):
     """The REST API only supports spatial references that have well-known 
        IDs associated with them. Given this constraint, a spatial reference
