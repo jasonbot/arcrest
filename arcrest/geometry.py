@@ -75,6 +75,7 @@ class Geometry(object):
         raise NotImplementedError("Unimplemented convert from GeoJSON")
 
 class NullGeometry(Geometry):
+    "Represents a null or empty geometry."
     def __init__(self, struct=None):
         pass
     @property
