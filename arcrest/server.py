@@ -418,8 +418,7 @@ class Layer(RestURL):
 
 class AttachmentData(BinaryResult):
     """Represents the binary attachment data associated with a layer"""
-
-    pass
+    __lazy_fetch__ = True
 
 class AttachmentInfos(JsonResult):
     """The attachment infos resource returns information about attachments
@@ -1825,7 +1824,18 @@ class FeatureLayer(MapLayer):
     """The layer resource represents a single editable feature layer or non
        spatial table in a feature service."""
 
-    pass
+    def __getitem__(self, index):
+        """Get a feature by featureId"""
+        subfolder = self._get_subfolder(str(index), JsonResult)
+        geom = geometry.fromJson(
+                    subfolder._json_struct['feature']['geometry'],
+                    subfolder._json_struct['feature'].get('attributes', {}))
+        geom.attachments = self._get_subfolder("%s/attachments" % str(index),
+                                               AttachmentInfos)
+        return geom
+    def Feature(self, featureId):
+        """Return a feature from this FeatureService by its ID"""
+        return self[featureId]
 
 class FeatureService(Service):
     """A feature service allows clients to query and edit features. Features
