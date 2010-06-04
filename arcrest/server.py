@@ -416,6 +416,25 @@ class Layer(RestURL):
 # Service implementations -- mostly simple conversion wrappers for the
 # functionality handled up above, wrapper types for results, etc.
 
+class AttachmentData(BinaryResult):
+    """Represents the binary attachment data associated with a layer"""
+
+    pass
+
+class AttachmentInfos(JsonResult):
+    """The attachment infos resource returns information about attachments
+       associated with a feature. This resource is available only if the layer
+       has advertised that it has attachments. A layer has attachments if its
+       hasAttachments property is true."""
+
+    @property
+    def attachments(self):
+        for attachment in self._json_struct['attachmentInfos']:
+            attachment_dict = attachment.copy()
+            attachment_dict['attachment'] = \
+                    self_get_subfolder("%i/" % attachment_dict['id'],
+                                          AttachmentData)
+
 class MapLayer(Layer):
     """The layer resource represents a single layer or standalone table in a
        map of a map service  published by ArcGIS Server. It provides basic
@@ -459,6 +478,10 @@ class MapLayer(Layer):
                                                'time': 
                                                     utils.pythonvaluetotime(
                                                         time)
+                                               'maxAllowableOffset':
+                                                    maxAllowableOffset,
+                                               'returnIdsOnly':
+                                                    returnIdsOnly
                                                 })
         return gptypes.GPFeatureRecordSetLayer.fromJson(out._json_struct)
     @property
@@ -508,9 +531,31 @@ class MapLayer(Layer):
     @property
     def relationships(self):
         return self._json_struct.get('relationships', [])
+    @property
+    def timeInfo(self):
+        """Return the time info for this Map Service"""
+        time_info = self._json_struct.get('timeInfo', {})
+        if not time_info:
+            return None
+        time_info = time_info.copy()
+        if 'timeExtent' in time_info:
+            time_info['timeExtent'] = utils.timetopythonvalue(
+                                                    time_info['timeExtent'])
+        return time_info
+    @property
+    def hasAttachments(self):
+        return self._json_struct.get('hasAttachments', False)
+    @property
+    def attachments(self):
+        if not self.hasAttachments:
+            return []
+        return self._get_subfolder("attachments/", AttachmentInfos).attachments
+
 
 class MapTile(BinaryResult):
     """Represents the map tile fetched from a map service."""
+
+    pass
 
 class ExportMapResult(JsonResult):
     """Represents the result of an Export Map operation performed on a Map
@@ -579,7 +624,8 @@ class MapService(Service):
     __service_type__ = "MapServer"
 
     def ExportMap(self, bbox, size=None, dpi=None, imageSR=None, bboxSR=None,
-                  format=None, layerDefs=None, layers=None, transparent=False):
+                  format=None, layerDefs=None, layers=None, transparent=False,
+                  time=None):
         """The export operation is performed on a map service resource. The
            result of this operation is a map image resource. This resource
            provides information about the exported map image such as its URL,
@@ -593,7 +639,11 @@ class MapService(Service):
                                                'format': format,
                                                'layerDefs': layerDefs,
                                                'layers': layers,
-                                               'transparent': transparent})
+                                               'transparent': transparent,
+                                               'time': 
+                                                    utils.pythonvaluetotime(
+                                                        time)
+                                                })
 
     def Identify(self, Geometry, sr=None, layers=None, tolerance=1, 
                  mapExtent=None, imageDisplay=None, returnGeometry=True):
@@ -704,6 +754,17 @@ class MapService(Service):
         """Return a list of this map's table objects"""
         return [self._get_subfolder("%s/" % table['id'], MapLayer)
                 for table in self._json_struct.get('tables', [])]
+    @property
+    def timeInfo(self):
+        """Return the time info for this Map Service"""
+        time_info = self._json_struct.get('timeInfo', {})
+        if not time_info:
+            return None
+        time_info = time_info.copy()
+        if 'timeExtent' in time_info:
+            time_info['timeExtent'] = utils.timetopythonvalue(
+                                                    time_info['timeExtent'])
+        return time_info
     @property
     def supportedImageFormatTypes(self):
         """Return a list of supported image formats for this Map Service"""
