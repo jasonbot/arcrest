@@ -1,5 +1,7 @@
 setup.py
 arcrest\__init__.py
 arcrest\geometry.py
+arcrest\gptypes.py
 arcrest\projections.py
 arcrest\server.py
+arcrest\utils.py

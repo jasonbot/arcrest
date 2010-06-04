@@ -24,6 +24,7 @@ import urlparse
 
 import geometry
 import gptypes
+import utils
 
 # Note that nearly every class below derives from this RestURL class.
 # The reasoning is that every object has an underlying URL resource on 
@@ -416,14 +417,16 @@ class Layer(RestURL):
 # functionality handled up above, wrapper types for results, etc.
 
 class MapLayer(Layer):
-    """The layer resource represents a single layer in a map of a map service 
-       published by ArcGIS Server. It provides basic information about the
-       layer such as its name, type, parent and sub-layers, fields, min and
-       max scales, extent, and copyright text."""
+    """The layer resource represents a single layer or standalone table in a
+       map of a map service  published by ArcGIS Server. It provides basic
+       information about the layer such as its name, type, parent and
+       sub-layers, fields, min and max scales, extent, and copyright text."""
 
     def QueryLayer(self, text=None, Geometry=None, inSR=None, 
                    spatialRel='esriSpatialRelIntersects', where=None,
-                   outFields=None, returnGeometry=None, outSR=None):
+                   outFields=None, returnGeometry=None, outSR=None,
+                   objectIds=None, time=None, maxAllowableOffset=None,
+                   returnIdsOnly=None):
         """The query operation is performed on a layer resource. The result
            of this operation is a resultset resource. This resource provides
            information about query results including the values for the fields
@@ -451,7 +454,12 @@ class MapLayer(Layer):
                                                'outFields': outFields,
                                                'returnGeometry': 
                                                     returnGeometry,
-                                               'outSR': outSR})
+                                               'outSR': outSR,
+                                               'objectIds': objectIds,
+                                               'time': 
+                                                    utils.pythonvaluetotime(
+                                                        time)
+                                                })
         return gptypes.GPFeatureRecordSetLayer.fromJson(out._json_struct)
     @property
     def id(self):
@@ -494,6 +502,12 @@ class MapLayer(Layer):
     @property
     def fields(self):
         return self._json_struct['fields']
+    @property
+    def types(self):
+        return self._json_struct.get('types', [])
+    @property
+    def relationships(self):
+        return self._json_struct.get('relationships', [])
 
 class MapTile(BinaryResult):
     """Represents the map tile fetched from a map service."""
@@ -681,6 +695,15 @@ class MapService(Service):
         """Return a list of this map's layer objects"""
         return [self._get_subfolder("%s/" % layer['id'], MapLayer)
                 for layer in self._json_struct['layers']]
+    @property
+    def tablenames(self):
+        """Return a list of the names of this map's tables"""
+        return [table['name'] for table in self._json_struct.get('tables', [])]
+    @property
+    def tables(self):
+        """Return a list of this map's table objects"""
+        return [self._get_subfolder("%s/" % table['id'], MapLayer)
+                for table in self._json_struct.get('tables', [])]
     @property
     def supportedImageFormatTypes(self):
         """Return a list of supported image formats for this Map Service"""
