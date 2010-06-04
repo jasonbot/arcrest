@@ -1393,6 +1393,202 @@ class GeometryService(Service):
                                     {'polygons': geo_json,
                                      'sr': sr
                                     })
+    def ConvexHull(self, geometries=None, sr=None):
+        """The convexHull operation is performed on a geometry service
+           resource. It returns the convex hull of the input geometry. The
+           input geometry can be a point, multipoint, polyline or polygon. The
+           hull is typically a polygon but can also be a polyline or point in
+           degenerate cases."""
+
+        if isinstance(geometries, geometry.Geometry):
+            geometries = [geometries]
+
+        geometry_types = set([x.__geometry_type__ for x in geometries])
+        assert len(geometry_types) == 1, "Too many geometry types"
+        geo_json = json.dumps({'geometryType': list(geometry_types)[0],
+                    'geometries': [geo._json_struct_without_sr
+                                        for geo in geometries]
+                    })
+
+        if sr is None:
+            sr = geometries[0].spatialReference.wkid
+
+        return self._get_subfolder('convexHull', GeometryResult,
+                                   {'geometries': geo_json, 'sr': sr})
+    def Densify(self, geometries=None, sr=None, maxSegmentLength=None,
+                geodesic=None, lengthUnit=None):
+        """The densify operation is performed on a geometry service resource.
+           This operation densifies geometries by plotting points between
+           existing vertices."""
+
+        if isinstance(geometries, geometry.Geometry):
+            geometries = [geometries]
+
+        geometry_types = set([x.__geometry_type__ for x in geometries])
+        assert len(geometry_types) == 1, "Too many geometry types"
+        geo_json = json.dumps({'geometryType': list(geometry_types)[0],
+                    'geometries': [geo._json_struct_without_sr
+                                        for geo in geometries]
+                    })
+
+        if sr is None:
+            sr = geometries[0].spatialReference.wkid
+
+        return self._get_subfolder('convexHull', GeometryResult,
+                                   {'geometries': geo_json,
+                                    'sr': sr,
+                                    'maxSegmentLength': maxSegmentLength,
+                                    'geodesic': geodesic,
+                                    'lengthUnit': lengthUnit
+                                    })
+    def Distance(self, geometry1=None, geometry2=None, sr=None,
+                 distanceUnit=None, geodesic=None):
+        """The distance operation is performed on a geometry service resource.
+           It reports the planar (projected space) / geodesic shortest distance
+           between A and B. sr is a projected coordinate system. Distance is
+           reported in the linear units specified by units or the units of sr
+           if units is null."""
+
+        if not sr:
+            sr = (geometry1.spatialReference.wkid or
+                  geometry2.spatialReference.wkid)
+        geo_json_1 = json.dumps({'geometryType': geometry1.__geometry_type__,
+                                 'geometry': geometry1._json_struct})
+        geo_json_2 = json.dumps({'geometryType': geometry2.__geometry_type__,
+                                 'geometry': geometry2._json_struct})
+        folder = self._get_subfolder('distance', JsonResult,
+                                   {'geometry1': geo_json_1,
+                                    'geometry2': geo_json_2,
+                                    'sr': sr,
+                                    'distanceUnit': distanceUnit,
+                                    'geodesic': geodesic,
+                                    })
+        return folder._json_struct['distance']
+    def Generalize(self, geometries=None, sr=None, maxDeviation=None,
+                   deviationUnit=None):
+        """The generalize operation is performed on a geometry service
+           resource. It returns generalized (Douglas-Poiker) versions of the
+           input geometries."""
+
+        if isinstance(geometries, geometry.Geometry):
+            geometries = [geometries]
+
+        geometry_types = set([x.__geometry_type__ for x in geometries])
+        assert len(geometry_types) == 1, "Too many geometry types"
+        geo_json = json.dumps({'geometryType': list(geometry_types)[0],
+                    'geometries': [geo._json_struct_without_sr
+                                        for geo in geometries]
+                    })
+
+        if sr is None:
+            sr = geometries[0].spatialReference.wkid
+
+        return self._get_subfolder('generalize', GeometryResult,
+                                   {'geometries': geo_json,
+                                    'sr': sr,
+                                    'maxDeviation': maxDeviation,
+                                    'deviationUnit': deviationUnit
+                                    })
+    def Offset(self, geometries=None, sr=None, offsetDistance=None,
+               offsetUnit=None, offsetHow=None, bevelRatio=None):
+        """The offset operation is performed on a geometry service resource.
+           Offset constructs the offset of the given input geometries. If the
+           offset parameter is positive the constructed offset will be on the
+           right side of the geometry. (Left side offsets are constructed with
+           negative parameters.) Tracing the geometry from it's first vertex to
+           the last will give you a direction along the geometry. It is to the
+           right and left perspective of this direction that the positive and
+           negative parameters will dictate where the offset is contructed. In
+           these terms it is simple to infer where the offset of even
+           horizontal geometries will be constructed. The offsetHow parameter
+           determines how outer corners between segments are handled. Rounded
+           offset rounds the corner between extended offsets. Bevelled offset
+           squares off the corner after a given ratio distance. Mitered offset
+           attempts to allow extended offsets to naturally intersect, but if
+           that intersection occurs too far from the corner, the corner is
+           eventually bevelled off at a fixed distance."""
+
+        if isinstance(geometries, geometry.Geometry):
+            geometries = [geometries]
+
+        geometry_types = set([x.__geometry_type__ for x in geometries])
+        assert len(geometry_types) == 1, "Too many geometry types"
+        geo_json = json.dumps({'geometryType': list(geometry_types)[0],
+                    'geometries': [geo._json_struct_without_sr
+                                        for geo in geometries]
+                    })
+
+        if sr is None:
+            sr = geometries[0].spatialReference.wkid
+
+        return self._get_subfolder('offset', GeometryResult,
+                                   {'geometries': geo_json,
+                                    'sr': sr,
+                                    'offsetDistance': offsetUnit,
+                                    'offsetUnit': offsetHow,
+                                    'bevelRatio': bevelRatio
+                                    })
+
+    def TrimExtend(self, polylines=None, trimExtendTo=None, sr=None,
+                   extendHow=None):
+        """The trimExtend operation is performed on a geometry service
+           resource. This operation trims / extends each polyline specified
+           in the input array, using the user specified guide polylines. When
+           trimming features, the part to the left of the oriented cutting line
+           is preserved in the output and the other part is discarded. An empty
+           polyline is added to the output array if the corresponding input
+           polyline is neither cut nor extended."""
+
+        if isinstance(polylines, geometry.Geometry):
+            polylines = [polylines]
+
+        assert all(isinstance(polyline, geometry.Polyline)
+                   for polyline in polylines), "Must use polylines"
+
+        if sr is None:
+            sr = polylines[0].spatialReference.wkid
+
+        geo_json = json.dumps([polyline._json_struct_without_sr
+                                 for polyline in polylines])
+
+        return self._get_subfolder('trimExtend', GeometryResult, 
+                                    {'polylines': geo_json,
+                                     'trimExtendTo': trimExtendTo,
+                                     'extendHow': extendHow,
+                                     'sr': sr
+                                    })
+    def AutoComplete(self, polygons=None, polylines=None, sr=None)
+        """The Auto Complete operation is performed on a geometry service
+           resource. The AutoComplete operation simplifies the process of
+           constructing new polygons that are adjacent to other polygons. It
+           constructs polygons that fill in the gaps between existing polygons
+           and a set of polylines."""        
+        pass
+    def Cut(self, cutter=None, target=None, sr=None):
+        """The cut operation is performed on a geometry service resource. This
+           operation splits the input polyline or polygon where it crosses a
+           cutting polyline"""        
+        pass
+    def Difference(self, geometries=None, geometry=None, sr=None):
+        """The difference operation is performed on a geometry service
+           resource. This operation constructs the set-theoretic difference
+           between an array of geometries and another geometry."""
+        pass
+    def Intersect(self, geometries=None, geometry=None, sr=None):
+        """The intersect operation is performed on a geometry service
+           resource. This operation constructs the set-theoretic intersection
+           between an array of geometries and another geometry"""
+        pass
+    def Reshape(self, target=None, reshaper=None, sr=None):
+        """The reshape operation is performed on a geometry service resource.
+           It reshapes a polyline or a part of a polygon using a reshaping
+           line."""
+        pass
+    def Union(self, geometries=None, sr=None):
+        """The union operation is performed on a geometry service resource.
+           This operation constructs the set-theoretic union of the geometries
+           in the input array. All inputs must be of the same type."""
+        pass        
 
 class ExportImageResult(JsonResult):
     """Represents the output of an Image Service exportImage call."""
