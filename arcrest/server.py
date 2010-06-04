@@ -1820,3 +1820,34 @@ class GlobeService(Service):
         """Return a list of this globe service's layer objects"""
         return [self._get_subfolder("%s/" % layer['id'], GlobeLayer)
                 for layer in self._json_struct['layers']]
+
+class FeatureLayer(MapLayer):
+    """The layer resource represents a single editable feature layer or non
+       spatial table in a feature service."""
+
+    pass
+
+class FeatureService(Service):
+    """A feature service allows clients to query and edit features. Features
+       include geometry, attributes and symbology and are organized into layers
+       and sub types within a layer."""
+    __service_type__ = "FeatureServer"
+
+    @property
+    def layernames(self):
+        """Return a list of the names of this service's layers"""
+        return [layer['name'] for layer in self._json_struct['layers']]
+    @property
+    def layers(self):
+        """Return a list of this service's layer objects"""
+        return [self._get_subfolder("%s/" % layer['id'], FeatureLayer)
+                for layer in self._json_struct['layers']]
+    @property
+    def tablenames(self):
+        """Return a list of the names of this service's tables"""
+        return [table['name'] for table in self._json_struct.get('tables', [])]
+    @property
+    def tables(self):
+        """Return a list of this service's table objects"""
+        return [self._get_subfolder("%s/" % table['id'], FeatureLayer)
+                for table in self._json_struct.get('tables', [])]
