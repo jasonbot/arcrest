@@ -47,6 +47,7 @@ class RestURL(object):
     __token__ = None           # For token-based auth
     __lazy_fetch__ = True      # Fetch when constructed, or later on?
     __parent_type__ = None     # For automatically generated parent URLs
+    __post__ = False           # Move query string to POST
     _parent = None
 
     def __init__(self, url):
@@ -91,7 +92,6 @@ class RestURL(object):
            to the current object's URL. Optionally, query parameters
            may be set."""
         newurl = urlparse.urljoin(self.url, urllib.quote(foldername), False)
-        #print "    ", self.url, "(", foldername, ")", newurl
         # Add the key-value pairs sent in params to query string if they
         # are so defined.
         query_dict = {}
@@ -117,9 +117,8 @@ class RestURL(object):
                 # Just use the wkid of SpatialReferences
                 elif isinstance(val, geometry.SpatialReference): 
                     query_dict[key] = val.wkid
-                # Layer selection: if it's a list, make it a comma-separated
-                # string
-                elif key == "layers" and isinstance(val, (list, tuple)):
+                # If it's a list, make it a comma-separated string
+                elif isinstance(val, (list, tuple)):
                     val = ",".join([str(v.id) 
                                     if isinstance(v, Layer)
                                     else str(v) for v in val])
@@ -140,13 +139,22 @@ class RestURL(object):
     @property
     def url(self):
         """The URL as a string of the resource."""
-        return urlparse.urlunsplit(self._url)
+        urlparts = self._url
+        if self.__post__:
+            urlparts = list(urlparts)
+            urlparts[3] = '' # Clear out query string on POST
+        return urlparse.urlunsplit(urlparts)
+    @property
+    def query(self):
+        return self._url[3]
     @property
     def _contents(self):
         """The raw contents of the URL as fetched, this is done lazily.
            For non-lazy fetching this is accessed in the object constructor."""
         if self.__urldata__ is Ellipsis or self.__cache_request__ is False:
-            handle = urllib2.urlopen(self.url)
+            handle = urllib2.urlopen(self.url, self.query 
+                                                    if self.__post__
+                                                    else None)
             # Handle the special case of a redirect (only follow once) --
             # Note that only the first 3 components (protocol, hostname, path)
             # are altered as component 4 is the query string, which can get
@@ -1817,7 +1825,7 @@ class GlobeService(Service):
     @property
     def layers(self):
         """Return a list of this globe service's layer objects"""
-        return [self._get_subfolder("%s/" % layer['id'], GlobeLayer)
+        return [self._get_subfolder("./%s/" % layer['id'], GlobeLayer)
                 for layer in self._json_struct['layers']]
 
 class FeatureLayer(MapLayer):
@@ -1827,15 +1835,48 @@ class FeatureLayer(MapLayer):
     def __getitem__(self, index):
         """Get a feature by featureId"""
         subfolder = self._get_subfolder(str(index), JsonResult)
-        geom = geometry.fromJson(
-                    subfolder._json_struct['feature']['geometry'],
-                    subfolder._json_struct['feature'].get('attributes', {}))
-        geom.attachments = self._get_subfolder("%s/attachments" % str(index),
+        if 'geometry' in subfolder._json_struct['feature']:
+            geom = geometry.fromJson(
+                        subfolder._json_struct['feature'].get('geometry',
+                                                              None),
+                        subfolder._json_struct['feature'].get('attributes', 
+                                                              {}))
+        else:
+            geom = geometry.NullGeometry()
+            geom.attributes = sulfolder._json_struct['feature'].get('attributes',
+                                                                    {})
+        geom.attachments = self._get_subfolder("./%s/attachments/" % str(index),
                                                AttachmentInfos)
         return geom
     def Feature(self, featureId):
         """Return a feature from this FeatureService by its ID"""
         return self[featureId]
+    def QueryRelatedRecords(self, objectIds=None, relationshipId=None,
+                            outFields=None, definitionExpression=None,
+                            returnGeometry=None, outSR=None):
+        """The query operation is performed on a feature service layer
+           resource. The result of this operation are featuresets grouped by
+           source layer / table object IDs. Each featureset contains Feature
+           objects including the values for the fields requested by the user.
+           For related layers, if you request geometry information, the
+           geometry of each feature is also returned in the featureset. For
+           related tables, the featureset does not include geometries."""
+
+        out = self._get_subfolder("./queryRelatedRecords", JsonResult, {
+                                                        'objectIds':
+                                                            objectIds,
+                                                        'relationshipId':
+                                                            relationshipId,
+                                                        'outFields':
+                                                            outFields,
+                                                        'definitionExpression':
+                                                          definitionExpression,
+                                                        'returnGeometry':
+                                                            returnGeometry,
+                                                        'outSR': outSR
+                                                })
+        return out._json_struct
+
 
 class FeatureService(Service):
     """A feature service allows clients to query and edit features. Features
