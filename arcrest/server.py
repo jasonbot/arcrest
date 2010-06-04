@@ -416,6 +416,13 @@ class JsonResult(Result):
                                 detailstring,
                                 self.url))
 
+class JsonPostResult(JsonResult):
+    """Class representing a sepcialization of a REST call which moves all
+       parameters to the payload of a POST request instead of in the URL
+       query string in a GET"""
+
+    pass
+
 class Layer(RestURL):
     """The base class for map and network layers"""
     __cache_request__ = True # Only request the URL once
@@ -1828,26 +1835,56 @@ class GlobeService(Service):
         return [self._get_subfolder("./%s/" % layer['id'], GlobeLayer)
                 for layer in self._json_struct['layers']]
 
+class FeatureLayerFeature(object):
+    """The feature resource represents a single feature in a layer in a feature service."""
+    @property
+    def geometry(self):
+        if 'geometry' in self._json_struct['feature']:
+            geom = geometry.fromJson(
+                        self._json_struct['feature'].get('geometry',
+                                                              None),
+                        self._json_struct['feature'].get('attributes', 
+                                                              {}))
+        else:
+            geom = geometry.NullGeometry()
+            geom.attributes = self._json_struct['feature'].get('attributes',
+                                                                    {})
+        return geom
+    @property
+    def attributes(self):
+        return self._json_struct['feature'].get('attributes', 
+                                                              {}))
+    @property
+    def attachments(self):
+        return self._get_subfolder("./attachments/", AttachmentInfos)
+    def AddAttachment(self, attachment=None):
+        """This operation adds an attachment to the associated feature (POST
+           only). The add attachment operation is performed on a feature
+           service feature resource."""
+        return self._get_subfolder("./addAttachment", JsonPostResult,
+                                   {'attachment': attachment})
+    def UpdateAttachment(self, attachmentId=None, attachment=None):
+        """This operation updates an attachment associated with a feature
+           (POST only). The update attachment operation is performed on a
+           feature service feature resource."""
+        return self._get_subfolder("./updateAttachment", JsonPostResult,
+                                   {'attachment': attachment,
+                                    'attachmentId': attachmentId})
+    def DeleteAttachments(self, attachmentIds=None):
+        """This operation deletes attachments associated with a feature (POST
+           only). The delete attachments operation is performed on a feature
+           service feature resource."""
+        return self._get_subfolder("./deleteAttachments", JsonPostResult,
+                                    {'attachmentIds': attachmentIds})
+
+
 class FeatureLayer(MapLayer):
     """The layer resource represents a single editable feature layer or non
        spatial table in a feature service."""
 
     def __getitem__(self, index):
         """Get a feature by featureId"""
-        subfolder = self._get_subfolder(str(index), JsonResult)
-        if 'geometry' in subfolder._json_struct['feature']:
-            geom = geometry.fromJson(
-                        subfolder._json_struct['feature'].get('geometry',
-                                                              None),
-                        subfolder._json_struct['feature'].get('attributes', 
-                                                              {}))
-        else:
-            geom = geometry.NullGeometry()
-            geom.attributes = sulfolder._json_struct['feature'].get('attributes',
-                                                                    {})
-        geom.attachments = self._get_subfolder("./%s/attachments/" % str(index),
-                                               AttachmentInfos)
-        return geom
+        return self._get_subfolder(str(index), FeatureLayerFeature)
     def Feature(self, featureId):
         """Return a feature from this FeatureService by its ID"""
         return self[featureId]
@@ -1876,7 +1913,75 @@ class FeatureLayer(MapLayer):
                                                         'outSR': outSR
                                                 })
         return out._json_struct
-
+    def AddFeatures(self, features):
+        """This operation adds features to the associated feature layer or
+           table (POST only). The add features operation is performed on a
+           feature service layer resource. The result of this operation is an
+           array of edit results. Each edit result identifies a single feature
+           and indicates if the edit were successful or not. If not, it also
+           includes an error code and an error description."""
+        fd = {'features': ",".join(json.dumps(
+                                        feature._json_struct_for_featureset) 
+                                    for feature in features)
+        return self._get_subfolder("./addFeatures", JasonPostResult, fd)
+    def UpdateFeatures(self, features):
+        """This operation updates features to the associated feature layer or
+           table (POST only). The update features operation is performed on a
+           feature service layer resource. The result of this operation is an
+           array of edit results. Each edit result identifies a single feature
+           and indicates if the edit were successful or not. If not, it also
+           includes an error code and an error description."""
+        fd = {'features': ",".join(json.dumps(
+                                        feature._json_struct_for_featureset) 
+                                    for feature in features)
+        return self._get_subfolder("./updateFeatures", JsonPostResult, fd)
+    def DeleteFeatures(self, objectIds=None, where=None, geometry=None,
+                       inSR=None, spatialRel=None):
+        """This operation deletes features in a feature layer or table (POST
+           only). The delete features operation is performed on a feature
+           service layer resource. The result of this operation is an array
+           of edit results. Each edit result identifies a single feature and
+           indicates if the edit were successful or not. If not, it also
+           includes an error code and an error description."""
+        gt = geometry.__geometry_type__
+        if sr is None:
+            sr = geometry.spatialReference.wkid
+        geo_json = json.dumps(Geometry._json_struct_without_sr)
+        return self._get_subfolder("./deleteFeatures", JsonPostResult, {
+                                                    'objectIds': objectIds,
+                                                    'where': where,
+                                                    'geometry': geo_json,
+                                                    'geometryType':
+                                                            geometryType,
+                                                    'inSR': inSR,
+                                                    'spatialRel': spatialRel
+                                    })
+    def ApplyEdits(self, adds=None, updates=None, deletes=None):
+        """This operation adds, updates and deletes features to the associated
+           feature layer or table in a single call (POST only). The apply edits
+           operation is performed on a feature service layer resource. The
+           result of this operation are 3 arrays of edit results (for adds,
+           updates and deletes respectively). Each edit result identifies a
+           single feature and indicates if the edit were successful or not. If
+           not, it also includes an error code and an error description."""
+        add_str, update_str = None, None
+        if adds:
+            add_str = ",".join(json.dumps(
+                                        feature._json_struct_for_featureset) 
+                                    for feature in adds)
+        if updates:
+            update_str = ",".join(json.dumps(
+                                        feature._json_struct_for_featureset) 
+                                    for feature in updates)
+        return self._get_subfolder("./applyEdits", JsonPostResult,
+                                                                 {'adds':
+                                                                       add_str,
+                                                                  'updates':
+                                                                    update_str,
+                                                                   'deletes':
+                                                                        deletes
+                                                                   })
+        
 
 class FeatureService(Service):
     """A feature service allows clients to query and edit features. Features
