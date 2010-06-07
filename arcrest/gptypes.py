@@ -208,11 +208,20 @@ class GPDate(GPBaseType):
                             self.format = format
                         except ValueError:
                             pass
+                    try:
+                        import utils
+                        self.date = utils.timetopythonvalue(date)
+                    except:
+                        pass
                     raise ValueError("Cannot convert %r to date" % date)
         elif isinstance(date, (datetime.date, datetime.datetime)):
             self.date = date
         else:
-            raise ValueError("Cannot convert %r to a date" % date)
+            try:
+                import utils
+                self.date = utils.timetopythonvalue(date)
+            except:
+                raise ValueError("Cannot convert %r to a date" % date)
         self.format = format
     @property
     def _json_struct(self):

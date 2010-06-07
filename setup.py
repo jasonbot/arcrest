@@ -3,7 +3,7 @@ import os
 
 setup(
     name='arcrest',
-    version='0.1',
+    version='10.0',
     description="""Wrapper to the ArcGIS REST API, and a Python analogue to the Javascript APIs""",
     author="ESRI",
     author_email="jscheirer@esri.com",
