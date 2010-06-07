@@ -1557,7 +1557,7 @@ class GeometryService(Service):
                                      'extendHow': extendHow,
                                      'sr': sr
                                     })
-    def AutoComplete(self, polygons=None, polylines=None, sr=None)
+    def AutoComplete(self, polygons=None, polylines=None, sr=None):
         """The Auto Complete operation is performed on a geometry service
            resource. The AutoComplete operation simplifies the process of
            constructing new polygons that are adjacent to other polygons. It
