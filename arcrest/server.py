@@ -491,7 +491,7 @@ class MapLayer(Layer):
                                                'objectIds': objectIds,
                                                'time': 
                                                     utils.pythonvaluetotime(
-                                                        time)
+                                                        time),
                                                'maxAllowableOffset':
                                                     maxAllowableOffset,
                                                'returnIdsOnly':
