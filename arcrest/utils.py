@@ -40,7 +40,7 @@ def pythonvaluetotime(time_val):
             dtlist += [0, 0, 0]
         return str(long(calendar.timegm(dtlist) * 1000.0))
     elif (isinstance(time_val, sequence)
-                    and len(time_val) == 2)):
+                    and len(time_val) == 2):
         if all(isinstance(x, numeric) 
                for x in time_val):
             return ",".join(pythonvaluetotime(x) 

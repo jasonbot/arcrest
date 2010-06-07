@@ -2049,7 +2049,7 @@ class FeatureLayerFeature(object):
     @property
     def attributes(self):
         return self._json_struct['feature'].get('attributes', 
-                                                              {}))
+                                                              {})
     @property
     def attachments(self):
         return self._get_subfolder("./attachments/", AttachmentInfos)
@@ -2118,8 +2118,8 @@ class FeatureLayer(MapLayer):
            includes an error code and an error description."""
         fd = {'features': ",".join(json.dumps(
                                         feature._json_struct_for_featureset) 
-                                    for feature in features)
-        return self._get_subfolder("./addFeatures", JasonPostResult, fd)
+                                    for feature in features)}
+        return self._get_subfolder("./addFeatures", JsonPostResult, fd)
     def UpdateFeatures(self, features):
         """This operation updates features to the associated feature layer or
            table (POST only). The update features operation is performed on a
@@ -2129,7 +2129,7 @@ class FeatureLayer(MapLayer):
            includes an error code and an error description."""
         fd = {'features': ",".join(json.dumps(
                                         feature._json_struct_for_featureset) 
-                                    for feature in features)
+                                    for feature in features)}
         return self._get_subfolder("./updateFeatures", JsonPostResult, fd)
     def DeleteFeatures(self, objectIds=None, where=None, geometry=None,
                        inSR=None, spatialRel=None):
