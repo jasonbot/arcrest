@@ -836,7 +836,7 @@ class GeocodeService(Service):
        distinguishes a place."""
     __service_type__ = "GeocodeServer"
 
-    def FindAddressCandidates(self, outFields=[], **fields):
+    def FindAddressCandidates(self, outFields=[], outSR=None, **fields):
         """The findAddressCandidates operation is performed on a geocode
            service resource. The result of this operation is a resource
            representing the  list of address candidates. This resource
@@ -852,18 +852,28 @@ class GeocodeService(Service):
                                    else 's', ', '.join(required_unset_fields)))
         query = fields.copy()
         query['outFields'] = outFields
+        if outSR:
+            query['outSR'] = (outSR.wkid 
+                                if isinstance(outSR, geometry.SpatialReference)
+                                else outSR)
         return self._get_subfolder('findAddressCandidates/', 
                                    FindAddressCandidatesResult, query)
 
-    def ReverseGeocode(self, location, distance):
+    def ReverseGeocode(self, location, distance, outSR=None):
         """The reverseGeocode operation is performed on a geocode service 
            resource. The result of this operation is a reverse geocoded address
            resource. This resource provides information about all the address
            fields pertaining to the reverse geocoded address as well as its
            exact location."""
+        if outSR:
+            outSR = (outSR.wkid 
+                       if isinstance(outSR, geometry.SpatialReference)
+                       else outSR)
+
         return self._get_subfolder('reverseGeocode/', ReverseGeocodeResult, 
                                                       {'location': location, 
-                                                       'distance': distance})
+                                                       'distance': distance,
+                                                       'outSR': outSR})
 
 class GPMessage(object):
     """Represents a message generated during the execution of a
@@ -1328,7 +1338,8 @@ class GeometryService(Service):
                                     'bufferSR': bufferSR
                                    })
 
-    def AreasAndLengths(self, polygons, sr=None):
+    def AreasAndLengths(self, polygons, sr=None, lengthUnit=None, 
+                        areaUnit=None):
         """The areasAndLengths operation is performed on a geometry service
            resource. This operation calculates areas and perimeter lengths for
            each polygon specified in the input array."""
@@ -1347,10 +1358,12 @@ class GeometryService(Service):
 
         return self._get_subfolder('areasAndLengths', AreasAndLengthsResult, 
                                     {'polygons': geo_json,
-                                     'sr': sr
+                                     'sr': sr,
+                                     'lengthUnit': lengthUnit,
+                                     'areaUnit': areaUnit
                                     })
         
-    def Lengths(self, polylines, sr=None):
+    def Lengths(self, polylines, sr=None, lengthUnit=None, geodesic=None):
         """The lengths operation is performed on a geometry service resource.
            This operation calculates the lengths of each polyline specified in
            the input array"""
@@ -1367,9 +1380,14 @@ class GeometryService(Service):
         geo_json = json.dumps([polyline._json_struct_without_sr
                                  for polyline in polylines])
 
+        if geodesic is not None:
+            geodesic = bool(geodesic)
+
         return self._get_subfolder('lengths', LengthsResult, 
                                     {'polylines': geo_json,
-                                     'sr': sr
+                                     'sr': sr,
+                                     'lengthUnit': lengthUnit,
+                                     'geodesic': geodesic
                                     })
 
     def LabelPoints(self, polygons, sr):
@@ -1563,32 +1581,32 @@ class GeometryService(Service):
            constructing new polygons that are adjacent to other polygons. It
            constructs polygons that fill in the gaps between existing polygons
            and a set of polylines."""        
-        pass
+        raise NotImplementedError()
     def Cut(self, cutter=None, target=None, sr=None):
         """The cut operation is performed on a geometry service resource. This
            operation splits the input polyline or polygon where it crosses a
-           cutting polyline"""        
-        pass
+           cutting polyline"""
+        raise NotImplementedError()
     def Difference(self, geometries=None, geometry=None, sr=None):
         """The difference operation is performed on a geometry service
            resource. This operation constructs the set-theoretic difference
            between an array of geometries and another geometry."""
-        pass
+        raise NotImplementedError()
     def Intersect(self, geometries=None, geometry=None, sr=None):
         """The intersect operation is performed on a geometry service
            resource. This operation constructs the set-theoretic intersection
            between an array of geometries and another geometry"""
-        pass
+        raise NotImplementedError()
     def Reshape(self, target=None, reshaper=None, sr=None):
         """The reshape operation is performed on a geometry service resource.
            It reshapes a polyline or a part of a polygon using a reshaping
            line."""
-        pass
+        raise NotImplementedError()
     def Union(self, geometries=None, sr=None):
         """The union operation is performed on a geometry service resource.
            This operation constructs the set-theoretic union of the geometries
            in the input array. All inputs must be of the same type."""
-        pass        
+        raise NotImplementedError()
 
 class ExportImageResult(JsonResult):
     """Represents the output of an Image Service exportImage call."""
@@ -1619,7 +1637,8 @@ class ImageService(Service):
     def ExportImage(self, bbox=None, size=None, imageSR=None, bboxSR=None,
                     format=None, pixelType=None, noData=None, 
                     interpolation=None, compressionQuality=None, bandIds=None,
-                    mosaicProperties=None, viewpointProperties=None):
+                    mosaicProperties=None, viewpointProperties=None,
+                    mosaicRule=None, renderingRule=None):
         """The export operation is performed on a map service resource. The
            result of this operation is a map image resource. This resource
            provides information about the exported map image such as its URL,
@@ -1637,7 +1656,9 @@ class ImageService(Service):
                                      'compressionQuality': compressionQuality, 
                                      'bandIds': bandIds,
                                      'mosaicProperties': mosaicProperties,
-                                     'viewpointProperties': viewpointProperties
+                                     'viewpointProperties': viewpointProperties,
+                                     'mosaicRule': mosaicRule,
+                                     'renderingRule': renderingRule
                                     })
 
 class NetworkService(Service):
@@ -1650,16 +1671,16 @@ class NetworkService(Service):
 
     @property
     def routeLayers(self):
-        return [self._get_subfolder("%s/" % layer, RouteNetworkLayer) for layer in 
-                self._json_struct['routeLayers']]
+        return [self._get_subfolder("%s/" % layer, RouteNetworkLayer)
+                for layer in self._json_struct['routeLayers']]
     @property
     def serviceAreaLayers(self):
-        return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
-                self._json_struct['serviceAreaLayers']]
+        return [self._get_subfolder("%s/" % layer, NetworkLayer)
+                for layer in self._json_struct['serviceAreaLayers']]
     @property
     def closestFacilityLayers(self):
-        return [self._get_subfolder("%s/" % layer, NetworkLayer) for layer in 
-                self._json_struct['closestFacilityLayers']]
+        return [self._get_subfolder("%s/" % layer, NetworkLayer)
+                for layer in self._json_struct['closestFacilityLayers']]
     def __getitem__(self, attr):
         layer_names = set(self._json_struct['routeLayers'] +
                           self._json_struct['serviceAreaLayers'] +
@@ -1701,13 +1722,16 @@ class NetworkSolveResult(JsonResult):
                 for direction in self._json_struct['directions']]
     @property
     def routes(self):
-        return gptypes.GPFeatureRecordSetLayer.fromJson(self._json_struct['routes'])
+        return gptypes.GPFeatureRecordSetLayer.fromJson(
+                                                 self._json_struct['routes'])
     @property
     def stops(self):
-        return gptypes.GPFeatureRecordSetLayer.fromJson(self._json_struct['stops'])
+        return gptypes.GPFeatureRecordSetLayer.fromJson(
+                                                 self._json_struct['stops'])
     @property
     def barriers(self):
-        return gptypes.GPFeatureRecordSetLayer.fromJson(self._json_struct['barriers'])
+        return gptypes.GPFeatureRecordSetLayer.fromJson(
+                                                 self._json_struct['barriers'])
     @property
     def messages(self):
         return self._json_struct['messages']
@@ -1766,6 +1790,66 @@ class NetworkLayer(Layer):
     @property
     def networkClasses(self):
         return self._json_struct['networkClasses']
+    def SolveClosestFacility(self, facilities=None, 
+                             incidents=None, 
+                             barriers=None,
+                             polylineBarriers=None,
+                             polygonBarriers=None, 
+                             attributeParameterValues=None,
+                             returnDirections=None,
+                             directionsLanguage=None,
+                             directionsStyleName=None,
+                             directionsLengthUnits=None,
+                             directionsTimeAttributeName=None,
+                             returnCFRoutes=None,
+                             returnFacilities=None,
+                             returnIncidents=None,
+                             returnBarriers=None,
+                             returnPolylineBarriers=None,
+                             returnPolygonBarriers=None,
+                             facilityReturnType=None,
+                             outputLines=None,
+                             defaultCutoff=None,
+                             defaultTargetFacilityCount=None,
+                             travelDirection=None,
+                             outSR=None,
+                             impedanceAttributeName=None,
+                             restrictionAttributeNames=None,
+                             restrictUTurns=None,
+                             useHierarchy=None,
+                             outputGeometryPrecision=None,
+                             outputGeometryPrecisionUnits=None):
+        """The solve operation is performed on a network layer resource of type
+           closest facility."""
+        raise NotImplementedError()
+    def SolveServiceArea(self, facilities=None,
+                         barriers=None,
+                         polylineBarriers=None,
+                         polygonBarriers=None,
+                         attributeParameterValues=None,
+                         defaultBreaks=None,
+                         excludeSourcesFromPolygons=None,
+                         mergeSimilarPolygonRanges=None,
+                         outputLines=None,
+                         outputPolygons=None,
+                         overlapLines=None,
+                         overlapPolygons=None,
+                         splitLinesAtBreaks=None,
+                         splitPolygonsAtBreaks=None,
+                         travelDirection=None,
+                         trimOuterPolygon=None,
+                         trimPolygonDistance=None,
+                         trimPolygonDistanceUnits=None,
+                         accumulateAttributeNames=None,
+                         impedanceAttributeName=None,
+                         restrictionAttributeNames=None,
+                         restrictUTurns=None,
+                         outputGeometryPrecision=None,
+                         outputGeometryPrecisionUnits=None):
+        """The solve operation is performed on a network layer resource of type
+           service area (layerType is esriNAServerServiceArea)."""
+        raise NotImplementedError()
+
 
 class RouteNetworkLayer(NetworkLayer):
     """Represents a Route Network Layer"""
@@ -1778,7 +1862,8 @@ class RouteNetworkLayer(NetworkLayer):
               restrictionAttributeNames=None, restrictUTurns=None,
               useHierarchy=None, directionsLanguage=None,
               outputGeometryPrecision=None, directionsLengthUnits=None,
-              directionsTimeAttributeName=None):
+              directionsTimeAttributeName=None, attributeParameterValues=None,
+              polylineBarriers=None, polygonBarriers=None):
         """The solve operation is performed on a network layer resource.
 
            At 9.3.1, the solve operation is supported only on the route layer.
@@ -1820,7 +1905,11 @@ class RouteNetworkLayer(NetworkLayer):
                         'directionsLanguage': directionsLanguage,
                         'outputGeometryPrecision': outputGeometryPrecision,
                         'directionsLengthUnits': directionsLengthUnits,
-                        'directionsTimeAttributeName': directionsTimeAttributeName})
+                        'directionsTimeAttributeName':
+                                                  directionsTimeAttributeName,
+                        'attributeParameterValues': attributeParameterValues,
+                        'polylineBarriers': polylineBarriers,
+                        'polygonBarriers': polygonBarriers})
 
 class GeoDataVersion(RestURL):
     """The geodata version resource represents a single version in a geodata
@@ -2032,7 +2121,8 @@ class GlobeService(Service):
                 for layer in self._json_struct['layers']]
 
 class FeatureLayerFeature(object):
-    """The feature resource represents a single feature in a layer in a feature service."""
+    """The feature resource represents a single feature in a layer in a feature
+       service."""
     @property
     def geometry(self):
         if 'geometry' in self._json_struct['feature']:
