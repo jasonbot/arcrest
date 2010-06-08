@@ -1189,8 +1189,8 @@ class GPTask(RestURL):
         for parameter in parameters:
             dt = parameter['dataType']
             parameter['datatype'] = \
-                gptypes.GPBaseType._gp_type_mapping.get(dt,
-                        gptypes.GPString)._from_json_def(parameter)
+                gptypes.GPBaseType._get_type_by_name(
+                            dt)._from_json_def(parameter)
         return parameters
     @property
     def executionType(self):

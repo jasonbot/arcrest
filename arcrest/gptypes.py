@@ -14,13 +14,38 @@ except ImportError:
 import datetime
 import geometry
 
-class GPBaseType(object):
-    """Base type for Geoprocessing argument types"""
+def GPParameterType(object):
+    """Represents a singular or multiple value parameter for a GP task"""
+    pass
+
+def GPMultiValue(GPParameterType):
+    """Represents a multivalue Geoprocessing parameter"""
+    _container_type = None
+    def __init__(self, values):
+        if isinstance(values, GPBaseType):
+            return GPBaseType._get_type_by_name("GPMultiValue:%s" % 
+                                                values.__name__)
+        self._values = [self._container_type.fromJson(item)
+                            if not isinstance(item, GPBaseType)
+                            else item
+                        for item in values]
+    @classmethod
+    def _from_json_def(cls, json):
+        return cls
+    @property
+    def _json_struct(self):
+        return [x._json_struct for x in self._values]
+    @classmethod
+    def fromJson(cls, val):
+        return cls(val)
+
+class GPBaseType(GPParameterType):
+    """Base type for (singular) Geoprocessing argument value types"""
     class __metaclass__(type):
         def __init__(cls, name, bases, dict):
             type.__init__(cls, name, bases, dict)
             try:
-                if '|' not in cls.__name__:
+                if '|' not in cls.__name__ and cls is not GPBaseType:
                     GPBaseType._gp_type_mapping[cls.__name__] = cls
             except:
                 pass
@@ -32,6 +57,22 @@ class GPBaseType(object):
     @classmethod
     def _from_json_def(cls, json):
         return cls
+    @classmethod
+    def _get_type_by_name(cls, name):
+        if (name.startswith("GPMultiValue:") and 
+                name not in cls._gp_type_mapping):
+            def make_multivalue(name, base_type):
+                new_multivalue_type = type(name, (GPMultiValue,), {})
+                new_multivalue_type._container_type = base_type
+                return new_multivalue_type
+            mvs, type = name.split(":", 1)
+            mytype = cls._gp_type_mapping.get(dt, name,
+                                            GPString)._from_json_def(parameter)
+            multivalue_type = make_multivalue(name, mytype)
+            cls._gp_type_mapping[name] = multivalue_type
+            return multivalue_type._from_json_def(parameter)
+        else:
+            return cls._gp_type_mapping.get(dt, name)._from_json_def(parameter)
 
 class GPSimpleType(GPBaseType):
     """For geoprocessing types that simplify to base Python types, such as 
