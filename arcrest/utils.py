@@ -38,7 +38,7 @@ def pythonvaluetotime(time_val):
             dtlist += [time_val.hour, time_val.minute, time_val.second]
         else:
             dtlist += [0, 0, 0]
-        return str(long(calendar.timegm(dtlist) * 1000.0))
+        return long(calendar.timegm(dtlist) * 1000.0)
     elif (isinstance(time_val, sequence)
                     and len(time_val) == 2):
         if all(isinstance(x, numeric) 

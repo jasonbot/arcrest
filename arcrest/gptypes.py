@@ -14,17 +14,10 @@ except ImportError:
 import datetime
 import geometry
 
-def GPParameterType(object):
-    """Represents a singular or multiple value parameter for a GP task"""
-    pass
-
-def GPMultiValue(GPParameterType):
+class GPMultiValue(object):
     """Represents a multivalue Geoprocessing parameter"""
     _container_type = None
     def __init__(self, values):
-        if isinstance(values, GPBaseType):
-            return GPBaseType._get_type_by_name("GPMultiValue:%s" % 
-                                                values.__name__)
         self._values = [self._container_type.fromJson(item)
                             if not isinstance(item, GPBaseType)
                             else item
@@ -40,8 +33,16 @@ def GPMultiValue(GPParameterType):
     @classmethod
     def fromJson(cls, val):
         return cls(val)
+    @staticmethod
+    def fromType(datatype):
+        if issubclass(datatype, GPBaseType):
+            return GPBaseType._get_type_by_name("GPMultiValue:%s" % 
+                                                datatype.__name__)
+        else:
+            return GPBaseType._get_type_by_name("GPMultiValue:%s" % 
+                                                str(datatype))
 
-class GPBaseType(GPParameterType):
+class GPBaseType(object):
     """Base type for (singular) Geoprocessing argument value types"""
     class __metaclass__(type):
         def __init__(cls, name, bases, dict):
@@ -67,14 +68,13 @@ class GPBaseType(GPParameterType):
                 new_multivalue_type = type(name, (GPMultiValue,), {})
                 new_multivalue_type._container_type = base_type
                 return new_multivalue_type
-            mvs, type = name.split(":", 1)
-            mytype = cls._gp_type_mapping.get(dt, name,
-                                            GPString)._from_json_def(parameter)
+            mvs, dtype = name.split(":", 1)
+            mytype = cls._gp_type_mapping.get(dtype, GPString)
             multivalue_type = make_multivalue(name, mytype)
             cls._gp_type_mapping[name] = multivalue_type
-            return multivalue_type._from_json_def(parameter)
+            return multivalue_type
         else:
-            return cls._gp_type_mapping.get(dt, name)._from_json_def(parameter)
+            return cls._gp_type_mapping.get(name, GPString)
 
 class GPSimpleType(GPBaseType):
     """For geoprocessing types that simplify to base Python types, such as 
@@ -235,7 +235,7 @@ class GPDate(GPBaseType):
                                 "%Y%m%dT%H:%M:%S",
                                 "%Y-%m-%d %H:%M:%S",
                                 "%m/%d/%Y %I:%M:%S %p"]
-    def __init__(self, date, format="%Y-%m-%d"):
+    def __init__(self, date, format=None):
         if isinstance(date, basestring):
             try:
                 self.date = datetime.datetime.strptime(date, format)
@@ -268,8 +268,12 @@ class GPDate(GPBaseType):
         self.format = format
     @property
     def _json_struct(self):
-        return {'date': self.date.strftime(self.format),
-                'format': self.format.replace('%', '')}
+        if self.format:
+            return {'date': self.date.strftime(self.format),
+                    'format': self.format.replace('%', '')}
+        else:
+            import utils
+            return utils.pythonvaluetotime(self.date)
         #return self.date.strftime(self.__date_format)
     @classmethod
     def fromJson(cls, value):
