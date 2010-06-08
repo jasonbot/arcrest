@@ -76,6 +76,7 @@ class GPBaseType(object):
     @classmethod
     def _register_type(cls, newcls):
         cls._gp_type_mapping[newcls.__name__] = newcls
+        return newcls
 
 class GPSimpleType(GPBaseType):
     """For geoprocessing types that simplify to base Python types, such as 
