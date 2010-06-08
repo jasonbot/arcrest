@@ -50,14 +50,6 @@ class GPMultiValue(object):
 
 class GPBaseType(object):
     """Base type for (singular) Geoprocessing argument value types"""
-    class __metaclass__(type):
-        def __init__(cls, name, bases, dict):
-            type.__init__(cls, name, bases, dict)
-            try:
-                if '|' not in cls.__name__ and cls is not GPBaseType:
-                    GPBaseType._gp_type_mapping[cls.__name__] = cls
-            except:
-                pass
     #: Mapping from Geoprocessing type to name
     _gp_type_mapping = {}
 
@@ -81,6 +73,9 @@ class GPBaseType(object):
             return multivalue_type
         else:
             return cls._gp_type_mapping.get(name, GPString)
+    @classmethod
+    def _register_type(cls, newcls):
+        cls._gp_type_mapping[newcls.__name__] = newcls
 
 class GPSimpleType(GPBaseType):
     """For geoprocessing types that simplify to base Python types, such as 
@@ -95,22 +90,27 @@ class GPSimpleType(GPBaseType):
     def fromJson(cls, value):
         return cls.__conversion__(value)
 
+@GPBaseType._register_type
 class GPBoolean(GPSimpleType):
     """Represents a geoprocessing boolean parameter"""
     __conversion__ = bool
 
+@GPBaseType._register_type
 class GPDouble(GPSimpleType):
     """Represents a geoprocessing double parameter"""
     __conversion__ = float
 
+@GPBaseType._register_type
 class GPLong(GPSimpleType):
     """Represents a geoprocessing long parameter"""
     __conversion__ = long
 
+@GPBaseType._register_type
 class GPString(GPSimpleType):
     """Represents a geoprocessing string parameter"""
     __conversion__ = str
 
+@GPBaseType._register_type
 class GPLinearUnit(GPBaseType):
     """Represents a geoprocessing linear unit parameter"""
     #: The set of unit names allowed, defaulting to esriMeters
@@ -154,6 +154,7 @@ def rowtuple(colnames):
     RowTuple.__slots__ = ()
     return RowTuple
 
+@GPBaseType._register_type
 class GPFeatureRecordSetLayer(GPBaseType):
     """Represents a geoprocessing feature recordset parameter"""
     _columns = None
@@ -204,6 +205,7 @@ class GPFeatureRecordSetLayer(GPBaseType):
                       for geo in value['features']]
         return cls(geometries, spatialreference)
 
+@GPBaseType._register_type
 class GPRecordSet(GPBaseType):
     """Represents a geoprocessing recordset parameter"""
     _columns = None
@@ -227,6 +229,7 @@ class GPRecordSet(GPBaseType):
     def _json_struct(self):
         return { 'features': self.features }
 
+@GPBaseType._register_type
 class GPDate(GPBaseType):
     """Represents a geoprocessing date parameter. The format parameter
        in the object constructor varies from the REST API's format parameters
@@ -294,6 +297,7 @@ class GPDate(GPBaseType):
         elif isinstance(value, basestring):
             return cls(value, cls.__date_format)
 
+@GPBaseType._register_type
 class GPDataFile(GPBaseType):
     """A URL for a geoprocessing data file parameter"""
     #: The URL of the data file
@@ -322,9 +326,13 @@ class GPUrlWithFormatType(GPBaseType):
     def fromJson(cls, value):
         return cls(value['url'], value['format'])
 
+@GPBaseType._register_type
 class GPRasterData(GPUrlWithFormatType):
     """A URL for a geoprocessing raster data file parameter, with format."""
 
+@GPBaseType._register_type
 class GPRasterDataLayer(GPUrlWithFormatType):
     """A URL for a geoprocessing raster data layer file parameter,
        with format."""
+
+__all__ = sorted(GPBaseType._gp_type_mapping) + ['GPMultiValue']
