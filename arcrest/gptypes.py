@@ -29,6 +29,8 @@ def GPMultiValue(GPParameterType):
                             if not isinstance(item, GPBaseType)
                             else item
                         for item in values]
+    def __iter__(self):
+        return iter(self._values)
     @classmethod
     def _from_json_def(cls, json):
         return cls
