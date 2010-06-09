@@ -4,20 +4,8 @@
    a hierarchy of endpoints or Uniform Resource Locators (URLs) for each GIS 
    service published with ArcGIS Server."""
 
-# json parsing is a third-party library until 2.6, make some 
-# effort to import it
-
-try:
-    import json
-except ImportError:
-    try:
-        import simplejson as json
-    except ImportError:
-        raise ImportError("Please install the simplejson module "\
-                          "from http://www.undefined.org/python/ "\
-                          "or use arcrest with Python 2.6")
-
 import cgi
+import json
 import urllib
 import urllib2
 import urlparse
@@ -25,6 +13,9 @@ import urlparse
 import geometry
 import gptypes
 import utils
+
+#: User agent to report when making requests
+USER_AGENT = "Mozilla/4.0 (arcrest)"
 
 # Note that nearly every class below derives from this RestURL class.
 # The reasoning is that every object has an underlying URL resource on 
@@ -154,7 +145,8 @@ class RestURL(object):
         if self.__urldata__ is Ellipsis or self.__cache_request__ is False:
             handle = urllib2.urlopen(self.url, self.query 
                                                     if self.__post__
-                                                    else None)
+                                                    else None,
+                                               {'User-Agent' : USER_AGENT})
             # Handle the special case of a redirect (only follow once) --
             # Note that only the first 3 components (protocol, hostname, path)
             # are altered as component 4 is the query string, which can get
