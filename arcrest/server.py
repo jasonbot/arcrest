@@ -143,10 +143,11 @@ class RestURL(object):
         """The raw contents of the URL as fetched, this is done lazily.
            For non-lazy fetching this is accessed in the object constructor."""
         if self.__urldata__ is Ellipsis or self.__cache_request__ is False:
-            handle = urllib2.urlopen(self.url, self.query 
+            request = urllib2.Request(self.url, self.query 
                                                     if self.__post__
                                                     else None,
                                                {'User-Agent' : USER_AGENT})
+            handle = urllib2.urlopen(request)
             # Handle the special case of a redirect (only follow once) --
             # Note that only the first 3 components (protocol, hostname, path)
             # are altered as component 4 is the query string, which can get
