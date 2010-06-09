@@ -207,7 +207,7 @@ class Folder(RestURL):
 
     @property
     def __members__(self):
-        return sorted(self.foldernames + list(self.servicenames))
+        return sorted(self.foldernames + list(self.servicenames) + self.clusternames)
     @property
     def foldernames(self):
         "Returns a list of folder names available from this folder."
@@ -217,6 +217,15 @@ class Folder(RestURL):
     def folders(self):
         "Returns a list of Folder objects available in this folder."
         return [self._get_subfolder(fn+'/', Folder) for fn in self.foldernames]
+    @property
+    def clusternames(self):
+        "Returns a list of cluster names available from this folder."
+        return [cluster.strip('/').split('/')[-1] for cluster 
+                    in self._json_struct.get('clusters', [])]
+    @property
+    def clusters(self):
+        "Returns a list of Folder objects available in this folder."
+        return [self._get_subcluster(fn+'/', Folder) for fn in self.clusternames]
     @property
     def servicenames(self):
         "Give the list of services available in this folder."
@@ -240,6 +249,8 @@ class Folder(RestURL):
     def __getitem__(self, attr):
         # If it's a folder, easy:
         if attr in self.foldernames:
+            return self._get_subfolder(attr, Folder)
+        elif attr in self.clusternames:
             return self._get_subfolder(attr, Folder)
         services = [x.copy() for x in self._json_struct['services']]
         # Strip out relative paths
