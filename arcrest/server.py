@@ -225,7 +225,7 @@ class Folder(RestURL):
     @property
     def clusters(self):
         "Returns a list of Folder objects available in this folder."
-        return [self._get_subcluster(fn+'/', Folder) for fn in self.clusternames]
+        return [self._get_subfolder(fn+'/', Folder) for fn in self.clusternames]
     @property
     def servicenames(self):
         "Give the list of services available in this folder."
