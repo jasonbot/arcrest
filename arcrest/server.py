@@ -198,6 +198,16 @@ class Folder(RestURL):
     # Conversion table from type string to class instance.
     _service_type_mapping = {}
 
+    @classmethod
+    def _register_service_type(cls, subclass):
+        """Registers subclass handlers of various service-type-specific service
+           implementations. Look for classes decorated with
+           @Folder._register_service_type for hints on how this works."""
+        if hasattr(subclass, '__service_type__'):
+            cls._service_type_mapping[subclass.__service_type__] = subclass
+            if subclass.__service_type__:
+                setattr(subclass, subclass.__service_type__, property(lambda x: x))
+
     @property
     def __members__(self):
         return sorted(self.foldernames + list(self.servicenames) + self.clusternames)
@@ -327,34 +337,6 @@ class Service(RestURL):
     __service_type__ = None
     __parent_type__ = Folder
 
-    class __metaclass__(type):
-        """Idea borrowed from http://effbot.org/zone/metaclass-plugins.htm
-           -- use the metaclass system to register subclasses in the
-           Folder's service type registry so when it hits a:: 
-
-              {'name': 'x', 'type': 'y'} 
-
-           service entry in the services key in a folder's json data it knows
-           to instantiate an instance of y to represent a relative ./x/y/ URL.
-           That is, when you do::
-
-              class FooService(Service):
-                  __service_type__ = "FooServer" 
-
-           and::
-
-              afolder._json_struct['services'] = \
-                [{'name': 'MyFoo', 'type': 'FooServer'}]
-
-           then afolder.MyFoo will yield a FooService instance against the
-           relative URL of C{./MyFoo/FooServer/}
-           """
-        def __init__(cls, name, bases, dict):
-            type.__init__(cls, name, bases, dict)
-            if hasattr(cls, '__service_type__'):
-                Folder._service_type_mapping[cls.__service_type__] = cls
-                if cls.__service_type__:
-                    setattr(cls, cls.__service_type__, property(lambda x: x))
     def __init__(self, url):
         if not isinstance(url, (tuple, list)):
             url_ = list(urlparse.urlsplit(url))
@@ -631,6 +613,7 @@ class ExportKMLResult(BinaryResult):
     """Represents the result of an Export KML operation performed on a Map
        Service."""
 
+@Folder._register_service_type
 class MapService(Service):
     """Map services offer access to map and layer content. Map services can
        either be cached or dynamic. A map service that fulfills requests with
@@ -829,6 +812,7 @@ class ReverseGeocodeResult(JsonResult):
         except KeyError as e:
             raise AttributeError(str(e))
 
+@Folder._register_service_type
 class GeocodeService(Service):
     """Geocoding is the process of assigning a location, usually in the form
        of coordinate values (points), to an address by comparing the
@@ -901,6 +885,7 @@ class GPMessage(object):
         return "<% 11s: %r>" % (self.type[len('esriJobMessageType'):],
                                 self.description)
 
+@Folder._register_service_type
 class GPService(Service):
     """Geoprocessing is a fundamental part of enterprise GIS operations. 
        Geoprocessing provides the data analysis, data management, and data 
@@ -1243,6 +1228,7 @@ class LabelPointsResult(JsonResult):
         return [geometry.fromJson(geo) 
                 for geo in self._json_struct['labelPoints']]
 
+@Folder._register_service_type
 class GeometryService(Service):
     """A geometry service contains utility methods, which provide access to
        sophisticated and frequently used geometric operations. An ArcGIS Server
@@ -1633,6 +1619,7 @@ class ExportImageResult(JsonResult):
             outfile = open(outfile, 'wb')
         outfile.write(urllib2.urlopen(self.href).read())
 
+@Folder._register_service_type
 class ImageService(Service):
     """An image service provides read-only access to a mosaicked collection of
        images or a raster data set."""
@@ -1665,6 +1652,7 @@ class ImageService(Service):
                                      'renderingRule': renderingRule
                                     })
 
+@Folder._register_service_type
 class NetworkService(Service):
     """The network service resource represents a network analysis service
        published with ArcGIS Server. The resource provides information about
@@ -2007,6 +1995,7 @@ class GeoDataReplica(RestURL):
     def reconcilePolicy(self):
         return self._json_struct['reconcilePolicy']
 
+@Folder._register_service_type
 class GeoDataService(Service):
     """The geodata service resource represents a geodata service that you have
        published with ArcGIS Server. The resource provides basic information
@@ -2107,6 +2096,7 @@ class GlobeLayer(Layer):
         return [self._get_subfolder("../%s/" % layer['id'], GlobeLayer)
                 for layer in self._json_struct['subLayers']]
 
+@Folder._register_service_type
 class GlobeService(Service):
     """The globe service resource represents a globe service published with
        ArcGIS Server. The resource provides information about the service such
@@ -2124,6 +2114,7 @@ class GlobeService(Service):
         return [self._get_subfolder("./%s/" % layer['id'], GlobeLayer)
                 for layer in self._json_struct['layers']]
 
+@Folder._register_service_type
 class FeatureLayerFeature(object):
     """The feature resource represents a single feature in a layer in a feature
        service."""
@@ -2273,6 +2264,7 @@ class FeatureLayer(MapLayer):
                                                                    })
         
 
+@Folder._register_service_type
 class FeatureService(Service):
     """A feature service allows clients to query and edit features. Features
        include geometry, attributes and symbology and are organized into layers
