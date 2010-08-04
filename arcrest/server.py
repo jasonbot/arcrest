@@ -127,6 +127,9 @@ class RestURL(object):
         # Remind the resource where it came from
         rt.parent = self
         return rt
+    def _clear_cache(self):
+        self.__json_struct__ = Ellipsis
+        self.__urldata__ = Ellipsis
     @property
     def url(self):
         """The URL as a string of the resource."""
