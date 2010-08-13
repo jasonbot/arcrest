@@ -36,7 +36,7 @@ class Machines(server.RestURL):
     def remove(self, machine_names):
         machines = filter(lambda m: m in self._machines, machine_names)
         responses = map(lambda m: self._get_subfolder("./remove", Machines, {"machineNames": m})._json_struct, machines)
-        return not any(map(is_json_error, responses))
+        return (not any(map(is_json_error, responses))) and machines
 
 class Directory(server.RestURL):
    __post__ = True
@@ -82,6 +82,10 @@ class Cluster(server.RestURL):
             newurl[3] = urllib.urlencode({'f':'json'})
             self._url = newurl
             self._clear_cache()
+    def __eq__(self, other):
+        if not isinstance(other, Cluster):
+            return False
+        return self._url == other._url 
     @property
     def machines(self):
         return self._get_subfolder("./machines/", Machines)
@@ -95,6 +99,7 @@ class Cluster(server.RestURL):
         response = self._get_subfolder('./stop', Cluster)._json_struct
         return not is_json_error(response)
     def list_machines(self, _error=None, _success=None):
+        self._clear_cache()
         if not is_json_error(self._json_struct, _error, _success):
             if "machineNames" in self._json_struct:
                 return self._json_struct["machineNames"]
@@ -104,6 +109,17 @@ class Cluster(server.RestURL):
 
 class Clusters(server.RestURL):
     __post__ = True
+    __directories__ = Ellipsis
+    @property
+    def _clusters(self):
+        path_and_attribs = [(d['clusterName'], self._get_subfolder('./%s/' %d['clusterName'], Cluster)) 
+                            for d in self._json_struct['clusters']] 
+        self.__clusters__ = dict(path_and_attribs)
+        return self.__clusters__
+    def __contains__(self, k):
+        return self._clusters.__contains__(k)
+    def __getitem__(self, k):
+        return self._clusters.__getitem__(k)
     def create(self, cluster_name, machines, _error=None, _success=None):
         cluster = self._get_subfolder('./create', Cluster,
                                      {'clusterName': cluster_name,

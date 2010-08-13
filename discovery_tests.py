@@ -24,17 +24,24 @@ class ClusterTest(unittest.TestCase):
         self.assertTrue(self.cluster.stop())
     def test_cluster_can_remove_machine_from_cluster(self):
         self.assertTrue(HOSTNAME in self.cluster.machines)
+        self.assertTrue(HOSTNAME in self.cluster.list_machines())
         self.assertTrue(self.cluster.machines.remove([HOSTNAME, 'localhost']))
-        self.assertFalse(HOSTNAME in self.cluster.machines)
+        self.assertTrue(HOSTNAME not in self.cluster.machines)
+        self.assertTrue(HOSTNAME not in self.cluster.list_machines())
     def test_cluster_can_add_machine_from_cluster(self):
         self.assertTrue(self.cluster.machines.remove([HOSTNAME]))
-        self.assertFalse(HOSTNAME in self.cluster.machines)
+        self.assertTrue(HOSTNAME not in self.cluster.machines)
         self.assertTrue(self.cluster.machines.add([HOSTNAME]))
         self.assertTrue(HOSTNAME in self.cluster.machines)
     def test_cluster_machines_add_ignores_unregistered_machines(self):
         self.assertTrue("other.machine.org" not in self._admin.machines)
         self.assertTrue(self.cluster.machines.add(["other.machine.org"]))
         self.assertTrue("other.machine.org" not in self.cluster.machines)
+    def test_cluster_machines_remove_fails_if_machine_cannot_be_removed(self):
+        self.assertTrue("other.machine.org" not in self.cluster.machines)
+        self.assertFalse(self.cluster.machines.remove(["other.machine.org"]))
+    def test_clustername_in_clusters_returns_cluster(self):
+        self.assertEqual(self.cluster, self._admin.clusters["NewCluster"])
 
 
 class MachineTest(unittest.TestCase):
