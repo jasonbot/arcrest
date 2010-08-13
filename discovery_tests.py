@@ -1,12 +1,15 @@
+#!/usr/bin/env python 
+
 import unittest
 import platform
 from arcrest.admin import *
 
-HOSTNAME=platform.node().upper()
+HOSTNAME = platform.node().upper()
+ADMIN_URL = "http://localhost:6080/agsadmin/"
 
 class ClusterTest(unittest.TestCase):
     def setUp(self):
-        self._admin = Admin("http://localhost:5050/agsadmin/")
+        self._admin = Admin(ADMIN_URL)
         self.cluster = self._admin.clusters.create("NewCluster", [HOSTNAME])
         self.assertTrue(self.cluster)
     def tearDown(self):
@@ -19,10 +22,30 @@ class ClusterTest(unittest.TestCase):
         self.assertTrue(self.cluster.start())
         self.cluster.status(_success=lambda x: self.assertEqual('STARTED',x['realTimeStatus']))
         self.assertTrue(self.cluster.stop())
+    def test_cluster_can_remove_machine_from_cluster(self):
+        self.assertTrue(HOSTNAME in self.cluster.machines)
+        self.assertTrue(self.cluster.machines.remove([HOSTNAME, 'localhost']))
+        self.assertFalse(HOSTNAME in self.cluster.machines)
+    def test_cluster_can_add_machine_from_cluster(self):
+        self.assertTrue(self.cluster.machines.remove([HOSTNAME]))
+        self.assertFalse(HOSTNAME in self.cluster.machines)
+        self.assertTrue(self.cluster.machines.add([HOSTNAME]))
+        self.assertTrue(HOSTNAME in self.cluster.machines)
+    def test_cluster_machines_add_ignores_unregistered_machines(self):
+        self.assertTrue("other.machine.org" not in self._admin.machines)
+        self.assertTrue(self.cluster.machines.add(["other.machine.org"]))
+        self.assertTrue("other.machine.org" not in self.cluster.machines)
+
+
+class MachineTest(unittest.TestCase):
+    def test_admin_has_list_of_registered_machines(self):
+        self._admin = Admin(ADMIN_URL)
+        self.assertTrue(HOSTNAME in self._admin.machines.keys())
+        self.assertTrue(HOSTNAME, self._admin.machines[HOSTNAME]['machineName'])
 
 class DirectoryTest(unittest.TestCase):
     def setUp(self):
-        self._admin = Admin("http://localhost:5050/agsadmin/")
+        self._admin = Admin(ADMIN_URL)
         self.path = os.path.abspath(os.path.dirname(__file__))
     def tearDown(self):
         self._admin.directories.unregister(self.path)
@@ -31,7 +54,7 @@ class DirectoryTest(unittest.TestCase):
         self.assertTrue(self.path in self._admin.directories)
         self.assertEqual('DATA', self._admin.directories[self.path]['directoryType'])
     def test_register_public_cache_directory(self):
-        vpath = 'http://%s:5050/arcgis/server/extracache' % HOSTNAME
+        vpath = 'http://%s:6080/arcgis/server/extracache' % HOSTNAME
         self.assertTrue(self._admin.directories.register('cache', self.path, vpath))
         self.assertTrue(self.path in self._admin.directories)
         self.assertEqual('CACHE', self._admin.directories[self.path]['directoryType'])
@@ -39,7 +62,7 @@ class DirectoryTest(unittest.TestCase):
         self.assertEqual(vpath, self._admin.directories[self.path]['virtualPath'])
         self.assertTrue(self._admin.directories.unregister(self.path))
     def test_register_public_cache_directory_with_bad_local_path(self):
-        vpath = 'http://%s:5050/arcgis/server/extracache' % HOSTNAME
+        vpath = 'http://%s:6080/arcgis/server/extracache' % HOSTNAME
         self.assertFalse(self._admin.directories.register('cache', '/not/a/real/path', vpath))
         self.assertTrue(self.path not in self._admin.directories)
 

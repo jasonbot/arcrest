@@ -11,6 +11,32 @@ class Admin(server.RestURL):
     @property
     def directories(self):
         return self._get_subfolder("./system/directories/", Directories)
+    @property
+    def machines(self):
+        return self._get_subfolder("./machines/", Machines)
+
+class Machines(server.RestURL):
+    __post__ = True
+    __machines__ = Ellipsis
+    @property
+    def _machines(self):
+        if self.__machines__ is Ellipsis:
+            path_and_attribs = [(d['machineName'], d) for d in self._json_struct['machines'] ] 
+            self.__machines__ = dict(path_and_attribs)
+        return self.__machines__
+    def keys(self):
+        return self._machines.keys()
+    def __contains__(self, k):
+        return self._machines.__contains__(k)
+    def __getitem__(self, k):
+        return self._machines.__getitem__(k)
+    def add(self, machine_names):
+        responses = map(lambda m: self._get_subfolder("./add", Machines, {"machineNames": m})._json_struct, machine_names)
+        return not any(map(is_json_error, responses))
+    def remove(self, machine_names):
+        machines = filter(lambda m: m in self._machines, machine_names)
+        responses = map(lambda m: self._get_subfolder("./remove", Machines, {"machineNames": m})._json_struct, machines)
+        return not any(map(is_json_error, responses))
 
 class Directory(server.RestURL):
    __post__ = True
@@ -56,6 +82,9 @@ class Cluster(server.RestURL):
             newurl[3] = urllib.urlencode({'f':'json'})
             self._url = newurl
             self._clear_cache()
+    @property
+    def machines(self):
+        return self._get_subfolder("./machines/", Machines)
     def delete(self, _error=None):
         response = self._get_subfolder('./delete', Cluster)._json_struct
         return not is_json_error(response, _error=_error)
