@@ -1,0 +1,3 @@
+glob:*.pyc
+glob:*.orig
+glob:.hgrc
