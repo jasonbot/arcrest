@@ -2,9 +2,10 @@
 
 import unittest
 import platform
+import socket
 from arcrest.admin import *
 
-HOSTNAME = platform.node().upper()
+HOSTNAME = socket.getfqdn(platform.node()).upper()
 ADMIN_URL = "http://localhost:6080/agsadmin/"
 
 class ClusterTest(unittest.TestCase):
