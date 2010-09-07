@@ -210,6 +210,7 @@ class Folder(RestURL):
             cls._service_type_mapping[subclass.__service_type__] = subclass
             if subclass.__service_type__:
                 setattr(subclass, subclass.__service_type__, property(lambda x: x))
+        return subclass
 
     @property
     def __members__(self):
