@@ -5,15 +5,48 @@ import urllib
 import urlparse
 
 class Admin(server.RestURL):
+    def Create(self, *a, **k):
+        raise NotImplementedError("Not implemented")
+    def Join(self, *a, **k):
+        raise NotImplementedError("Not implemented")
+    def Delete(self, *a, **k):
+        raise NotImplementedError("Not implemented")
+    @property
+    def resources(self):
+        return self._json_struct['resources']
+    @property
+    def currentVersion(self):
+        return self._jason_struct['currentVersion']
     @property
     def clusters(self):
         return self._get_subfolder("./clusters/", Clusters)
     @property
-    def directories(self):
-        return self._get_subfolder("./system/directories/", Directories)
+    def services(self):
+        return self._get_subfolder("./services/", Services)
     @property
     def machines(self):
         return self._get_subfolder("./machines/", Machines)
+
+class Folder(server.RestURL):
+    @property
+    def services(self):
+        raise NotImplementedError("Not implemented")
+    @property
+    def folderName(self):
+        return self._json_struct['folderName']
+    @property
+    def description(self):
+        return self._json_struct['description']
+    @property
+    def services(self):
+        return [self._get_subfolder("./%s/" % servicename, Service) for servicename in self._json_struct['services']]
+
+class Services(Folder):
+    def CreateFolder(self, folderName, description):
+        raise NotImplementedError("Not implemented")
+    @property
+    def folders(self):
+        return [self._get_subfolder("./%s/" % foldername, Folder) for foldername in self._json_struct['folders']]
 
 class Machines(server.RestURL):
     __post__ = True
