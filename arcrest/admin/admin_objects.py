@@ -4,6 +4,10 @@ from .. import server
 import urllib
 import urlparse
 
+__all__ = ['Admin', 'Folder', 'Services', 'Service', 
+           'Machines', 'Directory', 'Directories', 
+           'Clusters', 'Cluster']
+
 class Admin(server.RestURL):
     def Create(self, *a, **k):
         raise NotImplementedError("Not implemented")
@@ -39,14 +43,16 @@ class Folder(server.RestURL):
         return self._json_struct['description']
     @property
     def services(self):
-        return [self._get_subfolder("./%s/" % servicename, Service) for servicename in self._json_struct['services']]
+        return [self._get_subfolder("./%s/" % servicename, Service) 
+                for servicename in self._json_struct['services']]
 
 class Services(Folder):
     def CreateFolder(self, folderName, description):
         raise NotImplementedError("Not implemented")
     @property
     def folders(self):
-        return [self._get_subfolder("./%s/" % foldername, Folder) for foldername in self._json_struct['folders']]
+        return [self._get_subfolder("./%s/" % foldername, Folder) 
+                for foldername in self._json_struct['folders']]
 
 class Machines(server.RestURL):
     __post__ = True
@@ -54,7 +60,8 @@ class Machines(server.RestURL):
     @property
     def _machines(self):
         if self.__machines__ is Ellipsis:
-            path_and_attribs = [(d['machineName'], d) for d in self._json_struct['machines'] ] 
+            path_and_attribs = [(d['machineName'], d) 
+                                for d in self._json_struct['machines']]
             self.__machines__ = dict(path_and_attribs)
         return self.__machines__
     def keys(self):
@@ -64,11 +71,15 @@ class Machines(server.RestURL):
     def __getitem__(self, k):
         return self._machines.__getitem__(k)
     def add(self, machine_names):
-        responses = map(lambda m: self._get_subfolder("./add", Machines, {"machineNames": m})._json_struct, machine_names)
+        responses = [self._get_subfolder("./add", Machines, 
+                                         {"machineNames": m})._json_struct 
+                     for m in machine_names]
         return not any(map(is_json_error, responses))
     def remove(self, machine_names):
         machines = filter(lambda m: m in self._machines, machine_names)
-        responses = map(lambda m: self._get_subfolder("./remove", Machines, {"machineNames": m})._json_struct, machines)
+        responses = [self._get_subfolder("./remove", Machines, 
+                                         {"machineNames": m})._json_struct 
+                     for m in machines]
         return (not any(map(is_json_error, responses))) and machines
 
 class Directory(server.RestURL):
@@ -78,7 +89,8 @@ class Directories(server.RestURL):
     __directories__ = Ellipsis
     @property
     def _directories(self):
-        path_and_attribs = [(d['physicalPath'], d) for d in self._json_struct['directories'] ] 
+        path_and_attribs = [(d['physicalPath'], d) 
+                            for d in self._json_struct['directories']
         self.__directories__ = dict(path_and_attribs)
         return self.__directories__
     def __contains__(self, k):
@@ -110,7 +122,8 @@ class Cluster(server.RestURL):
         if "clusterName" in query_dict:
             urlparts = list(self._url)
             urlparts[2] = urlparts[2][0:-1]
-            newurl = urlparse.urljoin(self.url, urllib.quote(query_dict["clusterName"] + "/"), False)
+            newurl = urlparse.urljoin(self.url,
+                        urllib.quote(query_dict["clusterName"] + "/"), False)
             newurl = list(urlparse.urlsplit(newurl))
             newurl[3] = urllib.urlencode({'f':'json'})
             self._url = newurl
@@ -145,7 +158,9 @@ class Clusters(server.RestURL):
     __directories__ = Ellipsis
     @property
     def _clusters(self):
-        path_and_attribs = [(d['clusterName'], self._get_subfolder('./%s/' %d['clusterName'], Cluster)) 
+        path_and_attribs = [(d['clusterName'],
+                            self._get_subfolder('./%s/' %d['clusterName'],
+                                                Cluster)) 
                             for d in self._json_struct['clusters']] 
         self.__clusters__ = dict(path_and_attribs)
         return self.__clusters__

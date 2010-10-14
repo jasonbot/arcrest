@@ -7,5 +7,9 @@ setup(
     description="""Wrapper to the ArcGIS REST API, and a Python analogue to the Javascript APIs""",
     author="ESRI",
     author_email="jscheirer@esri.com",
-    packages=['arcrest', 'arcrest.admin']
+    packages=['arcrest', 'arcrest.admin'],
+    scripts=[
+             os.path.join('scripts', 'createservice.py'),
+             os.path.join('scripts', 'manageservice.py'),
+            ]
 )
