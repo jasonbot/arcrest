@@ -18,10 +18,22 @@ shared_args.add_argument('-s', '--site',
 
 createserviceargs = argparse.ArgumentParser(description='Creates a service',
                                             parents=[shared_args])
+createserviceargs.add_argument('-c', '--cluster',
+                               nargs=1,
+                               default=None,
+                               help='Name of cluster')
 
 manageserviceargs = argparse.ArgumentParser(description=
                                                 'Manages/modifies a service',
                                             parents=[shared_args])
+manageserviceargs.add_argument('-n', '--name',
+                               nargs=1,
+                               default=None,
+                               help='Service name')
+manageserviceargs.add_argument('-o', '--operation',
+                               nargs=1,
+                               default=None,
+                               help="status|start|stop|delete")
 
 def createservice():
     args = createserviceargs.parse_args()    
