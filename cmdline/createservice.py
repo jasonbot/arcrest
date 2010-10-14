@@ -1,4 +1,4 @@
 #! python
-import arcpy.admin
+import arcrest.admin
 
-arcpy.admin.cmdline.createservice()
+arcrest.admin.cmdline.createservice()
