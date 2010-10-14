@@ -9,7 +9,7 @@ setup(
     author_email="jscheirer@esri.com",
     packages=['arcrest', 'arcrest.admin'],
     scripts=[
-             os.path.join('scripts', 'createservice.py'),
-             os.path.join('scripts', 'manageservice.py'),
+             os.path.join('cmdline', 'createservice.py'),
+             os.path.join('cmdline', 'manageservice.py'),
             ]
 )

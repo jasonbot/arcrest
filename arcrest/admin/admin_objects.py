@@ -90,7 +90,7 @@ class Directories(server.RestURL):
     @property
     def _directories(self):
         path_and_attribs = [(d['physicalPath'], d) 
-                            for d in self._json_struct['directories']
+                            for d in self._json_struct['directories']]
         self.__directories__ = dict(path_and_attribs)
         return self.__directories__
     def __contains__(self, k):
