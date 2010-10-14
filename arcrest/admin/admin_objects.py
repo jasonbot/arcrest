@@ -4,7 +4,7 @@ from .. import server
 import urllib
 import urlparse
 
-__all__ = ['Admin', 'Folder', 'Services', 'Service', 
+__all__ = ['Admin', 'Folder', 'Services',
            'Machines', 'Directory', 'Directories', 
            'Clusters', 'Cluster']
 
