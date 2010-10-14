@@ -1,6 +1,6 @@
 import argparse
 
-__all__ = ['createservice', 'manageservice']
+__all__ = ['createservice', 'manageservice', 'managesite']
 
 shared_args = argparse.ArgumentParser(add_help=False)
 shared_args.add_argument('-u', '--username', 
@@ -35,8 +35,39 @@ manageserviceargs.add_argument('-o', '--operation',
                                default=None,
                                help="status|start|stop|delete")
 
+managesiteargs = argparse.ArgumentParser(description=
+                                                'Manages/modifies a site',
+                                            parents=[shared_args])
+managesiteargs.add_argument('-A', '--add-machines',
+                               nargs='+',
+                               help='Machines to add to site')
+managesiteargs.add_argument('-R', '--remove-machines',
+                               nargs='+',
+                               help='Machines to remove from site')
+managesiteargs.add_argument('-l', '--list',
+                               default=False,
+                               action='store_true',
+                               help='List of machines on a site')
+managesiteargs.add_argument('-o', '--operation',
+                               nargs=1,
+                               help='chkstatus|start|stop')
+managesiteargs.add_argument('-D', '--delete-cluster',
+                               default=False,
+                               action='store_true',
+                               help='Delete this cluster')
+
+
 def createservice():
-    args = createserviceargs.parse_args()    
+    args = createserviceargs.parse_args()
+    print args
+    raise NotImplementedError("Not Implemented")
 
 def manageservice():
     args = manageserviceargs.parse_args()
+    print args
+    raise NotImplementedError("Not Implemented")
+
+def managesite():
+    args = managesiteargs.parse_args()
+    print args
+    raise NotImplementedError("Not Implemented")

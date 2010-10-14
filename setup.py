@@ -11,5 +11,6 @@ setup(
     scripts=[
              os.path.join('cmdline', 'createservice.py'),
              os.path.join('cmdline', 'manageservice.py'),
+             os.path.join('cmdline', 'managesite.py'),
             ]
 )
