@@ -1,6 +1,6 @@
 import cgi
 import os.path
-import server
+from .. import server
 import urllib
 import urlparse
 
