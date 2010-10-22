@@ -60,7 +60,7 @@
 
    """
 
-from .geometry import *
-from .gptypes import *
-from .server import *
-from .projections import projected, geographic
+from arcrest.geometry import *
+from arcrest.gptypes import *
+from arcrest.server import *
+from arcrest.projections import projected, geographic

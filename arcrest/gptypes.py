@@ -12,7 +12,7 @@ except ImportError:
                           "or use arcrest with Python 2.6")
 
 import datetime
-import geometry
+from arcrest import geometry
 
 class GPMultiValue(object):
     """Represents a multivalue Geoprocessing parameter"""

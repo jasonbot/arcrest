@@ -1,2 +1,2 @@
-from .admin_objects import *
-from . import cmdline
+from arcrest.admin.admin_objects import *
+import arcrest.admin.cmdline

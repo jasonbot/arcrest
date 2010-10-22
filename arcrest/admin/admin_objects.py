@@ -1,6 +1,6 @@
 import cgi
 import os.path
-from .. import server
+from arcrest import server
 import urllib
 import urlparse
 
@@ -9,18 +9,12 @@ __all__ = ['Admin', 'Folder', 'Services',
            'Clusters', 'Cluster']
 
 class Admin(server.RestURL):
-    def Create(self, *a, **k):
-        raise NotImplementedError("Not implemented")
-    def Join(self, *a, **k):
-        raise NotImplementedError("Not implemented")
-    def Delete(self, *a, **k):
-        raise NotImplementedError("Not implemented")
     @property
     def resources(self):
         return self._json_struct['resources']
     @property
     def currentVersion(self):
-        return self._jason_struct['currentVersion']
+        return self._json_struct['currentVersion']
     @property
     def clusters(self):
         return self._get_subfolder("./clusters/", Clusters)
@@ -30,6 +24,31 @@ class Admin(server.RestURL):
     @property
     def machines(self):
         return self._get_subfolder("./machines/", Machines)
+    @property
+    def data(self):
+        return self._get_subfolder("./data/", Data)
+    @property
+    def system(self):
+        return self._get_subfolder("./system/", System)
+
+class Data(server.RestURL):
+    @property
+    def geodatabases(self):
+        return self._get_subfolder("./geodatabases/", GeoDatabases)
+    @property
+    def items(self):
+        return self._get_subfolder("./items/", DataItems)
+
+class GeoDatabases(server.RestURL):
+    pass
+
+class DataItems(server.RestURL):
+    def upload(self, file, description):
+        sub = self._get_subfolder('./upload/', server.JsonResult, {'file': file, 
+                                                            'description': description})
+    @property
+    def packages(self):
+        return self._json_struct['packages']
 
 class Folder(server.RestURL):
     @property
@@ -47,7 +66,7 @@ class Folder(server.RestURL):
                 for servicename in self._json_struct['services']]
 
 class Services(Folder):
-    def CreateFolder(self, folderName, description):
+    def createFolder(self, folderName, description):
         raise NotImplementedError("Not implemented")
     @property
     def folders(self):
@@ -66,10 +85,9 @@ class Machines(server.RestURL):
         return self.__machines__
     def keys(self):
         return self._machines.keys()
-    def __contains__(self, k):
-        return self._machines.__contains__(k)
-    def __getitem__(self, k):
-        return self._machines.__getitem__(k)
+    def __iter__(self):
+        return (Admin(item['adminURL']) 
+                    for item in self._machines.iteritems())
     def add(self, machine_names):
         responses = [self._get_subfolder("./add", Machines, 
                                          {"machineNames": m})._json_struct 
