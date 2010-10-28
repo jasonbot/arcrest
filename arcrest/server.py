@@ -76,8 +76,13 @@ class RestURL(object):
         # Finally, set any file data parameters' data to local store.
         # file_data is expected to be a dictionary of name/filehandle
         # pairs if defined. And if there are any files, fetching will
-        # automatically become a forced multipart upload.
+        # automatically become a forced multipart upload. Also, force
+        # keeping the results around; uploading data multiple times
+        # is probably NEVER what anyone wants to do and file handles
+        # can be exhausted. 
         self._file_data = file_data
+        if file_data:
+            self.__cache_request__ = True
         # Nonlazy: force a fetch
         if self.__lazy_fetch__ is False and self.__cache_request__ is True:
             self._contents
