@@ -178,7 +178,6 @@ class RestURL(object):
                                             (k, fn, ct))
                     multipart_data += v.read() + "\r\n"
                 multipart_data += boundary + "--\r\n\r\n"
-                print multipart_data
                 request = urllib2.Request(self.url, multipart_data,
                                                    {'User-Agent' : USER_AGENT,
                                                     'Content-Type': 
