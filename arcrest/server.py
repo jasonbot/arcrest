@@ -164,7 +164,7 @@ class RestURL(object):
                 self.__post__ = True
                 boundary = "-"*12+str(uuid.uuid4())+"$"
                 multipart_data = ''
-                for k, v in cgi.parse_qs(self.query+"&f=json").iteritems():
+                for k, v in cgi.parse_qs(self.query).iteritems():
                     if not isinstance(v, list):
                         v = [v]
                     for val in v:
