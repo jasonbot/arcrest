@@ -75,8 +75,13 @@ class Services(Folder):
         raise NotImplementedError("Not implemented")
     @property
     def folders(self):
-        return [self._get_subfolder("./%s/" % foldername, Folder) 
-                for foldername in self._json_struct['folders']]
+        return [self] + [self._get_subfolder("./%s/" % foldername, Folder) 
+                        for foldername in self._json_struct['folders']
+                        if foldername != "/"]
+    @property
+    def types(self):
+        return_type = self._get_subfolder("./types/", JsonPostResult)
+        return return_type._json_struct['types']
 
 class Machines(server.RestURL):
     __post__ = True
@@ -131,7 +136,7 @@ class Directories(server.RestURL):
                                       {'physicalPath': path})._json_struct
         return not is_json_error(response, _success=_success, _error=_error)
 
-class Cluster(server.RestURL):
+class Cluster(server.JsonResult):
     __post__ = True
     __lazy_fetch__ = False
     __cache_request__ = True
