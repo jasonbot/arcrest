@@ -47,10 +47,10 @@ class DataItems(server.RestURL):
     def upload(self, file, description=''):
         if isinstance(file, basestring):
             file = open(file, 'rb')
-        sub = self._get_subfolder('./upload/', server.BinaryResult,
+        sub = self._get_subfolder('./upload/', server.JsonResult,
                                   {'description': description},
                                   {'packageFile': file})
-        return sub
+        return sub._json_struct['package']
     @property
     def packages(self):
         return self._json_struct['packages']

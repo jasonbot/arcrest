@@ -183,7 +183,7 @@ class RestURL(object):
                                                    {'User-Agent' : USER_AGENT,
                                                     'Content-Type': 
                                                         'multipart/form-data; '
-                                                        'boundary='+boundary,
+                                                        'boundary='+boundary[2:],
                                                     'Content-Length': 
                                                         str(
                                                           len(
@@ -440,17 +440,23 @@ class JsonResult(Result):
 
     def __init__(self, url, file_data=None):
         super(JsonResult, self).__init__(url, file_data)
-        if 'error' in self._json_struct:
-            detailstring = ", ".join(self._json_struct['error'].get('details', 
-                                                                    []))
+        js = self._json_struct
+        if 'error' in js:
+            detailstring = ", ".join(js['error'].get('details', []))
             if detailstring:
                 detailstring = " -- " + detailstring
             raise ServerError("ERROR %r: %r%s <%s>" % 
-                               (self._json_struct['error']['code'], 
-                                self._json_struct['error']['message'] or 
+                               (js['error']['code'], 
+                                js['error']['message'] or 
                                     'Unspecified',
                                 detailstring,
                                 self.url))
+        elif "status" in js:
+            if js['status'] == "error":
+                raise ServerError(''.join(
+                    js.get('messages', 
+                           [js.get('message', 
+                               'Unspecified Error')])))
 
 class JsonPostResult(JsonResult):
     """Class representing a sepcialization of a REST call which moves all
