@@ -186,8 +186,8 @@ class RestURL(object):
                 request = urllib2.Request(self.url, multipart_data,
                                                    {'User-Agent' : USER_AGENT,
                                                     'Content-Type': 
-                                                        'multipart/form-data; '
-                                                        'boundary='+boundary[2:],
+                                                      'multipart/form-data; '
+                                                      'boundary='+boundary[2:],
                                                     'Content-Length': 
                                                         str(
                                                           len(
@@ -259,12 +259,16 @@ class Folder(RestURL):
         if hasattr(subclass, '__service_type__'):
             cls._service_type_mapping[subclass.__service_type__] = subclass
             if subclass.__service_type__:
-                setattr(subclass, subclass.__service_type__, property(lambda x: x))
+                setattr(subclass,
+                        subclass.__service_type__,
+                        property(lambda x: x))
         return subclass
 
     @property
     def __members__(self):
-        return sorted(self.foldernames + list(self.servicenames) + self.clusternames)
+        return sorted(self.foldernames + 
+                      list(self.servicenames) + 
+                      self.clusternames)
     @property
     def foldernames(self):
         "Returns a list of folder names available from this folder."
