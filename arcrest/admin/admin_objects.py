@@ -3,6 +3,7 @@ import os.path
 from arcrest import server
 import urllib
 import urlparse
+import urllib2
 
 __all__ = ['Admin', 'Folder', 'Services',
            'Machines', 'Directory', 'Directories', 
@@ -43,9 +44,13 @@ class GeoDatabases(server.RestURL):
     pass
 
 class DataItems(server.RestURL):
-    def upload(self, file, description):
-        sub = self._get_subfolder('./upload/', server.JsonResult, {'file': file, 
-                                                            'description': description})
+    def upload(self, file, description=''):
+        if isinstance(file, basestring):
+            file = open(file, 'rb')
+        sub = self._get_subfolder('./upload/', server.BinaryResult,
+                                  {'description': description},
+                                  {'packageFile': file})
+        return sub
     @property
     def packages(self):
         return self._json_struct['packages']

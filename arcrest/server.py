@@ -6,9 +6,12 @@
 
 import cgi
 import json
+import mimetypes
+import os
 import urllib
 import urllib2
 import urlparse
+import uuid
 
 import geometry
 import gptypes
@@ -41,7 +44,7 @@ class RestURL(object):
     __post__ = False           # Move query string to POST
     _parent = None
 
-    def __init__(self, url):
+    def __init__(self, url, file_data=None):
         # Expects a urlparse.urlsplitted list as the url, but accepts a
         # string because that is easier/makes more sense everywhere.
         if isinstance(url, basestring):
@@ -70,6 +73,11 @@ class RestURL(object):
         # Hack our modified query string back into URL components
         urllist[3] = urllib.urlencode(query_dict)
         self._url = urllist
+        # Finally, set any file data parameters' data to local store.
+        # file_data is expected to be a dictionary of name/filehandle
+        # pairs if defined. And if there are any files, fetching will
+        # automatically become a forced multipart upload.
+        self._file_data = file_data
         # Nonlazy: force a fetch
         if self.__lazy_fetch__ is False and self.__cache_request__ is True:
             self._contents
@@ -78,7 +86,7 @@ class RestURL(object):
         if len(url) > 100:
             url = url[:97] + "..."
         return "<%s(%r)>" % (self.__class__.__name__, url)
-    def _get_subfolder(self, foldername, returntype, params={}):
+    def _get_subfolder(self, foldername, returntype, params={}, file_data={}):
         """Return an object of the requested type with the path relative
            to the current object's URL. Optionally, query parameters
            may be set."""
@@ -123,7 +131,7 @@ class RestURL(object):
         urllist[3] = urllib.urlencode(query_dict)
         newurl = urllist
         # Instantiate new RestURL or subclass
-        rt = returntype(newurl)
+        rt = returntype(newurl, file_data)
         # Remind the resource where it came from
         rt.parent = self
         return rt
@@ -146,10 +154,45 @@ class RestURL(object):
         """The raw contents of the URL as fetched, this is done lazily.
            For non-lazy fetching this is accessed in the object constructor."""
         if self.__urldata__ is Ellipsis or self.__cache_request__ is False:
-            request = urllib2.Request(self.url, self.query 
-                                                    if self.__post__
-                                                    else None,
-                                               {'User-Agent' : USER_AGENT})
+            if self._file_data:
+                # Special-case: do a multipart upload if there's file data
+                self.__post__ = True
+                boundary = "-"*12+str(uuid.uuid4())+"$"
+                multipart_data = ''
+                for k, v in cgi.parse_qs(self.query+"&f=json").iteritems():
+                    if not isinstance(v, list):
+                        v = [v]
+                    for val in v:
+                        multipart_data += boundary + "\r\n"
+                        multipart_data += ('Content-Disposition: form-data; '
+                                           'name="%s"\r\n\r\n' % k)
+                        multipart_data += val + "\r\n"
+                for k, v in self._file_data.iteritems():
+                    fn = os.path.basename(getattr(v, 'name', 'file'))
+                    ct = (mimetypes.guess_type(fn) 
+                            or ("application/octet-stream",))[0]
+                    multipart_data += boundary + "\r\n"
+                    multipart_data += ('Content-Disposition: form-data; '
+                                       'name="%s"; filename="%s"\r\n'
+                                       'Content-Type:%s\r\n\r\n' % 
+                                            (k, fn, ct))
+                    multipart_data += v.read() + "\r\n"
+                multipart_data += boundary + "--\r\n\r\n"
+                print multipart_data
+                request = urllib2.Request(self.url, multipart_data,
+                                                   {'User-Agent' : USER_AGENT,
+                                                    'Content-Type': 
+                                                        'multipart/form-data; '
+                                                        'boundary='+boundary,
+                                                    'Content-Length': 
+                                                        str(
+                                                          len(
+                                                            multipart_data))})
+            else:
+                request = urllib2.Request(self.url, self.query 
+                                                        if self.__post__
+                                                        else None,
+                                                   {'User-Agent' : USER_AGENT})
             handle = urllib2.urlopen(request)
             # Handle the special case of a redirect (only follow once) --
             # Note that only the first 3 components (protocol, hostname, path)
@@ -161,7 +204,10 @@ class RestURL(object):
                 return self._contents
             # No redirect, proceed as usual.
             self.__urldata__ = handle.read()
-        return self.__urldata__
+        data = self.__urldata__
+        if self.__cache_request__ is False:
+            self.__urldata__ = Ellipsis
+        return data
     @property
     def _json_struct(self):
         """The json data structure in the URL contents, it will cache this
@@ -392,8 +438,8 @@ class JsonResult(Result):
        some sort of json data"""
     __has_json__ = True
 
-    def __init__(self, url):
-        super(JsonResult, self).__init__(url)
+    def __init__(self, url, file_data=None):
+        super(JsonResult, self).__init__(url, file_data)
         if 'error' in self._json_struct:
             detailstring = ", ".join(self._json_struct['error'].get('details', 
                                                                     []))
