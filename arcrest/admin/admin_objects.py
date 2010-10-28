@@ -1,3 +1,6 @@
+"""Implementation of the objects for the ArcGIS Server REST 
+   Administration API"""
+
 import cgi
 import os.path
 from arcrest import server
@@ -5,11 +8,13 @@ import urllib
 import urlparse
 import urllib2
 
-__all__ = ['Admin', 'Folder', 'Services',
-           'Machines', 'Directory', 'Directories', 
-           'Clusters', 'Cluster']
+__all__ = ['Admin', 'Folder', 'Services', 'Machines',
+           'SiteMachines', 'ClusterMachines', 'Directory',
+           'Directories', 'Clusters', 'Cluster']
 
 class Admin(server.RestURL):
+    """Represents the top level URL resource of the ArcGIS Server
+       Administration API"""
     @property
     def resources(self):
         return self._json_struct['resources']
@@ -24,15 +29,38 @@ class Admin(server.RestURL):
         return self._get_subfolder("./services/", Services)
     @property
     def machines(self):
-        return self._get_subfolder("./machines/", Machines)
+        return self._get_subfolder("./machines/", SiteMachines)
     @property
     def data(self):
         return self._get_subfolder("./data/", Data)
     @property
     def system(self):
         return self._get_subfolder("./system/", System)
+    def createNewSite(self, username, password, configStoreConnection=None, 
+                      directories=None, cluster=None):
+        res = self._get_subfolder("./createNewSite", 
+                                  server.JsonPostResult,
+                                  {'username': username,
+                                   'password': password,
+                                   'configStoreConnection': configStoreConnection,
+                                   'directories': directories,
+                                   'cluster': cluster})
+        return res
+    def joinSite(self, adminURL, username, password):
+        res = self._get_subfolder("./joinSite", 
+                                  server.JsonPostResult,
+                                  {'username': username,
+                                   'password': password,
+                                   'adminURL': adminURL})
+        return res
+    def deleteSite(self):
+        res = self._get_subfolder("./deleteSite", 
+                                  server.JsonPostResult)
+        return res
+
 
 class Data(server.RestURL):
+    """Administration URL's data store -- Geodatabases and file data"""
     @property
     def geodatabases(self):
         return self._get_subfolder("./geodatabases/", GeoDatabases)
@@ -41,9 +69,11 @@ class Data(server.RestURL):
         return self._get_subfolder("./items/", DataItems)
 
 class GeoDatabases(server.RestURL):
+    """Server's geodatabases and GDB connections"""
     pass
 
 class DataItems(server.RestURL):
+    """Server's data files"""
     def upload(self, file, description=''):
         if isinstance(file, basestring):
             file = open(file, 'rb')
@@ -80,10 +110,12 @@ class Services(Folder):
                         if foldername != "/"]
     @property
     def types(self):
-        return_type = self._get_subfolder("./types/", JsonPostResult)
+        return_type = self._get_subfolder("./types/", server.JsonPostResult)
         return return_type._json_struct['types']
 
+
 class Machines(server.RestURL):
+    """Base class for a list of machines, both on a Cluster and a Site"""
     __post__ = True
     __machines__ = Ellipsis
     @property
@@ -97,18 +129,31 @@ class Machines(server.RestURL):
         return self._machines.keys()
     def __iter__(self):
         return (Admin(item['adminURL']) 
-                    for item in self._machines.iteritems())
+                    for item in self._machines.itervalues())
+
+class ClusterMachines(Machines):
+    """A list of machines participating on a cluster"""
     def add(self, machine_names):
-        responses = [self._get_subfolder("./add", Machines, 
-                                         {"machineNames": m})._json_struct 
+        if isinstance(machine_names, basestring):
+            machine_names = [machine_names]
+        responses = [self._get_subfolder("./add", server.JsonPostResult, 
+                                         {"machineNames": m}) 
                      for m in machine_names]
-        return not any(map(is_json_error, responses))
+        return responses
     def remove(self, machine_names):
-        machines = filter(lambda m: m in self._machines, machine_names)
-        responses = [self._get_subfolder("./remove", Machines, 
-                                         {"machineNames": m})._json_struct 
-                     for m in machines]
-        return (not any(map(is_json_error, responses))) and machines
+        if isinstance(machine_names, basestring):
+            machine_names = [machine_names]
+        responses = [self._get_subfolder("./remove", server.JsonPostResult, 
+                                         {"machineNames": m}) 
+                     for m in machine_names]
+        return responses
+
+class SiteMachines(Machines):
+    """A list of machines on a site"""
+    def register(self, machineName, adminURL=None):
+        res = self._get_subfolder("./register/", server.JsonPostResult,
+                                  {'machineName': machineName,
+                                   'adminURL': adminURL})
 
 class Directory(server.RestURL):
    __post__ = True
@@ -125,93 +170,89 @@ class Directories(server.RestURL):
         return self._directories.__contains__(k)
     def __getitem__(self, k):
         return self._directories.__getitem__(k)
-    def register(self, type, path, vpath=None, _success=None, _error=None):
-        response = self._get_subfolder('./register', Directory,
+    def register(self, type, path, vpath=None):
+        response = self._get_subfolder('./register', server.JsonPostResult,
                                       {'directoryType': type.upper(),
                                        'physicalPath': path,
                                        'virtualPath': vpath})._json_struct
-        return not is_json_error(response, _success=_success, _error=_error)
-    def unregister(self, path, _success=None, _error=None):
-        response = self._get_subfolder('./unregister', Directory,
+    def unregister(self, path):
+        response = self._get_subfolder('./unregister', server.JsonPostResult,
                                       {'physicalPath': path})._json_struct
-        return not is_json_error(response, _success=_success, _error=_error)
 
 class Cluster(server.JsonResult):
     __post__ = True
     __lazy_fetch__ = False
     __cache_request__ = True
-    def __init__(self, url):
-        super(Cluster, self).__init__(url)
-        query_dict = dict((k, v[0]) for k, v in 
-                               cgi.parse_qs(self.query).iteritems())
-        # clusterName indicates the url is for a call to clusters/create
-        # so we convert the url to clusters/<clusterName>/
-        # and reset the __urldata__ to force a new request
-        if "clusterName" in query_dict:
-            urlparts = list(self._url)
-            urlparts[2] = urlparts[2][0:-1]
-            newurl = urlparse.urljoin(self.url,
-                        urllib.quote(query_dict["clusterName"] + "/"), False)
-            newurl = list(urlparse.urlsplit(newurl))
-            newurl[3] = urllib.urlencode({'f':'json'})
-            self._url = newurl
-            self._clear_cache()
     def __eq__(self, other):
         if not isinstance(other, Cluster):
             return False
-        return self._url == other._url 
+        return self._url == other._url
+    @property
+    def machineNames(self, _error=None, _success=None):
+        if "machineNames" in self._json_struct:
+            return self._json_struct["machineNames"]
     @property
     def machines(self):
-        return self._get_subfolder("./machines/", Machines)
-    def delete(self, _error=None):
-        response = self._get_subfolder('./delete', Cluster)._json_struct
-        return not is_json_error(response, _error=_error)
-    def start(self, _error=None, _success=None):
-        response = self._get_subfolder('./start', Cluster)._json_struct
-        return not is_json_error(response, _error=_error, _success=_success)
-    def stop(self):
-        response = self._get_subfolder('./stop', Cluster)._json_struct
-        return not is_json_error(response)
-    def list_machines(self, _error=None, _success=None):
-        self._clear_cache()
-        if not is_json_error(self._json_struct, _error, _success):
-            if "machineNames" in self._json_struct:
-                return self._json_struct["machineNames"]
-    def status(self, _error=None, _success=None):
-        self._clear_cache()
-        return not is_json_error(self._json_struct, _error, _success)
+        return self._get_subfolder("./machines/", ClusterMachines)
+    def delete(self):
+        self._get_subfolder('./delete', server.JsonPostResult)
+    def editProtocol(self, type="TCP", tcpClusterPort=-1, 
+               multicastAddress=10, multicastPort=-1):
+        if type not in ("TCP", "UDP"):
+            raise ValueError("Got %r. Valid choices are: TCP, UDP" % type)
+        res = self._get_subfolder('./editProtocol', server.JsonPostResult,
+                                     {'type': type,
+                                      'tcpClusterPort': tcpClusterPort 
+                                                            if type == "TCP" 
+                                                            else None,
+                                      'multicastAddress': multicastAddress 
+                                                            if type == "UDP" 
+                                                            else None,
+                                      'multicastPort': multicastPort
+                                                            if type == "UDP" 
+                                                            else None})
 
 class Clusters(server.RestURL):
     __post__ = True
     __directories__ = Ellipsis
+    __cluster_cache__ = Ellipsis
     @property
     def _clusters(self):
-        path_and_attribs = [(d['clusterName'],
-                            self._get_subfolder('./%s/' %d['clusterName'],
-                                                Cluster)) 
-                            for d in self._json_struct['clusters']] 
-        self.__clusters__ = dict(path_and_attribs)
-        return self.__clusters__
+        if self.__cluster_cache__ is Ellipsis:
+            path_and_attribs = [(d['clusterName'],
+                                self._get_subfolder('./%s/' %d['clusterName'],
+                                                    Cluster)) 
+                                for d in self._json_struct['clusters']] 
+            self.__cluster_cache__ = dict(path_and_attribs)
+        return self.__cluster_cache__
+    @property
+    def clusterNames(self):
+        return [d['clusterName'] for d in self._json_struct['clusters']]
     def __contains__(self, k):
+        if isinstance(k, int):
+            return k < len(self)
         return self._clusters.__contains__(k)
     def __getitem__(self, k):
+        if isinstance(k, int):
+            k = self.clusterNames[k]
         return self._clusters.__getitem__(k)
-    def create(self, cluster_name, machines, _error=None, _success=None):
-        cluster = self._get_subfolder('./create', Cluster,
-                                     {'clusterName': cluster_name,
-                                      'machineNames': machines[0],
-                                      'clusterProtocol': 'TCP',
-                                      'tcpClusterPort': '4013'})
-        if not is_json_error(cluster._json_struct, _error=_error, _success=_success):
-            return cluster
-
-def is_json_error(_json, _error=None, _success=None):
-    if 'status' in _json and _json['status'] == 'error':
-        if _error:
-            _error(_json)
-        return True
-    else:
-        if _success:
-            _success(_json)
-    return False
+    def __len__(self):
+        return len(self.clusterNames)
+    def create(self, clusterName, type="TCP", tcpClusterPort=-1, 
+               multicastAddress=10, multicastPort=-1):
+        if type not in ("TCP", "UDP"):
+            raise ValueError("Got %r. Valid choices are: TCP, UDP" % type)
+        res = self._get_subfolder('./create', server.JsonPostResult,
+                                     {'clusterName': clusterName,
+                                      'type': type,
+                                      'tcpClusterPort': tcpClusterPort 
+                                                            if type == "TCP" 
+                                                            else None,
+                                      'multicastAddress': multicastAddress 
+                                                            if type == "UDP" 
+                                                            else None,
+                                      'multicastPort': multicastPort
+                                                            if type == "UDP" 
+                                                            else None})
+        return self._get_subfolder('./%s/' % clusterName, Cluster)
 

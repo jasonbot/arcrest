@@ -470,6 +470,7 @@ class JsonPostResult(JsonResult):
     """Class representing a sepcialization of a REST call which moves all
        parameters to the payload of a POST request instead of in the URL
        query string in a GET"""
+    __post__ = True
 
     pass
 
