@@ -18,6 +18,11 @@ shared_args.add_argument('-s', '--site',
                          nargs=1,
                          default='http://127.0.0.1:6080/arcgis/admin/',
                          help='URL for admin Server')
+shared_args.add_argument('-r', '--rest-site',
+                         nargs=1,
+                         default='AUTO',
+                         help='URL for REST server (use AUTO to use URL'
+                              'relative to specified admin URL)')
 
 createserviceargs = argparse.ArgumentParser(description='Creates a service',
                                             parents=[shared_args])
@@ -148,11 +153,11 @@ def managesite(action):
             name, itemobject = ('cluster', cluster) if cluster else ('site', site)
             print "===Machines on this %s===" % name
             for machine in itemobject.machines.keys():
-                print "*" , machine
+                print "-" , machine
             print
     with action("listing clusters"):
         if args.list_clusters:
             print "===Clusters on this site==="
             for cluster in site.clusters.clusterNames:
-                print "*", cluster
+                print "-", cluster
             print
