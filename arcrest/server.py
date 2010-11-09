@@ -395,14 +395,14 @@ class Service(RestURL):
     __service_type__ = None
     __parent_type__ = Folder
 
-    def __init__(self, url):
+    def __init__(self, url, file_data=None):
         if not isinstance(url, (tuple, list)):
             url_ = list(urlparse.urlsplit(url))
         else:
             url_ = url
         if not url_[2].endswith('/'):
             url_[2] += "/"
-        super(Service, self).__init__(url_)
+        super(Service, self).__init__(url_, file_data)
     @property
     def serviceDescription(self):
         """Get a short description of the service. Will return None if there is
