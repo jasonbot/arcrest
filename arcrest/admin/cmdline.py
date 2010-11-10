@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import argparse
 import sys
 
@@ -91,7 +93,7 @@ class ActionNarrator(object):
         action = self.action_stack.pop()
         if (t, ex, tb) != (None, None, None):
             if t is not SystemExit:
-                print >>sys.stderr, "Error %s: %s" % (action, str(ex))
+                print("Error %s: %s" % (action, str(ex)))
             sys.exit(1)
 
 def provide_narration(fn):
@@ -102,13 +104,13 @@ def provide_narration(fn):
 @provide_narration
 def createservice(action):
     args = createserviceargs.parse_args()
-    print args
+    print(args)
     raise NotImplementedError("Not Implemented")
 
 @provide_narration
 def manageservice(action):
     args = manageserviceargs.parse_args()
-    print args
+    print(args)
     raise NotImplementedError("Not Implemented")
 
 @provide_narration
@@ -151,13 +153,13 @@ def managesite(action):
     with action("listing machines"):
         if args.list:
             name, itemobject = ('cluster', cluster) if cluster else ('site', site)
-            print "===Machines on this %s===" % name
+            print("===Machines on this %s===" % name, end='')
             for machine in itemobject.machines.keys():
-                print "-" , machine
-            print
+                print("*", machine)
+            print()
     with action("listing clusters"):
         if args.list_clusters:
-            print "===Clusters on this site==="
+            print("===Clusters on this site===")
             for cluster in site.clusters.clusterNames:
-                print "-", cluster
-            print
+                print("*", cluster)
+            print()
