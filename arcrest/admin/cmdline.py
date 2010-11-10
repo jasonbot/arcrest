@@ -12,19 +12,19 @@ __all__ = ['createservice', 'manageservice', 'managesite']
 
 shared_args = argparse.ArgumentParser(add_help=False)
 shared_args.add_argument('-u', '--username', 
-                         nargs=1,
+                         nargs='?',
                          default=None,
                          help='Username for Server')
 shared_args.add_argument('-p', '--password', 
-                         nargs=1,
+                         nargs='?',
                          default=None,
                          help='Password for Server')
 shared_args.add_argument('-s', '--site', 
-                         nargs=1,
+                         nargs='?',
                          default='http://127.0.0.1:6080/arcgis/admin/',
                          help='URL for admin Server')
 shared_args.add_argument('-r', '--rest-site',
-                         nargs=1,
+                         nargs='?',
                          default='AUTO',
                          help='URL for REST server root (use AUTO to use URL '
                               'relative to specified admin URL)')
@@ -69,7 +69,7 @@ managesiteargs.add_argument('-o', '--operation',
                                nargs=1,
                                help='chkstatus|start|stop')
 managesiteargs.add_argument('-c', '--cluster',
-                               nargs=1,
+                               nargs='?',
                                default=None,
                                help='Name of cluster to act on')
 managesiteargs.add_argument('-D', '--delete-cluster',
@@ -124,7 +124,7 @@ def createservice(action):
                                  ['PublishingTools']
                                  ['Publish Service Definition'])
     with action("looking up cluster"):
-        cluster = site.clusters[args.cluster[0]] if args.cluster else None
+        cluster = site.clusters[args.cluster] if args.cluster else None
     with action("verifying service definition file exists"):
         all_files = [os.path.abspath(filename) for filename in files]
         assert all_files, "No file specified"
@@ -163,10 +163,10 @@ def managesite(action):
                 ]), "No action specified (use --help for options)"
     with action("looking up cluster"):
         try:
-            cluster = site.clusters[args.cluster[0]] if args.cluster else None
+            cluster = site.clusters[args.cluster] if args.cluster else None
         except KeyError:
             if args.create_cluster:
-                cluster = site.clusters.create(args.cluster[0])
+                cluster = site.clusters.create(args.cluster)
             else:
                 raise
     with action("deleting cluster"):
