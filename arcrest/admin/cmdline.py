@@ -32,7 +32,7 @@ shared_args.add_argument('-r', '--rest-site',
 createserviceargs = argparse.ArgumentParser(description='Creates a service',
                                             parents=[shared_args])
 createserviceargs.add_argument('-c', '--cluster',
-                               nargs=1,
+                               nargs='?',
                                default=None,
                                help='Name of cluster to act on')
 
@@ -91,7 +91,6 @@ class ActionNarrator(object):
         return self
     def __enter__(self):
         self.action_stack.append(self.action)
-        pass
     def __exit__(self, t, ex, tb):
         action = self.action_stack.pop()
         if (t, ex, tb) != (None, None, None):
