@@ -1097,8 +1097,8 @@ class GPJob(JsonResult):
        as input parameters."""
 
     _jobstatus = None
-    def __init__(self, url):
-        super(GPJob, self).__init__(url)
+    def __init__(self, url, file_data=None):
+        super(GPJob, self).__init__(url, file_data)
         self._jobstatus = self._get_subfolder('../jobs/%s/' % 
                                               self._json_struct['jobId'],
                                               GPJobStatus)
