@@ -1,7 +1,10 @@
 from __future__ import print_function
 
 import argparse
+import os
 import sys
+import time
+import urlparse
 
 import arcrest.admin
 
@@ -23,7 +26,7 @@ shared_args.add_argument('-s', '--site',
 shared_args.add_argument('-r', '--rest-site',
                          nargs=1,
                          default='AUTO',
-                         help='URL for REST server (use AUTO to use URL'
+                         help='URL for REST server root (use AUTO to use URL '
                               'relative to specified admin URL)')
 
 createserviceargs = argparse.ArgumentParser(description='Creates a service',
@@ -31,7 +34,7 @@ createserviceargs = argparse.ArgumentParser(description='Creates a service',
 createserviceargs.add_argument('-c', '--cluster',
                                nargs=1,
                                default=None,
-                               help='Name of cluster')
+                               help='Name of cluster to act on')
 
 manageserviceargs = argparse.ArgumentParser(description=
                                                 'Manages/modifies a service',
@@ -96,6 +99,13 @@ class ActionNarrator(object):
                 print("Error %s: %s" % (action, str(ex)))
             sys.exit(1)
 
+def get_rest_url(admin_url, rest_url):
+    if not admin_url.endswith('/'):
+        admin_url += "/"
+    if rest_url.upper() == "AUTO":
+        rest_url = "../rest/services/"
+    return urlparse.urljoin(admin_url, rest_url)
+
 def provide_narration(fn):
     def fn_():
         return fn(ActionNarrator())
@@ -103,9 +113,33 @@ def provide_narration(fn):
 
 @provide_narration
 def createservice(action):
-    args = createserviceargs.parse_args()
-    print(args)
-    raise NotImplementedError("Not Implemented")
+    args, files = createserviceargs.parse_known_args()
+    with action("connecting to admin site"):
+        site = arcrest.admin.Admin(args.site)
+    rest_url = get_rest_url(args.site, args.rest_site)
+    with action("connecting to REST services"):
+        rest_site = arcrest.Catalog(rest_url)
+    with action("looking up Publish Tool"):
+        publish_tool = (rest_site['System']
+                                 ['PublishingTools']
+                                 ['Publish Service Definition'])
+    with action("looking up cluster"):
+        cluster = site.clusters[args.cluster[0]] if args.cluster else None
+    with action("verifying service definition file exists"):
+        all_files = [os.path.abspath(filename) for filename in files]
+        assert all_files, "No file specified"
+        for filename in all_files:
+            assert os.path.exists(filename) and os.path.isfile(filename), \
+                    "%s is not a file" % filename
+    ids = []
+    for filename in all_files:
+        with action("uploading %s" % filename):
+            ids.append((filename, site.data.items.upload(filename)['packageID']))
+    for filename, file_id in ids:
+        with action("publishing %s" % os.path.basename(filename)):
+            result_object = publish_tool(file_id, site.url)
+            while result_object.running:
+                time.sleep(0.125)
 
 @provide_narration
 def manageservice(action):
@@ -116,7 +150,8 @@ def manageservice(action):
 @provide_narration
 def managesite(action):
     args = managesiteargs.parse_args()
-    site = arcrest.admin.Admin(args.site)
+    with action("connecting to admin site"):
+        site = arcrest.admin.Admin(args.site)
     with action("determining actions to perform"):
         assert any([
                      args.add_machines, 
