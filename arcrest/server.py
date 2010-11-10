@@ -1173,13 +1173,13 @@ class GPTask(RestURL):
     __parent_type__ = GPService
     __cache_request__ = True
 
-    def __init__(self, url):
+    def __init__(self, url, file_data=None):
         # Need to force final slash
         if isinstance(url, basestring):
             url = list(urlparse.urlsplit(url))
         if not url[2].endswith('/'):
             url[2] += '/'
-        super(GPTask, self).__init__(url)
+        super(GPTask, self).__init__(url, file_data)
 
     def __expandparamstodict(self, params, kw):
         self_parameters = self.parameters
