@@ -227,7 +227,8 @@ def managesite(action):
                     cluster.machines.remove(machine)
     with action("listing machines"):
         if args.list:
-            name, itemobject = ('cluster', cluster) if cluster else ('site', site)
+            name, itemobject = ('cluster', cluster) \
+                    if cluster else ('site', site)
             print("===Machines on this {0}===".format(name))
             for machine in itemobject.machines.keys():
                 print("-", machine)
