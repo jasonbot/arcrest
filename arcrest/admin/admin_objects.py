@@ -34,6 +34,9 @@ class Admin(server.RestURL):
     def data(self):
         return self._get_subfolder("./data/", Data)
     @property
+    def uploads(self):
+        return self._get_subfolder('./uploads/', Uploads)
+    @property
     def system(self):
         return self._get_subfolder("./system/", System)
     def createNewSite(self, username, password, configStoreConnection=None, 
@@ -72,8 +75,7 @@ class GeoDatabases(server.RestURL):
     """Server's geodatabases and GDB connections"""
     pass
 
-class DataItems(server.RestURL):
-    """Server's data files"""
+class Uploads(server.RestURL):
     def upload(self, file, description=''):
         if isinstance(file, basestring):
             file = open(file, 'rb')
@@ -81,6 +83,9 @@ class DataItems(server.RestURL):
                                   {'description': description},
                                   {'packageFile': file})
         return sub._json_struct['package']
+
+class DataItems(server.RestURL, Uploads):
+    """Server's data files"""
     @property
     def packages(self):
         return self._json_struct['packages']
