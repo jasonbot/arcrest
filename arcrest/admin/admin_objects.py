@@ -75,7 +75,7 @@ class GeoDatabases(server.RestURL):
     """Server's geodatabases and GDB connections"""
     pass
 
-class Uploads(server.RestURL):
+class HasUploads(object):
     def upload(self, file, description=''):
         if isinstance(file, basestring):
             file = open(file, 'rb')
@@ -84,7 +84,11 @@ class Uploads(server.RestURL):
                                   {'packageFile': file})
         return sub._json_struct['package']
 
-class DataItems(server.RestURL, Uploads):
+class Uploads(server.RestURL, HasUploads):
+    """Uploads URL"""
+    pass
+
+class DataItems(server.RestURL, HasUploads):
     """Server's data files"""
     @property
     def packages(self):
