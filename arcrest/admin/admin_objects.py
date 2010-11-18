@@ -92,9 +92,6 @@ class DataItems(server.RestURL, Uploads):
 
 class Folder(server.RestURL):
     @property
-    def services(self):
-        raise NotImplementedError("Not implemented")
-    @property
     def folderName(self):
         return self._json_struct['folderName']
     @property
@@ -118,6 +115,24 @@ class Services(Folder):
         return_type = self._get_subfolder("./types/", server.JsonPostResult)
         return return_type._json_struct['types']
 
+class Service(server.RestURL):
+    @property
+    def status(self):
+        return self._get_subfolder("./status/", 
+                                   server.JsonPostResult)._json_struct
+    @property
+    def statistics(self):
+        return self._get_subfolder("./statistics/",
+                                   server.JsonPostResult)._json_struct
+    def start(self):
+        return self._get_subfolder("./start/", 
+                                   server.JsonPostResult)._json_struct
+    def stop(self):
+        return self._get_subfolder("./stop/", 
+                                   server.JsonPostResult)._json_struct
+    def delete(self):
+        return self._get_subfolder("./delete/", 
+                                   server.JsonPostResult)._json_struct
 
 class Machines(server.RestURL):
     """Base class for a list of machines, both on a Cluster and a Site"""
