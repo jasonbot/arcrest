@@ -110,7 +110,7 @@ def provide_narration(fn):
 @provide_narration
 def createservice(action):
     args = createserviceargs.parse_args()
-    all_files = args.sdfile
+    files = args.sdfile
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to admin site %s" % admin_url):
         site = arcrest.admin.Admin(admin_url)
