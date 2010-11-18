@@ -22,12 +22,7 @@ shared_args.add_argument('-p', '--password',
 shared_args.add_argument('-s', '--site', 
                          nargs='?',
                          default='http://127.0.0.1:6080/arcgis/admin/',
-                         help='URL for admin Server')
-shared_args.add_argument('-r', '--rest-site',
-                         nargs='?',
-                         default='AUTO',
-                         help='URL for REST server root (use AUTO to use URL '
-                              'relative to specified admin URL)')
+                         help='URL for admin Server (default is http://localhost:6080/)')
 
 createserviceargs = argparse.ArgumentParser(description='Creates a service',
                                             parents=[shared_args])
@@ -35,6 +30,10 @@ createserviceargs.add_argument('-c', '--cluster',
                                nargs='?',
                                default=None,
                                help='Name of cluster to act on')
+createserviceargs.add_argument('sdfile',
+                                nargs='+',
+                                metavar="FILE",
+                                help='Filename of local Service Definition file')
 
 manageserviceargs = argparse.ArgumentParser(description=
                                                 'Manages/modifies a service',
@@ -66,7 +65,7 @@ managesiteargs.add_argument('-lc', '--list-clusters',
                                action='store_true',
                                help='List clusters on a site')
 managesiteargs.add_argument('-o', '--operation',
-                               nargs=1,
+                               nargs='?',
                                help='chkstatus|start|stop')
 managesiteargs.add_argument('-c', '--cluster',
                                nargs='?',
@@ -98,12 +97,10 @@ class ActionNarrator(object):
                 print("Error %s: %s" % (action, str(ex)))
             sys.exit(1)
 
-def get_rest_url(admin_url, rest_url):
-    if not admin_url.endswith('/'):
-        admin_url += "/"
-    if rest_url.upper() == "AUTO":
-        rest_url = "../rest/services/"
-    return urlparse.urljoin(admin_url, rest_url)
+def get_rest_urls(admin_url):
+    admin_url = urlparse.urljoin(admin_url, '/arcgis/admin/services/')
+    rest_url = urlparse.urljoin(admin_url, '/arcgis/rest/services/')
+    return (admin_url, rest_url)
 
 def provide_narration(fn):
     def fn_():
@@ -112,11 +109,12 @@ def provide_narration(fn):
 
 @provide_narration
 def createservice(action):
-    args, files = createserviceargs.parse_known_args()
-    with action("connecting to admin site"):
-        site = arcrest.admin.Admin(args.site)
-    rest_url = get_rest_url(args.site, args.rest_site)
-    with action("connecting to REST services"):
+    args = createserviceargs.parse_args()
+    all_files = args.sdfile
+    admin_url, rest_url = get_rest_urls(args.site)
+    with action("connecting to admin site %s" % admin_url):
+        site = arcrest.admin.Admin(admin_url)
+    with action("connecting to REST services %s" % rest_url):
         rest_site = arcrest.Catalog(rest_url)
     with action("looking up Publish Tool"):
         publish_tool = (rest_site['System']
@@ -133,7 +131,8 @@ def createservice(action):
     ids = []
     for filename in all_files:
         with action("uploading %s" % filename):
-            ids.append((filename, site.data.items.upload(filename)['packageID']))
+            ids.append((filename,
+                        site.data.items.upload(filename)['packageID']))
     for filename, file_id in ids:
         with action("publishing %s" % os.path.basename(filename)):
             result_object = publish_tool(file_id, site.url)
@@ -149,8 +148,9 @@ def manageservice(action):
 @provide_narration
 def managesite(action):
     args = managesiteargs.parse_args()
-    with action("connecting to admin site"):
-        site = arcrest.admin.Admin(args.site)
+    admin_url, rest_url = get_rest_urls(args.site)
+    with action("connecting to admin site %s" % admin_url):
+        site = arcrest.admin.Admin(admin_url)
     with action("determining actions to perform"):
         assert any([
                      args.add_machines, 
