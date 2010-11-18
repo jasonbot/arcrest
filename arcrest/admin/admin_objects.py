@@ -8,9 +8,9 @@ import urllib
 import urlparse
 import urllib2
 
-__all__ = ['Admin', 'Folder', 'Services', 'Machines',
-           'SiteMachines', 'ClusterMachines', 'Directory',
-           'Directories', 'Clusters', 'Cluster']
+__all__ = ['Admin', 'Folder', 'Services', 'Service', 
+           'Machines', 'SiteMachines', 'ClusterMachines',
+           'Directory', 'Directories', 'Clusters', 'Cluster']
 
 class Admin(server.RestURL):
     """Represents the top level URL resource of the ArcGIS Server
