@@ -41,7 +41,6 @@ manageserviceargs.add_argument('-n', '--name',
                                help='Description: Service name (optional)')
 manageserviceargs.add_argument('-o', '--operation',
                                default=None,
-                               required=True,
                                help="Description: Operation to perform on "
                                     "specified service. If -l or --list is "
                                     "specified, used as a status filter "
@@ -159,11 +158,18 @@ def manageservice(action):
             services = site.services
             folders = services.folders
         with action("printing services"):
-            for service in services.services:
-                print(service.name)
+            status_map = {'stopped': 'stop',
+                          'started': 'started'}
+            servicelist = list(services.services)
             for folder in folders:
-                for service in folder.services:
-                    print(folder.folderName+"/"+service.name, service.status)
+                servicelist += list(folder.services)
+            for service in servicelist:
+                print("{0:40} | {1}".format(
+                                (service.parent.folderName+"/"
+                                    if service.parent.folderName != "/"
+                                    else ""
+                                )+service.name,
+                                service.status['realTimeState']))
     else:
         with action("checking arguments"):
             assert args.name, "Service name not specified"
