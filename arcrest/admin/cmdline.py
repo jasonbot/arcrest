@@ -12,17 +12,14 @@ __all__ = ['createservice', 'manageservice', 'managesite']
 
 shared_args = argparse.ArgumentParser(add_help=False)
 shared_args.add_argument('-u', '--username', 
-                         nargs='?',
-                         default=None,
-                         help='Username for Server')
+                         required=True,
+                         help='Description: Username for Server')
 shared_args.add_argument('-p', '--password', 
-                         nargs='?',
-                         default=None,
-                         help='Password for Server')
+                         required=True,
+                         help='Description: Password for Server')
 shared_args.add_argument('-s', '--site', 
-                         nargs='?',
-                         default='http://127.0.0.1:6080/arcgis/admin/',
-                         help='URL for admin Server (default is http://localhost:6080/)')
+                         required=True,
+                         help='Description: URL for admin Server')
 
 createserviceargs = argparse.ArgumentParser(description='Creates a service',
                                             parents=[shared_args])
@@ -34,20 +31,27 @@ createserviceargs.add_argument('-f', '--sdfile',
                                 nargs='+',
                                 metavar="FILE",
                                 help='Filename of local Service Definition file')
+createserviceargs._optionals.title = "arguments"
 
 manageserviceargs = argparse.ArgumentParser(description=
                                                 'Manages/modifies a service',
                                             parents=[shared_args])
 manageserviceargs.add_argument('-n', '--name',
                                default=None,
-                               help='Service name')
+                               help='Description: Service name (optional)')
 manageserviceargs.add_argument('-o', '--operation',
                                default=None,
-                               help="status|start|stop|delete")
+                               help="Description: Operation to perform on "
+                                    "specified service. If -l or --list is "
+                                    "specified, used as a status filter "
+                                    "instead.",
+                               choices=['status', 'start', 'stop', 'delete'])
 manageserviceargs.add_argument('-l', '--list',
                                default=False,
                                action='store_true',
-                               help="List services on server")
+                               help="Description: List services on server "
+                                    "(optional)")
+manageserviceargs._optionals.title = "arguments"
 
 managesiteargs = argparse.ArgumentParser(description=
                                                 'Manages/modifies a site',
@@ -68,7 +72,8 @@ managesiteargs.add_argument('-lc', '--list-clusters',
                                help='List clusters on a site')
 managesiteargs.add_argument('-o', '--operation',
                                nargs='?',
-                               help='chkstatus|start|stop')
+                               help='Description: Operation to perform on cluster',
+                               choices=['chkstatus', 'start', 'stop'])
 managesiteargs.add_argument('-c', '--cluster',
                                nargs='?',
                                default=None,
@@ -82,6 +87,7 @@ managesiteargs.add_argument('-cr', '--create-cluster',
                                action='store_true',
                                help=('Create cluster specified with -c '
                                      'if it does not exist'))
+managesiteargs._optionals.title = "arguments"
 
 
 class ActionNarrator(object):
@@ -146,26 +152,27 @@ def manageservice(action):
     if args.list:
         with action("checking arguments"):
             assert not args.name, "name cannot be set if listing services"
-            assert not args.operation, \
-                        "operation cannot be set if listing services"
         with action("connecting to admin site {0}".format(admin_url)):
             site = arcrest.admin.Admin(admin_url)
         with action("listing services"):
             services = site.services
             folders = services.folders
         with action("printing services"):
-            for service in services.services:
-                print(service.name)
+            status_map = {'stopped': 'stop',
+                          'started': 'started'}
+            servicelist = list(services.services)
             for folder in folders:
-                for service in folder.services:
-                    print(folder.folderName+"/"+service.name)
+                servicelist += list(folder.services)
+            for service in servicelist:
+                print("{0:40} | {1}".format(
+                                (service.parent.folderName+"/"
+                                    if service.parent.folderName != "/"
+                                    else ""
+                                )+service.name,
+                                service.status['realTimeState']))
     else:
         with action("checking arguments"):
             assert args.name, "Service name not specified"
-            assert args.operation, "Operation not specified"
-            assert args.operation.lower() in \
-                    ('status', 'start', 'stop', 'delete'), \
-                     "actions available: {status|start|stop|delete}"
         with action("connecting to admin site {0}".format(admin_url)):
             site = arcrest.admin.Admin(admin_url)
         with action("listing services"):
