@@ -30,7 +30,7 @@ createserviceargs.add_argument('-c', '--cluster',
                                nargs='?',
                                default=None,
                                help='Name of cluster to act on')
-createserviceargs.add_argument('sdfile',
+createserviceargs.add_argument('-f', '--sdfile',
                                 nargs='+',
                                 metavar="FILE",
                                 help='Filename of local Service Definition file')
@@ -101,7 +101,7 @@ class ActionNarrator(object):
 
 def get_rest_urls(admin_url):
     admin_url = urlparse.urljoin(admin_url, '/arcgis/admin/')
-    rest_url = urlparse.urljoin(admin_url, '/arcgis/rest/')
+    rest_url = urlparse.urljoin(admin_url, '/arcgis/rest/services/')
     return (admin_url, rest_url)
 
 def provide_narration(fn):
@@ -133,7 +133,7 @@ def createservice(action):
     ids = []
     for filename in all_files:
         with action("uploading {0}".format(filename)):
-            id = site.data.items.upload(filename)['packageID']
+            id = site.uploads.upload(filename)['packageID']
             with action("publishing {0}".format(os.path.basename(filename))):
                 result_object = publish_tool(id, site.url)
                 while result_object.running:
