@@ -206,7 +206,8 @@ def managesite(action):
                      args.delete_cluster,
                      args.create_cluster,
                      args.list,
-                     args.list_clusters
+                     args.list_clusters,
+                     args.operation
                 ]), "No action specified (use --help for options)"
     with action("looking up cluster"):
         try:
@@ -216,6 +217,14 @@ def managesite(action):
                 cluster = site.clusters.create(args.cluster)
             else:
                 raise
+    with action("performing {0}".format(args.operation)):
+        assert cluster, "No cluster specified"
+        if args.operation.lower() == "start":
+            cluster.start()
+        elif args.operation.lower() == "stop":
+            cluster.stop()
+        elif args.operation == "chkstatus":
+            raise NotImplementedError("Chkstatus not implemented")
     with action("deleting cluster"):
         if args.delete_cluster:
             assert cluster, "Asked to delete a cluster when none was specified"
