@@ -1195,6 +1195,8 @@ class GPTask(RestURL):
                 if not isinstance(val, param_to_convert['datatype']):
                     parametervalues[param_to_convert['name']] = \
                         param_to_convert['datatype'](val)._json_struct
+            elif param_to_convert['parameterType'] != 'esriGPParameterTypeDerived':
+                parametervalues[param_to_convert['name']] = ''
         return parametervalues
     def Execute(self, *params, **kw):
         """Synchronously execute the specified GP task. Parameters are passed

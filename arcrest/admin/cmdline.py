@@ -232,11 +232,14 @@ def createservice(action):
             assert os.path.exists(filename) and os.path.isfile(filename), \
                     "{0} is not a file".format(filename)
     ids = []
+    publish_tool.__post__ = True
     for filename in all_files:
         with action("uploading {0}".format(filename)):
-            id = site.uploads.upload(filename)['packageID']
+            id = site.uploads.upload(filename)['itemID']
             with action("publishing {0}".format(os.path.basename(filename))):
-                result_object = publish_tool(id, site.url)
+                result_object = publish_tool(id,
+                                             rest_site.url[
+                                                 :rest_site.url.find('?')])
                 while result_object.running:
                     time.sleep(0.125)
 

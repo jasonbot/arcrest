@@ -83,8 +83,8 @@ class HasUploads(object):
             file = open(file, 'rb')
         sub = self._get_subfolder('./upload/', server.JsonResult,
                                   {'description': description},
-                                  {'packageFile': file})
-        return sub._json_struct['package']
+                                  {'itemFile': file})
+        return sub._json_struct['item']
 
 class Uploads(server.RestURL, HasUploads):
     """Uploads URL"""
