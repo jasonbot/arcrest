@@ -358,6 +358,8 @@ def managesite(action):
 def deletecache(action):
     args = deletecacheargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
+    with action("connecting to REST services {0}".format(rest_url)):
+        rest_site = arcrest.Catalog(rest_url)
 
 @provide_narration
 def managecachetiles(action):
