@@ -305,6 +305,7 @@ class GPDataFile(GPBaseType):
     url = ''
     def __init__(self, url):
         self.url = url
+    @property
     def _json_struct(self):
         return {'url': self.url}
     @classmethod

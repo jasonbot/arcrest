@@ -25,7 +25,7 @@ shared_args.add_argument('-s', '--site',
 
 createserviceargs = argparse.ArgumentParser(description='Creates a service',
                                             parents=[shared_args])
-createserviceargs.add_argument('-c', '--cluster',
+createserviceargs.add_argument('-C', '--cluster',
                                nargs='?',
                                default=None,
                                help='Name of cluster to act on')
@@ -33,6 +33,14 @@ createserviceargs.add_argument('-f', '--sdfile',
                                 nargs='+',
                                 metavar="FILE",
                                 help='Filename of local Service Definition file')
+createserviceargs.add_argument('-F', '--folder-name',
+                               nargs='?',
+                               default=None,
+                               help='Folder to create service in')
+createserviceargs.add_argument('-n', '--service-name',
+                               nargs='?',
+                               default=None,
+                               help='Name of service to create')
 createserviceargs._optionals.title = "arguments"
 
 manageserviceargs = argparse.ArgumentParser(description=
