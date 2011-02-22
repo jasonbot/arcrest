@@ -373,10 +373,8 @@ def deletecache(action):
                                       ['DeleteCache'])
     with action("connecting to admin site {0}".format(admin_url)):
         site = arcrest.admin.Admin(admin_url)
-    with action("listing services"):
-        services = site.services
     with action("searching for service %s" % args.name):
-        service = services[args.name]
+        service = rest_site[args.name]
     with action("deleting map cache"):
         result_object = delete_cache_tool(service.url[:service.find('?')])
         while result_object.running:
