@@ -12,7 +12,7 @@ except ImportError:
                           "from http://www.undefined.org/python/ "\
                           "or use arcrest with Python 2.6")
 
-from .projections import projected, geographic
+from arcrest.projections import projected, geographic
 
 try:
     apply

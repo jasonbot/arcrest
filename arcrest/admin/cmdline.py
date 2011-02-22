@@ -246,8 +246,8 @@ def createservice(action):
             id = site.uploads.upload(filename)['itemID']
             with action("publishing {0}".format(os.path.basename(filename))):
                 result_object = publish_tool(id,
-                                             rest_site.url[
-                                                 :rest_site.url.find('?')])
+                                             site.url[
+                                                 :site.url.find('?')])
                 while result_object.running:
                     time.sleep(0.125)
 
