@@ -249,24 +249,25 @@ class GPDate(GPBaseType):
         if isinstance(date, basestring):
             try:
                 self.date = datetime.datetime.strptime(date, format)
-            except ValueError:
+            except (ValueError, TypeError) as e:
                 try:
                     self.date = datetime.datetime.strptime(date, 
                                                            self.__date_format)
                     self.format = self.__date_format
                 except ValueError:
-                    for format in self__secondary_date_formats:
+                    for sformat in self.__secondary_date_formats:
                         try:
-                            self.date = datetime.datetime.strptime(date, format)
+                            self.date = datetime.datetime.strptime(date, sformat)
                             self.format = format
                         except ValueError:
                             pass
-                    try:
-                        import utils
-                        self.date = utils.timetopythonvalue(date)
-                    except:
-                        pass
-                    raise ValueError("Cannot convert %r to date" % date)
+                    if not getattr(self, 'date', None):
+                        try:
+                            import utils
+                            self.date = utils.timetopythonvalue(date)
+                        except:
+                            pass
+                        raise ValueError("Cannot convert %r to date" % date)
         elif isinstance(date, (datetime.date, datetime.datetime)):
             self.date = date
         else:

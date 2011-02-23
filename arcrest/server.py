@@ -91,11 +91,15 @@ class RestURL(object):
         if len(url) > 100:
             url = url[:97] + "..."
         return "<%s(%r)>" % (self.__class__.__name__, url)
-    def _get_subfolder(self, foldername, returntype, params={}, file_data={}):
+    def _get_subfolder(self, foldername, returntype, params=None, file_data=None):
         """Return an object of the requested type with the path relative
            to the current object's URL. Optionally, query parameters
            may be set."""
         newurl = urlparse.urljoin(self.url, urllib.quote(foldername), False)
+
+        params = params or {}
+        file_data = file_data or {}
+
         # Add the key-value pairs sent in params to query string if they
         # are so defined.
         query_dict = {}
@@ -138,7 +142,10 @@ class RestURL(object):
         # Instantiate new RestURL or subclass
         rt = returntype(newurl, file_data)
         # Remind the resource where it came from
-        rt.parent = self
+        try:
+            rt.parent = self
+        except:
+            rt._parent = self
         return rt
     def _clear_cache(self):
         self.__json_struct__ = Ellipsis
@@ -1998,8 +2005,20 @@ class GeoDataVersion(RestURL):
     def childVersions(self):
         return self._json_struct['childVersions']
     @property
+    def children(self):
+        return [self._get_subfolder("../%s" % version_name, 
+                                    GeoDataVersion) 
+                    for version_name in
+                        self._json_struct['childVersions']]
+    @property
     def ancestorVersions(self):
         return self._json_struct['ancestorVersions']
+    @property
+    def ancestors(self):
+        return [self._get_subfolder("../%s" % version_name, 
+                                    GeoDataVersion) 
+                    for version_name in
+                        self._json_struct['ancestorVersions']]
 
 class GeoDataReplica(RestURL):
     """The geodata replica resource represents a single replica in a geodata
