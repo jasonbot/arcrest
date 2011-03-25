@@ -376,14 +376,33 @@ def deletecache(action):
     with action("searching for service %s" % args.name):
         service = rest_site[args.name]
     with action("deleting map cache"):
-        result_object = delete_cache_tool(service.url[:service.find('?')])
+        result_object = delete_cache_tool(service.url[:service.find('?')]
+                                            if '?' in service.url
+                                            else service.url)
         while result_object.running:
             time.sleep(0.125)
+        print "\n".join(msg.description for msg in result_object.messages)
 
 @provide_narration
 def managecachetiles(action):
     args = managecachetilesargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
+    with action("connecting to REST services {0}".format(rest_url)):
+        rest_site = arcrest.Catalog(rest_url)
+    with action("fetching reference to Delete Cache tool"):
+        manage_cache_tool = (rest_site['CachingTools']
+                                      ['Manage Map Cache Tiles'])
+    with action("managing map cache"):
+        result_object = manage_cache_tool(service.url[:service.find('?')]
+                                            if '?' in service.url
+                                            else service.url,
+                                          args.levels,
+                                          args.update_mode,
+                                          args.constraining_extent,
+                                          args.area_of_interest)
+        while result_object.running:
+            time.sleep(0.125)
+        print "\n".join(msg.description for msg in result_object.messages)
 
 @provide_narration
 def createcacheschema(action):
