@@ -954,8 +954,10 @@ class GPMessage(object):
             description, type = description[0], description[1]
         self.description, self.type = description, type
     def __repr__(self):
-        return "<% 11s: %r>" % (self.type[len('esriJobMessageType'):],
-                                self.description)
+        return "<{0:<11}: {1}>".format(self.type[len('esriJobMessageType'):],
+                                       self.description)
+    def __str__(self):
+        return self.description
 
 @Folder._register_service_type
 class GPService(Service):
