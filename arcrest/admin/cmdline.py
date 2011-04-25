@@ -430,4 +430,4 @@ def createcacheschema(action):
                                           args.use_local_cache_dir == 'True')
         while result_object.running:
             time.sleep(0.125)
-        print "\n".join(msg.description for msg in result_object.messages)
+        print ("\n".join(msg.description for msg in result_object.messages))
