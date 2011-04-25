@@ -421,8 +421,8 @@ def createcacheschema(action):
                                           args.tile_origin,
                                           args.custom_scale_values
                                                 if args.scales == 'Custom'
-                                                else None
-                                          args.tole_storage_format,
+                                                else None,
+                                          args.tile_storage_format,
                                           args.tile_format,
                                           args.DPI,
                                           args.tile_width,
