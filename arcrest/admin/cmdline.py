@@ -381,7 +381,7 @@ def deletecache(action):
                                             else service.url)
         while result_object.running:
             time.sleep(0.125)
-        print "\n".join(msg.description for msg in result_object.messages)
+        print ("\n".join(msg.description for msg in result_object.messages))
 
 @provide_narration
 def managecachetiles(action):
@@ -402,7 +402,7 @@ def managecachetiles(action):
                                           args.area_of_interest)
         while result_object.running:
             time.sleep(0.125)
-        print "\n".join(msg.description for msg in result_object.messages)
+        print ("\n".join(msg.description for msg in result_object.messages))
 
 @provide_narration
 def createcacheschema(action):
