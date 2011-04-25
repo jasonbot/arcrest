@@ -369,14 +369,15 @@ def deletecache(action):
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = arcrest.Catalog(rest_url)
     with action("fetching reference to Delete Cache tool"):
-        delete_cache_tool = (rest_site['CachingTools']
+        delete_cache_tool = (rest_site['System']
+                                      ['CachingTools']
                                       ['DeleteCache'])
     with action("connecting to admin site {0}".format(admin_url)):
         site = arcrest.admin.Admin(admin_url)
     with action("searching for service %s" % args.name):
         service = rest_site[args.name]
     with action("deleting map cache"):
-        result_object = delete_cache_tool(service.url[:service.find('?')]
+        result_object = delete_cache_tool(service.url[:service.url.find('?')]
                                             if '?' in service.url
                                             else service.url)
         while result_object.running:
@@ -390,10 +391,11 @@ def managecachetiles(action):
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = arcrest.Catalog(rest_url)
     with action("fetching reference to Delete Cache tool"):
-        manage_cache_tool = (rest_site['CachingTools']
+        manage_cache_tool = (rest_site['System']
+                                      ['CachingTools']
                                       ['Manage Map Cache Tiles'])
     with action("managing map cache"):
-        result_object = manage_cache_tool(service.url[:service.find('?')]
+        result_object = manage_cache_tool(service.url[:service.url.find('?')]
                                             if '?' in service.url
                                             else service.url,
                                           args.levels,
@@ -411,10 +413,11 @@ def createcacheschema(action):
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = arcrest.Catalog(rest_url)
     with action("fetching reference to Import Cache tool"):
-        manage_cache_tool = (rest_site['CachingTools']
+        manage_cache_tool = (rest_site['System']
+                                      ['CachingTools']
                                       ['Create Map Cache'])
     with action("creating map cache"):
-        result_object = manage_cache_tool(service.url[:service.find('?')]
+        result_object = manage_cache_tool(service.url[:service.url.find('?')]
                                             if '?' in service.url
                                             else service.url,
                                           args.cache_directory,
