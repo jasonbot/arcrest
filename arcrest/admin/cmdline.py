@@ -372,14 +372,19 @@ def deletecache(action):
         delete_cache_tool = (rest_site['System']
                                       ['CachingTools']
                                       ['DeleteCache'])
+    with action("searching for map service's URL"):
+        map_service = rest_site
+        for folder in args.name.split('/'):
+            map_service = map_service[folder]
     with action("connecting to admin site {0}".format(admin_url)):
         site = arcrest.admin.Admin(admin_url)
     with action("searching for service %s" % args.name):
         service = rest_site[args.name]
     with action("deleting map cache"):
-        result_object = delete_cache_tool(args.site[:args.site.find('?')]
-                                            if '?' in args.site
-                                            else args.site)
+        result_object = delete_cache_tool(map_service.url[:map_service.url
+                                                                    .find('?')]
+                                            if '?' in map_service.url
+                                            else map_service.url)
         while result_object.running:
             time.sleep(0.125)
         print ("\n".join(msg.description for msg in result_object.messages))
@@ -398,7 +403,7 @@ def managecachetiles(action):
         result_object = manage_cache_tool(args.site[:args.site.find('?')]
                                             if '?' in args.site
                                             else args.site,
-                                          args.levels,
+                                          args.scales,
                                           args.update_mode,
                                           args.constraining_extent,
                                           args.area_of_interest)
