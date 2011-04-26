@@ -377,9 +377,9 @@ def deletecache(action):
     with action("searching for service %s" % args.name):
         service = rest_site[args.name]
     with action("deleting map cache"):
-        result_object = delete_cache_tool(service.url[:service.url.find('?')]
-                                            if '?' in service.url
-                                            else service.url)
+        result_object = delete_cache_tool(args.site[:args.site.find('?')]
+                                            if '?' in args.site
+                                            else args.site)
         while result_object.running:
             time.sleep(0.125)
         print ("\n".join(msg.description for msg in result_object.messages))
@@ -395,9 +395,9 @@ def managecachetiles(action):
                                       ['CachingTools']
                                       ['Manage Map Cache Tiles'])
     with action("managing map cache"):
-        result_object = manage_cache_tool(service.url[:service.url.find('?')]
-                                            if '?' in service.url
-                                            else service.url,
+        result_object = manage_cache_tool(args.site[:args.site.find('?')]
+                                            if '?' in args.site
+                                            else args.site,
                                           args.levels,
                                           args.update_mode,
                                           args.constraining_extent,
@@ -417,9 +417,9 @@ def createcacheschema(action):
                                       ['CachingTools']
                                       ['Create Map Cache'])
     with action("creating map cache"):
-        result_object = manage_cache_tool(service.url[:service.url.find('?')]
-                                            if '?' in service.url
-                                            else service.url,
+        result_object = manage_cache_tool(args.site[:args.site.find('?')]
+                                            if '?' in args.site
+                                            else args.site,
                                           args.cache_directory,
                                           args.tile_origin,
                                           args.custom_scale_values
