@@ -12,11 +12,39 @@ from arcrest import server
 
 __all__ = ['Admin', 'Folder', 'Services', 'Service', 
            'Machines', 'SiteMachines', 'ClusterMachines',
-           'Directory', 'Directories', 'Clusters', 'Cluster']
+           'Directory', 'Directories', 'Clusters', 'Cluster',
+           'AUTH_NONE', 'AUTH_TOKEN', 'AUTH_BASIC', 'AUTH_DIGEST']
+
+# Constants for authentication mode to server APIs
+AUTH_NONE   = 0
+AUTH_TOKEN  = 1
+AUTH_BASIC  = 2
+AUTH_DIGEST = 3
 
 class Admin(server.RestURL):
     """Represents the top level URL resource of the ArcGIS Server
        Administration API"""
+    def __init__(self, url, username=None, password=None,
+                 authentication_method=AUTH_NONE,
+                 expiration=10):
+        url_list = list(urlparse.urlsplit(url))
+        if not url_list[2].endswith('/'):
+            url_list[2] += "/"
+        url = urlparse.urlunsplit(url_list)
+        if authentication_method == AUTH_NONE:
+            pass
+        elif authentication_method == AUTH_TOKEN:
+            auth_url = urlparse.urljoin(url, './generateToken', False)
+            token_auth = GenerateToken(auth_url,
+                                       username,
+                                       password,
+                                       expiration)
+            self.__token__ = token_auth.token
+        elif authentication_method == AUTH_BASIC:
+            pass # TODO: implement
+        elif authentication_method == AUTH_DIGEST:
+            pass # TODO: implement
+        super(Admin, self).__init__(url)
     @property
     def resources(self):
         return self._json_struct['resources']
@@ -63,6 +91,24 @@ class Admin(server.RestURL):
                                   server.JsonPostResult)
         return res
 
+class GenerateToken(server.RestURL):
+    __post__ = True
+    __cache_request__ = True
+    def __init__(self, url, username, password, expiration=10):
+        url_tuple = urlparse.urlsplit(newurl)
+        query_dict = dict((k, v[0]) for k, v in 
+                          cgi.parse_qs(urllist.query).iteritems())
+        query_dict['username'] = username
+        query_dict['password'] = password
+        query_dict['expiration'] = str(expiration)
+        query_dict['client'] = 'requestip'
+        url_list = list(url_tuple)
+        url_list[3] = urllib.urlencode(query_dict)
+        url = urlparse.urlunsplit(url_list)
+        super(Admin, self).__init__(url)
+    @property
+    def token(self):
+        return self._json_struct['token']
 
 class Data(server.RestURL):
     """Administration URL's data store -- Geodatabases and file data"""
