@@ -13,6 +13,7 @@ from arcrest import server
 __all__ = ['Admin', 'Folder', 'Services', 'Service', 
            'Machines', 'SiteMachines', 'ClusterMachines',
            'Directory', 'Directories', 'Clusters', 'Cluster',
+           'GenerateToken',
            'AUTH_NONE', 'AUTH_TOKEN', 'AUTH_BASIC', 'AUTH_DIGEST']
 
 # Constants for authentication mode to server APIs
@@ -39,6 +40,10 @@ class Admin(server.RestURL):
                                        username,
                                        password,
                                        expiration)
+            if token_auth._json_struct.get('status', 'ok').lower() == 'error':
+                raise urllib2.URLError('\n'.join(
+                                            token_auth._json_struct.get(
+                                                'messages', ['Failed.'])))
             self.__token__ = token_auth.token
         elif authentication_method == AUTH_BASIC:
             pass # TODO: implement
@@ -95,17 +100,17 @@ class GenerateToken(server.RestURL):
     __post__ = True
     __cache_request__ = True
     def __init__(self, url, username, password, expiration=10):
-        url_tuple = urlparse.urlsplit(newurl)
+        url_tuple = urlparse.urlsplit(url)
+        urllist = list(url_tuple)
         query_dict = dict((k, v[0]) for k, v in 
-                          cgi.parse_qs(urllist.query).iteritems())
+                          cgi.parse_qs(urllist[3]).iteritems())
         query_dict['username'] = username
         query_dict['password'] = password
         query_dict['expiration'] = str(expiration)
         query_dict['client'] = 'requestip'
-        url_list = list(url_tuple)
-        url_list[3] = urllib.urlencode(query_dict)
-        url = urlparse.urlunsplit(url_list)
-        super(Admin, self).__init__(url)
+        urllist[3] = urllib.urlencode(query_dict)
+        url = urlparse.urlunsplit(urllist)
+        super(GenerateToken, self).__init__(url)
     @property
     def token(self):
         return self._json_struct['token']
