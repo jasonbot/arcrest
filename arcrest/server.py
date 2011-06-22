@@ -126,7 +126,7 @@ class RestURL(object):
                 elif isinstance(val, geometry.SpatialReference): 
                     query_dict[key] = val.wkid
                 # If it's a list, make it a comma-separated string
-                elif isinstance(val, (list, tuple)):
+                elif isinstance(val, (list, tuple, set)):
                     val = ",".join([str(v.id) 
                                     if isinstance(v, Layer)
                                     else str(v) for v in val])
