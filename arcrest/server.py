@@ -20,6 +20,13 @@ import utils
 #: User agent to report when making requests
 USER_AGENT = "Mozilla/4.0 (arcrest)"
 
+#: Don't use HTTP authentication
+AUTH_NONE = 0
+#: Basic HTTP authentication
+AUTH_BASIC = 4
+#: Digest HTTP autentication
+AUTH_DIGEST = 5
+
 # Note that nearly every class below derives from this RestURL class.
 # The reasoning is that every object has an underlying URL resource on 
 # the REST server. Some are static or near-static, such as a folder or a
@@ -368,15 +375,27 @@ class Catalog(Folder):
        services published on the host."""
 
     _pwdmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
-    _handler = urllib2.HTTPBasicAuthHandler(_pwdmgr)    
+    _basic_handler  = urllib2.HTTPBasicAuthHandler(_pwdmgr)
+    _digest_handler = urllib2.HTTPDigestAuthHandler(_pwdmgr)
     """Class-level password manager -- if a Catalog is constructed with a 
     username/password pair for HTTP auth it will be handled by this."""
-    _opener = urllib2.build_opener(_handler)
+    _opener = urllib2.build_opener(_basic_handler, _digest_handler)
     urllib2.install_opener(_opener)
 
-    def __init__(self, url, username=None, password=None, token=None):
+    def __init__(self, url, username=None, password=None, token=None,
+                 authentication=AUTH_NONE):
         if username is not None and password is not None:
-            self.__class__._pwdmgr.add_password(None, url, username, password)
+            if authentication in (AUTH_BASIC, AUTH_DIGEST):
+                self.__class__._pwdmgr.add_password(None,
+                                                    url,
+                                                    username,
+                                                    password)
+            else:
+                raise ValueError("Username and password provided but "
+                                 "authentication scheme not specified")
+        elif authentication != AUTH_NONE:
+            raise ValueError("Username/password not provided but "
+                             "authentication scheme is not AUTH_NONE")
         url_ = list(urlparse.urlsplit(url))
         if not url_[2].endswith('/'):
             url_[2] += "/"
