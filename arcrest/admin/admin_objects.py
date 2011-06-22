@@ -14,20 +14,18 @@ __all__ = ['Admin', 'Folder', 'Services', 'Service',
            'Machines', 'SiteMachines', 'ClusterMachines',
            'Directory', 'Directories', 'Clusters', 'Cluster',
            'GenerateToken',
-           'AUTH_NONE', 'AUTH_TOKEN', 'AUTH_BASIC', 'AUTH_DIGEST']
+           'AUTH_NONE', 'AUTH_TOKEN']
 
 # Constants for authentication mode to server APIs
 AUTH_NONE   = 0
 AUTH_TOKEN  = 1
-AUTH_BASIC  = 2
-AUTH_DIGEST = 3
 
 class Admin(server.RestURL):
     """Represents the top level URL resource of the ArcGIS Server
        Administration API"""
     def __init__(self, url, username=None, password=None,
-                 authentication_method=AUTH_NONE,
-                 expiration=10):
+                 authentication_method=AUTH_TOKEN,
+                 expiration=60):
         url_list = list(urlparse.urlsplit(url))
         if not url_list[2].endswith('/'):
             url_list[2] += "/"
@@ -45,10 +43,6 @@ class Admin(server.RestURL):
                                             token_auth._json_struct.get(
                                                 'messages', ['Failed.'])))
             self.__token__ = token_auth.token
-        elif authentication_method == AUTH_BASIC:
-            pass # TODO: implement
-        elif authentication_method == AUTH_DIGEST:
-            pass # TODO: implement
         super(Admin, self).__init__(url)
     @property
     def resources(self):
@@ -97,9 +91,10 @@ class Admin(server.RestURL):
         return res
 
 class GenerateToken(server.RestURL):
+    "Used by the Admin class if authentication method is set to AUTH_TOKEN"
     __post__ = True
     __cache_request__ = True
-    def __init__(self, url, username, password, expiration=10):
+    def __init__(self, url, username, password, expiration=60):
         url_tuple = urlparse.urlsplit(url)
         urllist = list(url_tuple)
         query_dict = dict((k, v[0]) for k, v in 
