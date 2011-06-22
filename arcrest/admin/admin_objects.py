@@ -11,8 +11,9 @@ import urllib2
 from arcrest import server
 
 __all__ = ['Admin', 'Folder', 'Services', 'Service', 
-           'Machines', 'SiteMachines', 'ClusterMachines',
-           'Directory', 'Directories', 'Clusters', 'Cluster',
+           'Machine', 'Machines', 'SiteMachines', 'ClusterMachines',
+           'Directory', 'Directories',
+           'Clusters', 'Cluster',
            'GenerateToken',
            'AUTH_NONE', 'AUTH_TOKEN']
 
@@ -224,6 +225,27 @@ class Service(server.RestURL):
         return self._get_subfolder("./delete/", 
                                    server.JsonPostResult)._json_struct
 
+class Machine(server.RestURL):
+    """Base class for a single machine on a site"""
+    @property
+    def name(self):
+        return self._json_struct['machineName']
+    @property
+    def admin_url(self):
+        return self._json_struct['adminURL']
+    @property
+    def platform(self):
+        return self._json_struct['platform']
+    def start(self):
+        return self._get_subfolder("./start/", 
+                                   server.JsonPostResult)._json_struct
+    def stop(self):
+        return self._get_subfolder("./stop/", 
+                                   server.JsonPostResult)._json_struct
+    def unregister(self):
+        return self._get_subfolder("./unregister/", 
+                                   server.JsonPostResult)._json_struct
+
 class Machines(server.RestURL):
     """Base class for a list of machines, both on a Cluster and a Site"""
     __post__ = True
@@ -240,20 +262,26 @@ class Machines(server.RestURL):
     def __iter__(self):
         return (Admin(item['adminURL']) 
                     for item in self._machines.itervalues())
+    def register(self, machine_name, admin_url=None):
+        return self._get_subfolder("./register/", 
+                                   server.JsonPostResult,
+                                   {'machineName': machine_name,
+                                    'adminURL': admin_url})._json_struct
+
 
 class ClusterMachines(Machines):
     """A list of machines participating on a cluster"""
     def add(self, machine_names):
         if isinstance(machine_names, basestring):
             machine_names = [machine_names]
-        responses = [self._get_subfolder("./add", server.JsonPostResult, 
+        responses = [self._get_subfolder("./add/", server.JsonPostResult, 
                                          {"machineNames": m}) 
                      for m in machine_names]
         return responses
     def remove(self, machine_names):
         if isinstance(machine_names, basestring):
             machine_names = [machine_names]
-        responses = [self._get_subfolder("./remove", server.JsonPostResult, 
+        responses = [self._get_subfolder("./remove/", server.JsonPostResult, 
                                          {"machineNames": m}) 
                      for m in machine_names]
         return responses
@@ -264,6 +292,13 @@ class SiteMachines(Machines):
         res = self._get_subfolder("./register/", server.JsonPostResult,
                                   {'machineName': machineName,
                                    'adminURL': adminURL})
+    @property
+    def machines(self):
+        return [self._get_subfolder("./%s/" % machinename, Machine) for
+                machinename in self._machines]
+    def __getitem__(self, itemname):
+        assert itemname in self._machines, "Couldn't find %s" % itemname
+        return self._get_subfolder('./%s/' % itemname, Machine)
 
 class Directory(server.RestURL):
    __post__ = True
@@ -304,8 +339,15 @@ class Cluster(server.JsonResult):
     @property
     def machines(self):
         return self._get_subfolder("./machines/", ClusterMachines)
+    def start(self):
+        return self._get_subfolder('./start/',
+                                   server.JsonPostResult)._json_struct
+    def stop(self):
+        return self._get_subfolder('./stop/',
+                                   server.JsonPostResult)._json_struct
     def delete(self):
-        self._get_subfolder('./delete', server.JsonPostResult)
+        return self._get_subfolder('./delete/',
+                                   server.JsonPostResult)._json_struct
     def editProtocol(self, type="TCP", tcpClusterPort=-1, 
                multicastAddress=10, multicastPort=-1):
         if type not in ("TCP", "UDP"):
