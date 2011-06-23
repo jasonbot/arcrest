@@ -34,16 +34,7 @@ class Admin(server.RestURL):
         if authentication_method == AUTH_NONE:
             pass
         elif authentication_method == AUTH_TOKEN:
-            auth_url = urlparse.urljoin(url, './generateToken', False)
-            token_auth = GenerateToken(auth_url,
-                                       username,
-                                       password,
-                                       expiration)
-            if token_auth._json_struct.get('status', 'ok').lower() == 'error':
-                raise urllib2.URLError('\n'.join(
-                                            token_auth._json_struct.get(
-                                                'messages', ['Failed.'])))
-            self.__token__ = token_auth.token
+          self.__generateToken(url, username, password, expiration)
         super(Admin, self).__init__(url)
     @property
     def resources(self):
@@ -78,6 +69,8 @@ class Admin(server.RestURL):
                                    'configStoreConnection': configStoreConnection,
                                    'directories': directories,
                                    'cluster': cluster})
+        
+        self.__generateToken(self.url, username, password, 60)
         return res
     def joinSite(self, adminURL, username, password):
         res = self._get_subfolder("./joinSite", 
@@ -89,7 +82,20 @@ class Admin(server.RestURL):
     def deleteSite(self):
         res = self._get_subfolder("./deleteSite", 
                                   server.JsonPostResult)
+        self.__token__ = None
         return res
+    def __generateToken(self, url, username, password, expiration):
+      auth_url = urlparse.urljoin(url, './generateToken', False)
+      token_auth = GenerateToken(auth_url,
+                                 username,
+                                 password,
+                                 expiration)
+      if token_auth._json_struct.get('status', 'ok').lower() == 'error':
+          raise urllib2.URLError('\n'.join(
+                                      token_auth._json_struct.get(
+                                          'messages', ['Failed.'])))
+      self.__token__ = token_auth.token
+
 
 class GenerateToken(server.RestURL):
     "Used by the Admin class if authentication method is set to AUTH_TOKEN"
