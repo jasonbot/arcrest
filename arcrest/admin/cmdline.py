@@ -6,7 +6,8 @@ import sys
 import time
 import urlparse
 
-import arcrest.admin
+from arcrest import admin
+from arcrest import Catalog
 
 __all__ = ['createservice', 'manageservice', 'managesite', 'deletecache',
            'managecachetiles', 'createcacheschema']
@@ -224,9 +225,9 @@ def createservice(action):
     files = args.sdfile
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to admin site {0}".format(admin_url)):
-        site = arcrest.admin.Admin(admin_url)
+        site = admin.Admin(admin_url, args.username, args.password)
     with action("connecting to REST services {0}".format(rest_url)):
-        rest_site = arcrest.Catalog(rest_url)
+        rest_site = Catalog(rest_url, args.username, args.password)
     with action("looking up Publish Tool"):
         publish_tool = (rest_site['System']
                                  ['PublishingTools']
@@ -259,7 +260,7 @@ def manageservice(action):
         with action("checking arguments"):
             assert not args.name, "name cannot be set if listing services"
         with action("connecting to admin site {0}".format(admin_url)):
-            site = arcrest.admin.Admin(admin_url)
+            site = admin.Admin(admin_url, args.username, args.password)
         with action("listing services"):
             services = site.services
             folders = services.folders
@@ -280,7 +281,7 @@ def manageservice(action):
         with action("checking arguments"):
             assert args.name, "Service name not specified"
         with action("connecting to admin site {0}".format(admin_url)):
-            site = arcrest.admin.Admin(admin_url)
+            site = admin.Admin(admin_url, args.username, args.password)
         with action("listing services"):
             services = site.services
         with action("searching for service %s" % args.name):
@@ -304,7 +305,7 @@ def managesite(action):
     args = managesiteargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to admin site {0}".format(admin_url)):
-        site = arcrest.admin.Admin(admin_url)
+        site = admin.Admin(admin_url, args.username, args.password)
     with action("determining actions to perform"):
         assert any([
                      args.add_machines, 
@@ -367,7 +368,7 @@ def deletecache(action):
     args = deletecacheargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
-        rest_site = arcrest.Catalog(rest_url)
+        rest_site = Catalog(rest_url, args.username, args.password)
     with action("fetching reference to Delete Cache tool"):
         delete_cache_tool = (rest_site['System']
                                       ['CachingTools']
@@ -377,7 +378,7 @@ def deletecache(action):
         for folder in args.name.split('/'):
             map_service = map_service[folder]
     with action("connecting to admin site {0}".format(admin_url)):
-        site = arcrest.admin.Admin(admin_url)
+        site = admin.Admin(admin_url, args.username, args.password)
     with action("searching for service %s" % args.name):
         service = rest_site[args.name]
     with action("deleting map cache"):
@@ -394,7 +395,7 @@ def managecachetiles(action):
     args = managecachetilesargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
-        rest_site = arcrest.Catalog(rest_url)
+        rest_site = Catalog(rest_url, args.username, args.password)
     with action("fetching reference to Delete Cache tool"):
         manage_cache_tool = (rest_site['System']
                                       ['CachingTools']
@@ -416,7 +417,7 @@ def createcacheschema(action):
     args = createcacheschemaargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
-        rest_site = arcrest.Catalog(rest_url)
+        rest_site = Catalog(rest_url, args.username, args.password)
     with action("fetching reference to Import Cache tool"):
         manage_cache_tool = (rest_site['System']
                                       ['CachingTools']
