@@ -251,7 +251,7 @@ class RestURL(object):
         return property(get_, set_)
 
 # For token-based authentication
-class GenerateToken(server.RestURL):
+class GenerateToken(RestURL):
     "Used by the Admin class if authentication method is set to AUTH_TOKEN"
     __post__ = True
     __cache_request__ = True
