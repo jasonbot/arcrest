@@ -23,6 +23,12 @@ shared_args.add_argument('-p', '--password',
 shared_args.add_argument('-s', '--site', 
                          required=True,
                          help='Description: URL for admin Server')
+shared_args.add_argument('-t', '--token',
+                         required=False,
+                         action='store_true',
+                         help='Description: Use token authentication '
+                              '(if -t is not set, command will use HTTP auth)',
+                         default=False)
 
 createserviceargs = argparse.ArgumentParser(description='Creates a service',
                                             parents=[shared_args])
@@ -227,7 +233,8 @@ def createservice(action):
     with action("connecting to admin site {0}".format(admin_url)):
         site = admin.Admin(admin_url, args.username, args.password)
     with action("connecting to REST services {0}".format(rest_url)):
-        rest_site = Catalog(rest_url, args.username, args.password)
+        rest_site = Catalog(rest_url, args.username, args.password,
+                            generate_token=args.token)
     with action("looking up Publish Tool"):
         publish_tool = (rest_site['System']
                                  ['PublishingTools']
@@ -368,7 +375,8 @@ def deletecache(action):
     args = deletecacheargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
-        rest_site = Catalog(rest_url, args.username, args.password)
+        rest_site = Catalog(rest_url, args.username, args.password,
+                            generate_token=args.token)
     with action("fetching reference to Delete Cache tool"):
         delete_cache_tool = (rest_site['System']
                                       ['CachingTools']
@@ -395,7 +403,8 @@ def managecachetiles(action):
     args = managecachetilesargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
-        rest_site = Catalog(rest_url, args.username, args.password)
+        rest_site = Catalog(rest_url, args.username, args.password,
+                            generate_token=args.token)
     with action("fetching reference to Delete Cache tool"):
         manage_cache_tool = (rest_site['System']
                                       ['CachingTools']
@@ -417,7 +426,8 @@ def createcacheschema(action):
     args = createcacheschemaargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
-        rest_site = Catalog(rest_url, args.username, args.password)
+        rest_site = Catalog(rest_url, args.username, args.password,
+                            generate_token=args.token)
     with action("fetching reference to Import Cache tool"):
         manage_cache_tool = (rest_site['System']
                                       ['CachingTools']
