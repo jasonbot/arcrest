@@ -8,13 +8,12 @@ import urllib
 import urlparse
 import urllib2
 
-from arcrest import server
+from arcrest import server, GenerateToken
 
 __all__ = ['Admin', 'Folder', 'Services', 'Service', 
            'Machine', 'Machines', 'SiteMachines', 'ClusterMachines',
            'Directory', 'Directories',
            'Clusters', 'Cluster',
-           'GenerateToken',
            'AUTH_NONE', 'AUTH_TOKEN']
 
 # Constants for authentication mode to server APIs
@@ -95,27 +94,6 @@ class Admin(server.RestURL):
                                       token_auth._json_struct.get(
                                           'messages', ['Failed.'])))
       self.__token__ = token_auth.token
-
-
-class GenerateToken(server.RestURL):
-    "Used by the Admin class if authentication method is set to AUTH_TOKEN"
-    __post__ = True
-    __cache_request__ = True
-    def __init__(self, url, username, password, expiration=60):
-        url_tuple = urlparse.urlsplit(url)
-        urllist = list(url_tuple)
-        query_dict = dict((k, v[0]) for k, v in 
-                          cgi.parse_qs(urllist[3]).iteritems())
-        query_dict['username'] = username
-        query_dict['password'] = password
-        query_dict['expiration'] = str(expiration)
-        query_dict['client'] = 'requestip'
-        urllist[3] = urllib.urlencode(query_dict)
-        url = urlparse.urlunsplit(urllist)
-        super(GenerateToken, self).__init__(url)
-    @property
-    def token(self):
-        return self._json_struct['token']
 
 class Data(server.RestURL):
     """Administration URL's data store -- Geodatabases and file data"""

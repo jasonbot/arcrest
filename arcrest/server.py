@@ -250,6 +250,27 @@ class RestURL(object):
             self._parent = val
         return property(get_, set_)
 
+# For token-based authentication
+class GenerateToken(server.RestURL):
+    "Used by the Admin class if authentication method is set to AUTH_TOKEN"
+    __post__ = True
+    __cache_request__ = True
+    def __init__(self, url, username, password, expiration=60):
+        url_tuple = urlparse.urlsplit(url)
+        urllist = list(url_tuple)
+        query_dict = dict((k, v[0]) for k, v in 
+                          cgi.parse_qs(urllist[3]).iteritems())
+        query_dict['username'] = username
+        query_dict['password'] = password
+        query_dict['expiration'] = str(expiration)
+        query_dict['client'] = 'requestip'
+        urllist[3] = urllib.urlencode(query_dict)
+        url = urlparse.urlunsplit(urllist)
+        super(GenerateToken, self).__init__(url)
+    @property
+    def token(self):
+        return self._json_struct['token']
+
 # On top of a URL, the ArcGIS Server folder structure lists subfolders
 # and services.
 class Folder(RestURL):
@@ -375,7 +396,14 @@ class Catalog(Folder):
     _opener = urllib2.build_opener(_basic_handler, _digest_handler)
     urllib2.install_opener(_opener)
 
-    def __init__(self, url, username=None, password=None, token=None):
+    def __init__(self, url, username=None, password=None, token=None,
+                 generate_token=False, expiration=60):
+        """If a username/password is provided, AUTH and AUTH_DIGEST
+           authentication will be handled automatically. If token-based
+           authentication is needed, the literal token generate from the
+           server can be passed in as the token argument, or it will be
+           generated automatically if username and password are set and
+           the generate_token argument is set to True."""
         if username is not None and password is not None:
             self.__class__._pwdmgr.add_password(None,
                                                 url,
@@ -386,6 +414,11 @@ class Catalog(Folder):
             url_[2] += "/"
         if token is not None:
             self.__token__ = token
+        elif generate_token:
+            new_url = urlparse.urlunsplit(url_)
+            auth_url = urlparse.urljoin(url, '../tokens/generateToken', False)
+            gentoken = GenerateToken(auth_url, username, password, expiration)
+            self.__token__ = gentoken.token
         super(Catalog, self).__init__(url_)
         # Basically a Folder, but do some really, really rudimentary sanity
         # checking (look for folders/services, make sure format is JSON) so we
