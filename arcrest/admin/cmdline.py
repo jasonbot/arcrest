@@ -6,7 +6,6 @@ import sys
 import time
 import urlparse
 
-import arcrest.admin as admin
 from arcrest import Catalog
 
 __all__ = ['createservice', 'manageservice', 'managesite', 'deletecache',
@@ -227,6 +226,7 @@ def provide_narration(fn):
 
 @provide_narration
 def createservice(action):
+    import arcrest.admin as admin
     args = createserviceargs.parse_args()
     files = args.sdfile
     admin_url, rest_url = get_rest_urls(args.site)
@@ -261,6 +261,7 @@ def createservice(action):
 
 @provide_narration
 def manageservice(action):
+    import arcrest.admin as admin
     args = manageserviceargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     if args.list:
@@ -309,6 +310,7 @@ def manageservice(action):
 
 @provide_narration
 def managesite(action):
+    import arcrest.admin as admin
     args = managesiteargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to admin site {0}".format(admin_url)):
@@ -372,6 +374,7 @@ def managesite(action):
 
 @provide_narration
 def deletecache(action):
+    import arcrest.admin as admin
     args = deletecacheargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
@@ -400,6 +403,7 @@ def deletecache(action):
 
 @provide_narration
 def managecachetiles(action):
+    import arcrest.admin as admin
     args = managecachetilesargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
@@ -423,6 +427,7 @@ def managecachetiles(action):
 
 @provide_narration
 def createcacheschema(action):
+    import arcrest.admin as admin
     args = createcacheschemaargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
