@@ -6,7 +6,7 @@ import sys
 import time
 import urlparse
 
-from arcrest import admin
+import arcrest.admin as admin
 from arcrest import Catalog
 
 __all__ = ['createservice', 'manageservice', 'managesite', 'deletecache',
