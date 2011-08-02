@@ -157,6 +157,8 @@ class RestURL(object):
         if self.__post__:
             urlparts = list(urlparts)
             urlparts[3] = '' # Clear out query string on POST
+            if self.__token__ is not None: # But not the token
+                urlparts[3] = urllib.urlencode({'token': self.__token__})
         return urlparse.urlunsplit(urlparts)
     @property
     def query(self):
