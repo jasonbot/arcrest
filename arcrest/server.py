@@ -399,11 +399,9 @@ class Catalog(Folder):
     def __init__(self, url, username=None, password=None, token=None,
                  generate_token=False, expiration=60):
         """If a username/password is provided, AUTH and AUTH_DIGEST
-           authentication will be handled automatically. If token-based
-           authentication is needed, the literal token generate from the
-           server can be passed in as the token argument, or it will be
-           generated automatically if username and password are set and
-           the generate_token argument is set to True."""
+           authentication will be handled automatically. If using
+           token based authentication, either 1. Pass a token in the token
+           argument or 2. Set generate_token and a token will be generated."""
         if username is not None and password is not None:
             self.__class__._pwdmgr.add_password(None,
                                                 url,
