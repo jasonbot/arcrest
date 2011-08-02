@@ -13,27 +13,22 @@ from arcrest import server, GenerateToken
 __all__ = ['Admin', 'Folder', 'Services', 'Service', 
            'Machine', 'Machines', 'SiteMachines', 'ClusterMachines',
            'Directory', 'Directories',
-           'Clusters', 'Cluster',
-           'AUTH_NONE', 'AUTH_TOKEN']
-
-# Constants for authentication mode to server APIs
-AUTH_NONE   = 0
-AUTH_TOKEN  = 1
+           'Clusters', 'Cluster']
 
 class Admin(server.RestURL):
     """Represents the top level URL resource of the ArcGIS Server
        Administration API"""
     def __init__(self, url, username=None, password=None,
-                 authentication_method=AUTH_TOKEN,
+                 token=None, generate_token=False,
                  expiration=60):
         url_list = list(urlparse.urlsplit(url))
         if not url_list[2].endswith('/'):
             url_list[2] += "/"
         url = urlparse.urlunsplit(url_list)
-        if authentication_method == AUTH_NONE:
-            pass
-        elif authentication_method == AUTH_TOKEN:
-          self.__generateToken(url, username, password, expiration)
+        if token:
+            self.__token__ = token
+        elif generate_token:
+            self.__generateToken(url, username, password, expiration)
         super(Admin, self).__init__(url)
     @property
     def resources(self):

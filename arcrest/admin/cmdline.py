@@ -231,7 +231,8 @@ def createservice(action):
     files = args.sdfile
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to admin site {0}".format(admin_url)):
-        site = admin.Admin(admin_url, args.username, args.password)
+        site = admin.Admin(admin_url, args.username, args.password,
+                           generate_token=args.token)
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = Catalog(rest_url, args.username, args.password,
                             generate_token=args.token)
