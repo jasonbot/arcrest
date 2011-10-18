@@ -299,7 +299,8 @@ def manageservice(action):
         with action("checking arguments"):
             assert args.name, "Service name not specified"
         with action("connecting to admin site {0}".format(admin_url)):
-            site = admin.Admin(admin_url, args.username, args.password)
+            site = admin.Admin(admin_url, args.username, args.password,
+                               generate_token=args.token)
             assert site._json_struct.get('status', 'ok') != 'error',\
                    ' '.join(site._json_struct.get('messages',
                        ['Could not connect to site.']))
