@@ -210,6 +210,8 @@ class ActionNarrator(object):
     def __exit__(self, t, ex, tb):
         action = self.action_stack.pop()
         if (t, ex, tb) != (None, None, None):
+            #import traceback
+            #traceback.print_exception(t, ex, tb)
             if t is not SystemExit:
                 print("Error {0}: {1}".format(action, str(ex)))
             sys.exit(1)
@@ -233,6 +235,9 @@ def createservice(action):
     with action("connecting to admin site {0}".format(admin_url)):
         site = admin.Admin(admin_url, args.username, args.password,
                            generate_token=args.token)
+        assert site._json_struct.get('status', 'ok') != 'error',\
+               ' '.join(site._json_struct.get('messages',
+                   ['Could not connect to site.']))
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = Catalog(rest_url, args.username, args.password,
                             generate_token=args.token)
@@ -269,7 +274,11 @@ def manageservice(action):
         with action("checking arguments"):
             assert not args.name, "name cannot be set if listing services"
         with action("connecting to admin site {0}".format(admin_url)):
-            site = admin.Admin(admin_url, args.username, args.password)
+            site = admin.Admin(admin_url, args.username, args.password,
+                                          generate_token=args.token)
+            assert site._json_struct.get('status', 'ok') != 'error',\
+                   ' '.join(site._json_struct.get('messages',
+                       ['Could not connect to site.']))
         with action("listing services"):
             services = site.services
             folders = services.folders
@@ -291,11 +300,14 @@ def manageservice(action):
             assert args.name, "Service name not specified"
         with action("connecting to admin site {0}".format(admin_url)):
             site = admin.Admin(admin_url, args.username, args.password)
+            assert site._json_struct.get('status', 'ok') != 'error',\
+                   ' '.join(site._json_struct.get('messages',
+                       ['Could not connect to site.']))
         with action("listing services"):
             services = site.services
         with action("searching for service %s" % args.name):
             service = services[args.name]
-        operation = args.operation.lower()
+        operation = (args.operation or '').lower()
         if operation == 'status':
             for key, item in sorted(service.status.iteritems()):
                 print("{0}: {1}".format(key, item))
@@ -315,7 +327,11 @@ def managesite(action):
     args = managesiteargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to admin site {0}".format(admin_url)):
-        site = admin.Admin(admin_url, args.username, args.password)
+        site = admin.Admin(admin_url, args.username, args.password,
+                           generate_token=args.token)
+        assert site._json_struct.get('status', 'ok') != 'error',\
+               ' '.join(site._json_struct.get('messages',
+                   ['Could not connect to site.']))
     with action("determining actions to perform"):
         assert any([
                      args.add_machines, 
@@ -326,52 +342,55 @@ def managesite(action):
                      args.list_clusters,
                      args.operation
                 ]), "No action specified (use --help for options)"
-    with action("looking up cluster"):
-        try:
-            cluster = site.clusters[args.cluster] if args.cluster else None
-        except KeyError:
-            if args.create_cluster:
-                cluster = site.clusters.create(args.cluster)
-            else:
-                raise
-    with action("performing {0}".format(args.operation)):
-        assert cluster, "No cluster specified"
-        if args.operation.lower() == "start":
-            cluster.start()
-        elif args.operation.lower() == "stop":
-            cluster.stop()
-        elif args.operation == "chkstatus":
-            raise NotImplementedError("Chkstatus not implemented")
-    with action("deleting cluster"):
-        if args.delete_cluster:
-            assert cluster, "Asked to delete a cluster when none was specified"
-            cluster.delete()
-    with action("adding machines to cluster"):
-        if args.add_machines:
+    operation = (args.operation or '').lower()
+    if not args.list_clusters:
+        with action("looking up cluster"):
+            try:
+                cluster = site.clusters[args.cluster] if args.cluster else None
+            except KeyError:
+                if args.create_cluster:
+                    cluster = site.clusters.create(args.cluster)
+                else:
+                    raise
+        with action("performing {0}".format(operation or '')):
             assert cluster, "No cluster specified"
-            for machine in args.add_machines:
-                with action("adding {0} to cluster".format(machine)):
-                    cluster.machines.add(machine)
-    with action("removing machines from cluster"):
-        if args.remove_machines:
-            assert cluster, "No cluster specified"
-            for machine in args.remove_machines:
-                with action("deleting {0} from cluster".format(machine)):
-                    cluster.machines.remove(machine)
-    with action("listing machines"):
-        if args.list:
-            name, itemobject = ('cluster', cluster) \
-                    if cluster else ('site', site)
-            print("===Machines on this {0}===".format(name))
-            for machine in itemobject.machines.keys():
-                print("-", machine)
-            print()
-    with action("listing clusters"):
-        if args.list_clusters:
-            print("===Clusters on this site===")
-            for cluster in site.clusters.clusterNames:
-                print("-", cluster)
-            print()
+            if operation.lower() == "start":
+                cluster.start()
+            elif operation.lower() == "stop":
+                cluster.stop()
+            elif operation == "chkstatus":
+                raise NotImplementedError("Chkstatus not implemented")
+        with action("deleting cluster"):
+            if args.delete_cluster:
+                assert cluster, "Asked to delete a cluster when none was specified"
+                cluster.delete()
+        with action("adding machines to cluster"):
+            if args.add_machines:
+                assert cluster, "No cluster specified"
+                for machine in args.add_machines:
+                    with action("adding {0} to cluster".format(machine)):
+                        cluster.machines.add(machine)
+        with action("removing machines from cluster"):
+            if args.remove_machines:
+                assert cluster, "No cluster specified"
+                for machine in args.remove_machines:
+                    with action("deleting {0} from cluster".format(machine)):
+                        cluster.machines.remove(machine)
+        with action("listing machines"):
+            if args.list:
+                name, itemobject = ('cluster', cluster) \
+                        if cluster else ('site', site)
+                print("===Machines on this {0}===".format(name))
+                for machine in itemobject.machines.keys():
+                    print("-", machine)
+                print()
+    elif args.list_clusters:
+        with action("listing clusters"):
+            if args.list_clusters:
+                print("===Clusters on this site===")
+                for cluster in site.clusters.clusterNames:
+                    print("-", cluster)
+                print()
 
 @provide_narration
 def deletecache(action):
@@ -390,7 +409,11 @@ def deletecache(action):
         for folder in args.name.split('/'):
             map_service = map_service[folder]
     with action("connecting to admin site {0}".format(admin_url)):
-        site = admin.Admin(admin_url, args.username, args.password)
+        site = admin.Admin(admin_url, args.username, args.password,
+                           generate_token=args.token)
+        assert site._json_struct.get('status', 'ok') != 'error',\
+               ' '.join(site._json_struct.get('messages',
+                   ['Could not connect to site.']))
     with action("searching for service %s" % args.name):
         service = rest_site[args.name]
     with action("deleting map cache"):
