@@ -256,9 +256,9 @@ class RestURL(object):
 
 # For token-based authentication
 class GenerateToken(RestURL):
-    "Used by the Admin and Catalog class if authentication method is set to
-     AUTH_TOKEN. Contains additional workarounds to discover the
-     generateToken verb's URL from scraping HTML."
+    """Used by the Admin and Catalog class if authentication method is set to
+       AUTH_TOKEN. Contains additional workarounds to discover the
+       generateToken verb's URL from scraping HTML."""
     __post__ = True
     __cache_request__ = True
     def __init__(self, origin_url, username, password, expiration=60,
