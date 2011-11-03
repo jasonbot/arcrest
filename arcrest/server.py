@@ -5,9 +5,11 @@
    service published with ArcGIS Server."""
 
 import cgi
+import cookielib
 import json
 import mimetypes
 import os
+import re
 import urllib
 import urllib2
 import urlparse
@@ -254,17 +256,26 @@ class RestURL(object):
 
 # For token-based authentication
 class GenerateToken(RestURL):
-    "Used by the Admin class if authentication method is set to AUTH_TOKEN"
+    "Used by the Admin and Catalog class if authentication method is set to
+     AUTH_TOKEN. Contains additional workarounds to discover the
+     generateToken verb's URL from scraping HTML."
     __post__ = True
     __cache_request__ = True
-    def __init__(self, url, username, password, expiration=60):
+    def __init__(self, origin_url, username, password, expiration=60,
+                 html_login=True):
+        self._html_login = html_login
+        self._origin_url = origin_url
+        self._expiration = expiration
+        url = urlparse.urljoin(origin_url, '../tokens/generateToken', False)
         url_tuple = urlparse.urlsplit(url)
         urllist = list(url_tuple)
         query_dict = dict((k, v[0]) for k, v in 
                           cgi.parse_qs(urllist[3]).iteritems())
         query_dict['username'] = username
         query_dict['password'] = password
-        query_dict['expiration'] = str(expiration)
+        self._username = username
+        self._password = password
+        query_dict['expiration'] = str(self._expiration)
         query_dict['client'] = 'requestip'
         urllist[3] = urllib.urlencode(query_dict)
         url = urlparse.urlunsplit(urllist)
@@ -272,6 +283,60 @@ class GenerateToken(RestURL):
     @property
     def token(self):
         return self._json_struct['token']
+    @property
+    def _contents(self):
+        try:
+            super(GenerateToken, self)._contents
+        except urllib2.HTTPError:
+            if self._html_login:
+                # Hack: scrape HTML version for path to /login,
+                ##      then to wherever generateToken lives
+                username, password = self._username, self._password
+                del self._username
+                del self._password
+                payload ={'username': username,
+                          'password': password,
+                          'redirect': '/'}
+                # Loop through what look like forms
+                for formurl in re.findall('action="(.*?)"',
+                                          urllib2.urlopen(self._origin_url)
+                                                                      .read()):
+                    relurl = urlparse.urljoin(self._origin_url, formurl)
+                    try:
+                        html_request = urllib2.Request(relurl,
+                                                       urllib.urlencode(
+                                                                    payload),
+                                                      {'Referer': 
+                                                          self._origin_url})
+                        html_response = urllib2.urlopen(html_request).read()
+                        # Loop through what look like links
+                        for href in re.findall('(?:href|action)="(.*?)"',
+                                               html_response):
+                            if 'generatetoken' in href.lower():
+                                try:
+                                    gentokenurl = urlparse.urljoin(relurl,
+                                                                   href)
+                                    gentokenpayload = {'username': username,
+                                                       'password': password,
+                                                       'expiration': 
+                                                            str(
+                                                             self._expiration),
+                                                       'client': 'requestip',
+                                                       'f': 'json'}
+                                    self.__urldata__ = urllib.urlopen(
+                                                          gentokenurl,
+                                                          urllib.urlencode(
+                                                               gentokenpayload)
+                                                          ).read()
+                                    if self.__urldata__:
+                                        return self.__urldata__
+                                except urllib.HTTPError:
+                                    pass
+                    except urllib2.HTTPError:
+                        pass
+                return self.__urldata__ or '{}'
+            else:
+                raise
 
 # On top of a URL, the ArcGIS Server folder structure lists subfolders
 # and services.
@@ -391,11 +456,15 @@ class Catalog(Folder):
        services published on the host."""
 
     _pwdmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+    _cookiejar = cookielib.CookieJar()
     _basic_handler  = urllib2.HTTPBasicAuthHandler(_pwdmgr)
     _digest_handler = urllib2.HTTPDigestAuthHandler(_pwdmgr)
+    _cookie_handler = urllib2.HTTPCookieProcessor(_cookiejar)
     """Class-level password manager -- if a Catalog is constructed with a 
     username/password pair for HTTP auth it will be handled by this."""
-    _opener = urllib2.build_opener(_basic_handler, _digest_handler)
+    _opener = urllib2.build_opener(_basic_handler,
+                                   _digest_handler,
+                                   _cookie_handler)
     urllib2.install_opener(_opener)
 
     def __init__(self, url, username=None, password=None, token=None,
@@ -416,8 +485,7 @@ class Catalog(Folder):
             self.__token__ = token
         elif generate_token:
             new_url = urlparse.urlunsplit(url_)
-            auth_url = urlparse.urljoin(url, '../tokens/generateToken', False)
-            gentoken = GenerateToken(auth_url, username, password, expiration)
+            gentoken = GenerateToken(url, username, password, expiration)
             self.__token__ = gentoken.token
         super(Catalog, self).__init__(url_)
         # Basically a Folder, but do some really, really rudimentary sanity
@@ -511,7 +579,7 @@ class JsonResult(Result):
                                'Unspecified Error')])))
 
 class JsonPostResult(JsonResult):
-    """Class representing a sepcialization of a REST call which moves all
+    """Class representing a specialization of a REST call which moves all
        parameters to the payload of a POST request instead of in the URL
        query string in a GET"""
     __post__ = True
