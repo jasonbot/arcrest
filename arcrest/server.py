@@ -286,7 +286,7 @@ class GenerateToken(RestURL):
     @property
     def _contents(self):
         try:
-            super(GenerateToken, self)._contents
+            return super(GenerateToken, self)._contents
         except urllib2.HTTPError:
             if self._html_login:
                 # Hack: scrape HTML version for path to /login,
