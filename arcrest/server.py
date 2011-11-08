@@ -46,6 +46,16 @@ class RestURL(object):
     __post__ = False           # Move query string to POST
     _parent = None
 
+    _pwdmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+    _cookiejar = cookielib.CookieJar()
+    _basic_handler  = urllib2.HTTPBasicAuthHandler(_pwdmgr)
+    _digest_handler = urllib2.HTTPDigestAuthHandler(_pwdmgr)
+    _cookie_handler = urllib2.HTTPCookieProcessor(_cookiejar)
+    _opener = urllib2.build_opener(_basic_handler,
+                                   _digest_handler,
+                                   _cookie_handler)
+    urllib2.install_opener(_opener)
+
     def __init__(self, url, file_data=None):
         # Expects a urlparse.urlsplitted list as the url, but accepts a
         # string because that is easier/makes more sense everywhere.
@@ -261,25 +271,38 @@ class GenerateToken(RestURL):
        generateToken verb's URL from scraping HTML."""
     __post__ = True
     __cache_request__ = True
+    __lazy_fetch__ = False
     def __init__(self, origin_url, username, password, expiration=60,
                  html_login=True):
+        if username is not None and password is not None:
+            self._pwdmgr.add_password(None,
+                                      origin_url,
+                                      username,
+                                      password)
         self._html_login = html_login
         self._origin_url = origin_url
         self._expiration = expiration
-        url = urlparse.urljoin(origin_url, '../tokens/generateToken', False)
-        url_tuple = urlparse.urlsplit(url)
-        urllist = list(url_tuple)
-        query_dict = dict((k, v[0]) for k, v in 
-                          cgi.parse_qs(urllist[3]).iteritems())
-        query_dict['username'] = username
-        query_dict['password'] = password
-        self._username = username
-        self._password = password
-        query_dict['expiration'] = str(self._expiration)
-        query_dict['client'] = 'requestip'
-        urllist[3] = urllib.urlencode(query_dict)
-        url = urlparse.urlunsplit(urllist)
-        super(GenerateToken, self).__init__(url)
+        url1 = urlparse.urljoin(origin_url, '../tokens/generateToken', False)
+        url2 = urlparse.urljoin(origin_url, './generateToken', False)
+        for url in (url1, url2):
+            try:
+                url_tuple = urlparse.urlsplit(url)
+                urllist = list(url_tuple)
+                query_dict = dict((k, v[0]) for k, v in 
+                                  cgi.parse_qs(urllist[3]).iteritems())
+                query_dict['username'] = username
+                query_dict['password'] = password
+                self._username = username
+                self._password = password
+                query_dict['expiration'] = str(self._expiration)
+                query_dict['client'] = 'requestip'
+                urllist[3] = urllib.urlencode(query_dict)
+                url = urlparse.urlunsplit(urllist)
+                return super(GenerateToken, self).__init__(url)
+            except urllib2.HTTPError:
+                pass
+        raise urllib2.HTTPError("Could not create token using URL {}"
+                                .format(origin_url))
     @property
     def token(self):
         return self._json_struct['token']
@@ -309,6 +332,18 @@ class GenerateToken(RestURL):
                                                       {'Referer': 
                                                           self._origin_url})
                         html_response = urllib2.urlopen(html_request).read()
+
+                        # Seek out what looks like the redirect hidden form
+                        # element in the HTML response
+                        redirect_value = [re.findall('value="(.*?)"', input) 
+                                          for input in 
+                                            re.findall(
+                                                '<input.*?name="redirect".*?>',
+                                                html_response)]
+                        if redirect_value:
+                            redirect = redirect_value[0][0]
+                        else:
+                            redirect = None
                         # Loop through what look like links
                         for href in re.findall('(?:href|action)="(.*?)"',
                                                html_response):
@@ -323,6 +358,8 @@ class GenerateToken(RestURL):
                                                              self._expiration),
                                                        'client': 'requestip',
                                                        'f': 'json'}
+                                    if redirect:
+                                        gentokenpayload['redirect'] = redirect
                                     self.__urldata__ = urllib.urlopen(
                                                           gentokenurl,
                                                           urllib.urlencode(
@@ -455,18 +492,6 @@ class Catalog(Folder):
        ArcGIS Server host. This resource represents a catalog of folders and 
        services published on the host."""
 
-    _pwdmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
-    _cookiejar = cookielib.CookieJar()
-    _basic_handler  = urllib2.HTTPBasicAuthHandler(_pwdmgr)
-    _digest_handler = urllib2.HTTPDigestAuthHandler(_pwdmgr)
-    _cookie_handler = urllib2.HTTPCookieProcessor(_cookiejar)
-    """Class-level password manager -- if a Catalog is constructed with a 
-    username/password pair for HTTP auth it will be handled by this."""
-    _opener = urllib2.build_opener(_basic_handler,
-                                   _digest_handler,
-                                   _cookie_handler)
-    urllib2.install_opener(_opener)
-
     def __init__(self, url, username=None, password=None, token=None,
                  generate_token=False, expiration=60):
         """If a username/password is provided, AUTH and AUTH_DIGEST
@@ -474,10 +499,10 @@ class Catalog(Folder):
            token based authentication, either 1. Pass a token in the token
            argument or 2. Set generate_token and a token will be generated."""
         if username is not None and password is not None:
-            self.__class__._pwdmgr.add_password(None,
-                                                url,
-                                                username,
-                                                password)
+            self._pwdmgr.add_password(None,
+                                      url,
+                                      username,
+                                      password)
         url_ = list(urlparse.urlsplit(url))
         if not url_[2].endswith('/'):
             url_[2] += "/"

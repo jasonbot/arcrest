@@ -25,6 +25,11 @@ class Admin(server.RestURL):
         if not url_list[2].endswith('/'):
             url_list[2] += "/"
         url = urlparse.urlunsplit(url_list)
+        if username is not None and password is not None:
+            self._pwdmgr.add_password(None,
+                                      url,
+                                      username,
+                                      password)
         if token:
             self.__token__ = token
         elif generate_token:
@@ -79,8 +84,7 @@ class Admin(server.RestURL):
         self.__token__ = None
         return res
     def __generateToken(self, url, username, password, expiration):
-      auth_url = urlparse.urljoin(url, './generateToken', False)
-      token_auth = GenerateToken(auth_url,
+      token_auth = GenerateToken(url,
                                  username,
                                  password,
                                  expiration)
