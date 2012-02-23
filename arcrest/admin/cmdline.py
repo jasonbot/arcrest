@@ -9,7 +9,8 @@ import urlparse
 from arcrest import Catalog
 
 __all__ = ['createservice', 'manageservice', 'managesite', 'deletecache',
-           'managecachetiles', 'createcacheschema']
+           'managecachetiles', 'createcacheschema',
+           'convertcachestorageformat']
 
 
 shared_args = argparse.ArgumentParser(add_help=False)
@@ -38,7 +39,8 @@ createserviceargs.add_argument('-C', '--cluster',
 createserviceargs.add_argument('-f', '--sdfile',
                                 nargs='+',
                                 metavar="FILE",
-                                help='Filename of local Service Definition file')
+                                help='Filename of local Service Definition '
+                                     'file')
 createserviceargs.add_argument('-F', '--folder-name',
                                nargs='?',
                                default=None,
@@ -88,7 +90,8 @@ managesiteargs.add_argument('-lc', '--list-clusters',
                                help='List clusters on a site')
 managesiteargs.add_argument('-o', '--operation',
                                nargs='?',
-                               help='Description: Operation to perform on cluster',
+                               help='Description: Operation to perform on '
+                                    'cluster',
                                choices=['chkstatus', 'start', 'stop'])
 managesiteargs.add_argument('-c', '--cluster',
                                nargs='?',
@@ -110,6 +113,10 @@ deletecacheargs = argparse.ArgumentParser(description=
                                             parents=[shared_args])
 deletecacheargs.add_argument('-n', '--name',
                                help='Description: Service name')
+deletecacheargs.add_argument('-i', '--instances',
+                             metavar="instances",
+                             help="Number of instances",
+                             type=int)
 deletecacheargs._optionals.title = "arguments"
 
 managecachetilesargs = argparse.ArgumentParser(description=
@@ -123,21 +130,29 @@ managecachetilesargs.add_argument('-scales',
                                   nargs='+',
                                   help=
                                    "Description: Scales to generate caches")
-managecachetilesargs.add_argument('-m', 
+managecachetilesargs.add_argument('-mode', 
                                   help="Description: Update mode",
                                   choices=['Recreate_All_Tiles',
                                            'Recreate_Empty_Tiles',
                                            'Delete_Tiles'])
-managecachetilesargs.add_argument('-ext', 
+managecachetilesargs.add_argument('-i', '--instances',
+                                  metavar="instances",
+                                  help="Number of instances",
+                                  type=int)
+managecachetilesargs.add_argument('-extent', '--cache-extent',
                                   metavar='"{xmin; ymin; xmax; ymax}"',
                                   help="Extent[s] to cache",
                                   nargs='+')
-managecachetilesargs.add_argument('-pfc', '--feature-class',
+managecachetilesargs.add_argument('-f', '--feature-class',
                                   default=None,
                                   help="Description: Path to feature class")
 managecachetilesargs.add_argument('-status', '--ignore-completion-status',
                                   help="Description: Ignore completion status",
                                   choices=['True', 'False'])
+managecachetilesargs.add_argument('-wait', '--wait-for-completion',
+                            help="Description: Wait for operation to complete",
+                                  choices=['True', 'False'],
+                                  default="True")
 managecachetilesargs._optionals.title = "arguments"
 
 createcacheschemaargs = argparse.ArgumentParser(
@@ -146,18 +161,20 @@ createcacheschemaargs = argparse.ArgumentParser(
                                             parents=[shared_args])
 createcacheschemaargs.add_argument('-n', '--name',
                                help='Description: Service name')
-createcacheschemaargs.add_argument('-ac', '--cache_directory',
-                               help='Description: ArcGIS Server Cache Directory')
-createcacheschemaargs.add_argument('-ct', '--tiling-scheme',
+createcacheschemaargs.add_argument('-Dc', '--cache_directory',
+                               help='Description: ArcGIS Server Cache '
+                                    'Directory')
+createcacheschemaargs.add_argument('-scheme', '--tiling-scheme',
                                help='Description: Tiling scheme',
                                choices=['New', 'Predefined'])
-createcacheschemaargs.add_argument('-pct', '--tiling-scheme-path',
-                               help='Description: Path to tiling scheme (if Predefined)',
+createcacheschemaargs.add_argument('-X', '--tiling-scheme-path',
+                               help='Description: Path to tiling scheme (if '
+                                    'Predefined)',
                                default=None)
-createcacheschemaargs.add_argument('-cs', '--scales',
+createcacheschemaargs.add_argument('-scales', '--scales-type',
                                help='Description: Scales',
                                choices=['Standard', 'Custom'])
-createcacheschemaargs.add_argument('-no-of-scales', '--number-of-scales',
+createcacheschemaargs.add_argument('-scales', '--number-of-scales',
                                help='Description: Number of scales (if Standard)',
                                default=None,
                                type=int,
@@ -167,37 +184,50 @@ createcacheschemaargs.add_argument('-scale-values', '--custom-scale-values',
                                default=None,
                                nargs='+',
                                metavar='scale')
-createcacheschemaargs.add_argument('-d', '--DPI',
+createcacheschemaargs.add_argument('-dpi', '--DPI',
                                help='Description: DPI of tiles [0-100]',
                                type=int,
                                metavar='0-100')
-createcacheschemaargs.add_argument('-tw', '--tile-width',
+createcacheschemaargs.add_argument('-TS', '--tile-size',
                                help='Description: Tile width',
-                               choices=['125', '256', '512', '1024'])
-createcacheschemaargs.add_argument('-th', '--tile-height',
-                               help='Description: Tile height',
-                               choices=['125', '256', '512', '1024'])
-createcacheschemaargs.add_argument('-to', '--tile-origin',
+                               choices=['125x125', '256x256', '512x512', '1024x1024'])
+createcacheschemaargs.add_argument('-TO', '--tile-origin',
                                help='Description: Tile origin',
                                metavar='"(x, y)"')
-createcacheschemaargs.add_argument('-tf', '--tile-format',
+createcacheschemaargs.add_argument('-TF', '--tile-format',
                                help='Description: Tile format',
                                choices=['PNG8', 'PNG24', 'PNG32', 'JPEG', 'MIXED'])
-createcacheschemaargs.add_argument('-compression', '--tile-compression',
+createcacheschemaargs.add_argument('-TC', '--tile-compression',
                                help='Description: Compression (if JPEG or MIXED)',
                                default=None,
                                type=int,
                                metavar='0-100')
-createcacheschemaargs.add_argument('-ts', '--tile-storage-format',
+createcacheschemaargs.add_argument('-storage', '--tile-storage-format',
                                help='Description: Tile storage format',
                                choices=['Compact', 'Exploded'])
-createcacheschemaargs.add_argument('-ulc', '--use-local-cache-directory',
-                               help='Description: Use local cache directory (if Compact)',
+createcacheschemaargs.add_argument('-use', '--use-local-cache-directory',
+                               help='Description: Use local cache directory '
+                                    '(if Compact)',
                                default=None,
                                choices=['True', 'False'])
 
-
 createcacheschemaargs._optionals.title = "arguments"
+
+convertcachestorageformatargs = argparse.ArgumentParser(
+                                            description=
+                                             'Convert the format of a stored '
+                                             'map cache',
+                                            parents=[shared_args])
+
+convertcachestorageformatargs.add_argument('-n', '--name',
+                                  metavar="service",
+                                  help="Service name")
+convertcachestorageformatargs.add_argument('-i', '--instances',
+                                  metavar="instances",
+                                  help="Number of instances",
+                                  type=int)
+
+convertcachestorageformatargs._optionals.title = "arguments"
 
 class ActionNarrator(object):
     def __init__(self):
@@ -363,7 +393,7 @@ def managesite(action):
                 raise NotImplementedError("Chkstatus not implemented")
         with action("deleting cluster"):
             if args.delete_cluster:
-                assert cluster, "Asked to delete a cluster when none was specified"
+                assert cluster, "No cluster specified to delete"
                 cluster.delete()
         with action("adding machines to cluster"):
             if args.add_machines:
@@ -446,9 +476,12 @@ def managecachetiles(action):
                                           args.update_mode,
                                           args.constraining_extent,
                                           args.area_of_interest)
+    if args.wait_for_completion.lower() != "true":
         while result_object.running:
             time.sleep(0.125)
         print ("\n".join(msg.description for msg in result_object.messages))
+    else:
+        print result_object.url
 
 @provide_narration
 def createcacheschema(action):
@@ -474,9 +507,17 @@ def createcacheschema(action):
                                           args.tile_storage_format,
                                           args.tile_format,
                                           args.DPI,
-                                          args.tile_width,
-                                          args.tile_height,
+                                          args.tile_size,
                                           args.use_local_cache_dir == 'True')
         while result_object.running:
             time.sleep(0.125)
         print ("\n".join(msg.description for msg in result_object.messages))
+
+@provide_narration
+def convertcachestorageformat(action):
+    import arcrest.admin as admin
+    args = convertcachestorageformat.parse_args()
+    admin_url, rest_url = get_rest_urls(args.site)
+    with action("connecting to REST services {0}".format(rest_url)):
+        rest_site = Catalog(rest_url, args.username, args.password,
+                            generate_token=args.token)
