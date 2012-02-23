@@ -15,5 +15,6 @@ setup(
              os.path.join('cmdline', 'deletecache.py'),
              os.path.join('cmdline', 'createcacheschema.py'),
              os.path.join('cmdline', 'managecachetiles.py'),
+             os.path.join('cmdline', 'convertcachestorageformat.py'),
             ]
 )

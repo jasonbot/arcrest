@@ -518,7 +518,7 @@ convertcachestorageformatargs._optionals.title = "arguments"
 @provide_narration
 def convertcachestorageformat(action):
     import arcrest.admin as admin
-    args = convertcachestorageformat.parse_args()
+    args = convertcachestorageformatargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = Catalog(rest_url, args.username, args.password,
