@@ -428,7 +428,7 @@ createcacheschemaargs.add_argument('-X', '--tiling-scheme-path',
 createcacheschemaargs.add_argument('-scales', '--scales-type',
                                help='Description: Scales',
                                choices=['Standard', 'Custom'])
-createcacheschemaargs.add_argument('-scales', '--number-of-scales',
+createcacheschemaargs.add_argument('-number', '--number-of-scales',
                                help='Description: Number of scales (if Standard)',
                                default=None,
                                type=int,
@@ -487,7 +487,7 @@ def createcacheschema(action):
                                           args.tile_origin,
                                           args.custom_scale_values
                                                 if args.scales == 'Custom'
-                                                else None,
+                                                else args.number_of_scales,
                                           args.tile_storage_format,
                                           args.tile_format,
                                           args.tile_compression,
