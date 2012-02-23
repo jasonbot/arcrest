@@ -299,8 +299,12 @@ class GenerateToken(RestURL):
                 query_dict['client'] = 'requestip'
                 urllist[3] = urllib.urlencode(query_dict)
                 url = urlparse.urlunsplit(urllist)
-                return super(GenerateToken, self).__init__(url)
+                super(GenerateToken, self).__init__(url)
+                self._json_struct['token']
+                return
             except urllib2.HTTPError:
+                pass
+            except KeyError:
                 pass
         raise urllib2.HTTPError("Could not create token using URL {}"
                                 .format(origin_url))
