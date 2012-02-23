@@ -282,9 +282,10 @@ class GenerateToken(RestURL):
         self._html_login = html_login
         self._origin_url = origin_url
         self._expiration = expiration
-        url1 = urlparse.urljoin(origin_url, '../tokens/generateToken', False)
-        url2 = urlparse.urljoin(origin_url, './generateToken', False)
-        for url in (url1, url2):
+        url1 = urlparse.urljoin(origin_url, '../../tokens/generateToken', False)
+        url2 = urlparse.urljoin(origin_url, '../tokens/generateToken', False)
+        url3 = urlparse.urljoin(origin_url, './generateToken', False)
+        for url in (url1, url2, url3):
             try:
                 url_tuple = urlparse.urlsplit(url)
                 urllist = list(url_tuple)
