@@ -56,6 +56,21 @@ def provide_narration(fn):
         return fn(ActionNarrator())
     return fn_
 
+def wait_on_tool_run(result_object, silent=False):
+    message_length = 0
+    while result_object.running:
+        time.sleep(0.125)
+        messages = getattr(result_object, 'messages', [])
+        if len(messages) > message_length:
+            for message_object in messages[message_length:]:
+                if not silent:
+                    print (message_object.description)
+                    sys.stdout.flush()
+            message_length = len(messages)
+    if not silent:
+        for message_object in messages[message_length:]:
+            print (message_object.description)
+
 createserviceargs = argparse.ArgumentParser(description='Creates a service',
                                             parents=[shared_args])
 createserviceargs.add_argument('-C', '--cluster',
@@ -113,8 +128,7 @@ def createservice(action):
                 result_object = publish_tool(id,
                                              site.url[
                                                  :site.url.find('?')])
-                while result_object.running:
-                    time.sleep(0.125)
+                wait_on_tool_run(result_object, silent=True)
 
 manageserviceargs = argparse.ArgumentParser(description=
                                                 'Manages/modifies a service',
@@ -341,9 +355,7 @@ def deletecache(action):
                                                                     .find('?')]
                                             if '?' in map_service.url
                                             else map_service.url)
-        while result_object.running:
-            time.sleep(0.125)
-        print ("\n".join(msg.description for msg in result_object.messages))
+        wait_on_tool_run(result_object)
 
 managecachetilesargs = argparse.ArgumentParser(description=
                                                 'Manage a map tile cache',
@@ -403,13 +415,11 @@ def managecachetiles(action):
                                           args.cache_extent,
                                           args.area_of_interest)
     if args.wait_for_completion.lower() != "true":
-        while result_object.running:
-            time.sleep(0.125)
-        print ("\n".join(msg.description for msg in result_object.messages))
+        wait_on_tool_run(result_object)
     else:
         print (result_object.url)
 
-createcacheschemaargs = argparse.ArgumentParser(
+createcacheschemaargs = argparse.ArgumentParser(CR224384 -- Don't allow coverage tools to run in background
                                             description=
                                              'Creates a map tile cache schema',
                                             parents=[shared_args])
@@ -418,7 +428,7 @@ createcacheschemaargs.add_argument('-n', '--name',
 createcacheschemaargs.add_argument('-Dc', '--cache_directory',
                                help='Description: ArcGIS Server Cache '
                                     'Directory')
-createcacheschemaargs.add_argument('-scheme', '--tiling-scheme',
+createcacheschemaargs.add_argument('-scheme', '--tiling-scheme',CR224384 -- Don't allow coverage tools to run in background
                                help='Description: Tiling scheme',
                                choices=['New', 'Predefined'])
 createcacheschemaargs.add_argument('-X', '--tiling-scheme-path',
@@ -436,7 +446,7 @@ createcacheschemaargs.add_argument('-number', '--number-of-scales',
 createcacheschemaargs.add_argument('-scale-values', '--custom-scale-values',
                                help='Description: Scales (if Custom)',
                                default=None,
-                               nargs='+',
+                               nargs='+',CR224384 -- Don't allow coverage tools to run in background
                                metavar='scale')
 createcacheschemaargs.add_argument('-dpi', '--DPI',
                                help='Description: DPI of tiles [0-100]',
@@ -454,7 +464,7 @@ createcacheschemaargs.add_argument('-TF', '--tile-format',
 createcacheschemaargs.add_argument('-TC', '--tile-compression',
                                help='Description: Compression (if JPEG or MIXED)',
                                default=None,
-                               type=int,
+                               type=int,CR224384 -- Don't allow coverage tools to run in background
                                metavar='0-100')
 createcacheschemaargs.add_argument('-storage', '--tile-storage-format',
                                help='Description: Tile storage format',
@@ -495,9 +505,7 @@ def createcacheschema(action):
                                           args.tile_size.split("x")[0],
                                           args.tile_size.split("x")[1],
                                           args.use_local_cache_dir == 'True')
-        while result_object.running:
-            time.sleep(0.125)
-        print ("\n".join(msg.description for msg in result_object.messages))
+        wait_on_tool_run(result_object)
 
 convertcachestorageformatargs = argparse.ArgumentParser(
                                             description=
@@ -528,9 +536,7 @@ def convertcachestorageformat(action):
                                        ['CachingTools']
                                        ['Convert Cache Storage Format'])
     with action("converting format"):
-        result_object = convert_cache_tool(args.site[:args.site.find('?')]
-                                            if '?' in args.site
-                                            else args.site,
+        result_object = convert_cache_tool(args.name,
                                            args.instances)
         while result_object.running:
             time.sleep(0.125)
