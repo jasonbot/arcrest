@@ -495,7 +495,7 @@ def createcacheschema(action):
                                           args.cache_directory,
                                           args.tile_origin,
                                           args.custom_scale_values
-                                                if args.scales == 'Custom'
+                                                if args.scales_type == 'Custom'
                                                 else args.number_of_scales,
                                           args.tile_storage_format,
                                           args.tile_format,
