@@ -419,8 +419,7 @@ def managecachetiles(action):
     else:
         print (result_object.url)
 
-createcacheschemaargs = argparse.ArgumentParser(CR224384 -- Don't allow coverage tools to run in background
-                                            description=
+createcacheschemaargs = argparse.ArgumentParser(description=
                                              'Creates a map tile cache schema',
                                             parents=[shared_args])
 createcacheschemaargs.add_argument('-n', '--name',
@@ -428,7 +427,7 @@ createcacheschemaargs.add_argument('-n', '--name',
 createcacheschemaargs.add_argument('-Dc', '--cache_directory',
                                help='Description: ArcGIS Server Cache '
                                     'Directory')
-createcacheschemaargs.add_argument('-scheme', '--tiling-scheme',CR224384 -- Don't allow coverage tools to run in background
+createcacheschemaargs.add_argument('-scheme', '--tiling-scheme',
                                help='Description: Tiling scheme',
                                choices=['New', 'Predefined'])
 createcacheschemaargs.add_argument('-X', '--tiling-scheme-path',
@@ -446,7 +445,7 @@ createcacheschemaargs.add_argument('-number', '--number-of-scales',
 createcacheschemaargs.add_argument('-scale-values', '--custom-scale-values',
                                help='Description: Scales (if Custom)',
                                default=None,
-                               nargs='+',CR224384 -- Don't allow coverage tools to run in background
+                               nargs='+',
                                metavar='scale')
 createcacheschemaargs.add_argument('-dpi', '--DPI',
                                help='Description: DPI of tiles [0-100]',
@@ -464,7 +463,7 @@ createcacheschemaargs.add_argument('-TF', '--tile-format',
 createcacheschemaargs.add_argument('-TC', '--tile-compression',
                                help='Description: Compression (if JPEG or MIXED)',
                                default=None,
-                               type=int,CR224384 -- Don't allow coverage tools to run in background
+                               type=int,
                                metavar='0-100')
 createcacheschemaargs.add_argument('-storage', '--tile-storage-format',
                                help='Description: Tile storage format',
