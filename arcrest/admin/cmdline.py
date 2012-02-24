@@ -338,23 +338,8 @@ def deletecache(action):
         delete_cache_tool = (rest_site['System']
                                       ['CachingTools']
                                       ['DeleteCache'])
-    with action("searching for map service's URL"):
-        map_service = rest_site
-        for folder in args.name.split('/'):
-            map_service = map_service[folder]
-    with action("connecting to admin site {0}".format(admin_url)):
-        site = admin.Admin(admin_url, args.username, args.password,
-                           generate_token=args.token)
-        assert site._json_struct.get('status', 'ok') != 'error',\
-               ' '.join(site._json_struct.get('messages',
-                   ['Could not connect to site.']))
-    with action("searching for service %s" % args.name):
-        service = rest_site[args.name]
     with action("deleting map cache"):
-        result_object = delete_cache_tool(map_service.url[:map_service.url
-                                                                    .find('?')]
-                                            if '?' in map_service.url
-                                            else map_service.url)
+        result_object = delete_cache_tool(args.name)
         wait_on_tool_run(result_object)
 
 managecachetilesargs = argparse.ArgumentParser(description=
@@ -439,17 +424,18 @@ createcacheschemaargs.add_argument('-scales', '--scales-type',
                                choices=['Standard', 'Custom'])
 createcacheschemaargs.add_argument('-number', '--number-of-scales',
                                help='Description: Number of scales (if Standard)',
-                               default=None,
+                               default=1,
                                type=int,
                                metavar='1-20')
 createcacheschemaargs.add_argument('-scale-values', '--custom-scale-values',
                                help='Description: Scales (if Custom)',
-                               default=None,
+                               default="",
                                nargs='+',
                                metavar='scale')
 createcacheschemaargs.add_argument('-dpi', '--DPI',
                                help='Description: DPI of tiles [0-100]',
                                type=int,
+                               default=100,
                                metavar='0-100')
 createcacheschemaargs.add_argument('-TS', '--tile-size',
                                help='Description: Tile width',
@@ -462,7 +448,7 @@ createcacheschemaargs.add_argument('-TF', '--tile-format',
                                choices=['PNG8', 'PNG24', 'PNG32', 'JPEG', 'MIXED'])
 createcacheschemaargs.add_argument('-TC', '--tile-compression',
                                help='Description: Compression (if JPEG or MIXED)',
-                               default=None,
+                               default=0,
                                type=int,
                                metavar='0-100')
 createcacheschemaargs.add_argument('-storage', '--tile-storage-format',
@@ -471,7 +457,7 @@ createcacheschemaargs.add_argument('-storage', '--tile-storage-format',
 createcacheschemaargs.add_argument('-use', '--use-local-cache-directory',
                                help='Description: Use local cache directory '
                                     '(if Compact)',
-                               default=None,
+                               default='False',
                                choices=['True', 'False'])
 
 createcacheschemaargs._optionals.title = "arguments"
@@ -485,13 +471,11 @@ def createcacheschema(action):
         rest_site = Catalog(rest_url, args.username, args.password,
                             generate_token=args.token)
     with action("fetching reference to Import Cache tool"):
-        manage_cache_tool = (rest_site['System']
+        create_cache_tool = (rest_site['System']
                                       ['CachingTools']
                                       ['Create Map Cache'])
     with action("creating map cache"):
-        result_object = manage_cache_tool(args.site[:args.site.find('?')]
-                                            if '?' in args.site
-                                            else args.site,
+        result_object = create_cache_tool(args.name,
                                           args.cache_directory,
                                           args.tile_origin,
                                           args.custom_scale_values
@@ -503,7 +487,7 @@ def createcacheschema(action):
                                           args.DPI,
                                           args.tile_size.split("x")[0],
                                           args.tile_size.split("x")[1],
-                                          args.use_local_cache_dir == 'True')
+                                          args.use_local_cache_directory == 'True')
         wait_on_tool_run(result_object)
 
 convertcachestorageformatargs = argparse.ArgumentParser(
