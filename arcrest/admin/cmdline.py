@@ -323,6 +323,7 @@ deletecacheargs.add_argument('-n', '--name',
 deletecacheargs.add_argument('-i', '--instances',
                              metavar="instances",
                              help="Number of instances",
+                             default=1,
                              type=int)
 deletecacheargs._optionals.title = "arguments"
 
@@ -339,7 +340,7 @@ def deletecache(action):
                                       ['CachingTools']
                                       ['DeleteCache'])
     with action("deleting map cache"):
-        result_object = delete_cache_tool(args.name)
+        result_object = delete_cache_tool(args.name, args.instances)
         wait_on_tool_run(result_object)
 
 managecachetilesargs = argparse.ArgumentParser(description=
@@ -349,7 +350,7 @@ managecachetilesargs.add_argument('-n', '--name',
                                help='Description: Service name')
 managecachetilesargs.add_argument('-scales',
                                   metavar="scale",
-                                  type=int,
+                                  type=float,
                                   nargs='+',
                                   help=
                                    "Description: Scales to generate caches")
@@ -362,16 +363,13 @@ managecachetilesargs.add_argument('-i', '--instances',
                                   metavar="instances",
                                   help="Number of instances",
                                   type=int)
+managecachetilesargs.add_argument('-f', '--feature-class',
+                                  default=None,
+                                  help="Description: Path to feature class")
 managecachetilesargs.add_argument('-extent', '--cache-extent',
                                   metavar='"{xmin; ymin; xmax; ymax}"',
                                   help="Extent[s] to cache",
                                   nargs='+')
-managecachetilesargs.add_argument('-f', '--feature-class',
-                                  default=None,
-                                  help="Description: Path to feature class")
-managecachetilesargs.add_argument('-status', '--ignore-completion-status',
-                                  help="Description: Ignore completion status",
-                                  choices=['True', 'False'])
 managecachetilesargs.add_argument('-wait', '--wait-for-completion',
                             help="Description: Wait for operation to complete",
                                   choices=['True', 'False'],
@@ -438,8 +436,9 @@ createcacheschemaargs.add_argument('-dpi', '--DPI',
                                default=100,
                                metavar='0-100')
 createcacheschemaargs.add_argument('-TS', '--tile-size',
-                               help='Description: Tile width',
-                               choices=['125x125', '256x256', '512x512', '1024x1024'])
+                               help='Description: Tile size',
+                               choices=['125x125', '256x256', '512x512', '1024x1024'],
+                               default='125x125')
 createcacheschemaargs.add_argument('-TO', '--tile-origin',
                                help='Description: Tile origin',
                                metavar='"(x, y)"')
