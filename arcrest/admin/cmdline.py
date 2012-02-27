@@ -354,7 +354,7 @@ managecachetilesargs.add_argument('-scales',
                                   nargs='+',
                                   help=
                                    "Description: Scales to generate caches")
-managecachetilesargs.add_argument('-mode', 
+managecachetilesargs.add_argument('-mode', '--update-mode' ,
                                   help="Description: Update mode",
                                   choices=['Recreate_All_Tiles',
                                            'Recreate_Empty_Tiles',
