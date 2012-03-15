@@ -10,7 +10,7 @@ from arcrest import Catalog
 
 __all__ = ['createservice', 'manageservice', 'managesite', 'deletecache',
            'managecachetiles', 'createcacheschema',
-           'convertcachestorageformat']
+           'convertcachestorageformat', 'importcache', 'exportcache']
 
 shared_args = argparse.ArgumentParser(add_help=False)
 shared_args.add_argument('-u', '--username', 
@@ -356,16 +356,18 @@ managecachetilesargs.add_argument('-scales',
                                    "Description: Scales to generate caches")
 managecachetilesargs.add_argument('-mode', '--update-mode' ,
                                   help="Description: Update mode",
-                                  choices=['Recreate_All_Tiles',
-                                           'Recreate_Empty_Tiles',
-                                           'Delete_Tiles'])
+                                  choices=['RECREATE_ALL_TILES',
+                                           'RECREATE_EMPTY_TILES',
+                                           'DELETE_TILES'])
 managecachetilesargs.add_argument('-i', '--instances',
                                   metavar="instances",
                                   help="Number of instances",
                                   type=int)
-managecachetilesargs.add_argument('-f', '--feature-class',
+managecachetilesargs.add_argument('-AOI', '--feature-class',
+                                  metavar="PATH_TO_AOI",
                                   default=None,
-                                  help="Description: Path to feature class")
+                                  help="Description: Feature class for "
+                                       "area of interest")
 managecachetilesargs.add_argument('-extent', '--cache-extent',
                                   metavar='"{xmin; ymin; xmax; ymax}"',
                                   help="Extent[s] to cache",
@@ -509,6 +511,64 @@ convertcachestorageformatargs._optionals.title = "arguments"
 def convertcachestorageformat(action):
     import arcrest.admin as admin
     args = convertcachestorageformatargs.parse_args()
+    admin_url, rest_url = get_rest_urls(args.site)
+    with action("connecting to REST services {0}".format(rest_url)):
+        rest_site = Catalog(rest_url, args.username, args.password,
+                            generate_token=args.token)
+    with action("fetching reference to Convert Cache Storage Format tool"):
+        convert_cache_tool = (rest_site['System']
+                                       ['CachingTools']
+                                       ['Convert Cache Storage Format'])
+    with action("converting format"):
+        result_object = convert_cache_tool(args.name,
+                                           args.instances)
+        while result_object.running:
+            time.sleep(0.125)
+        print ("\n".join(msg.description for msg in result_object.messages))
+
+importcacheargs = argparse.ArgumentParser(description=
+                                             'Import a stored '
+                                             'map cache',
+                                            parents=[shared_args])
+
+importcacheargs.add_argument('-n', '--name',
+                                  metavar="service",
+                                  help="Service name")
+importcacheargs.add_argument('-i', '--instances',
+                                  metavar="instances",
+                                  help="Number of instances",
+                                  type=int)
+importcacheargs.add_argument('-dC', '--cache-directory',
+                             help="Cache directory")
+
+@provide_narration
+def importcache(action):
+    import arcrest.admin as admin
+    args = importcacheargs.parse_args()
+    admin_url, rest_url = get_rest_urls(args.site)
+    with action("connecting to REST services {0}".format(rest_url)):
+        rest_site = Catalog(rest_url, args.username, args.password,
+                            generate_token=args.token)
+    with action("fetching reference to Import Cache tool"):
+        convert_cache_tool = (rest_site['System']
+                                       ['CachingTools']
+                                       ['Import Cache'])
+    with action("importing cache"):
+        result_object = convert_cache_tool(args.site[:args.site.find('?')]
+                                            if '?' in args.site
+                                            else args.site,
+                                           args.target_cache,
+                                           args.instances,
+                                           args.extent,
+                                           args.levels)
+        while result_object.running:
+            time.sleep(0.125)
+        print ("\n".join(msg.description for msg in result_object.messages))
+
+@provide_narration
+def exportcache(action):
+    import arcrest.admin as admin
+    args = exportcacheargs.parse_args()
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = Catalog(rest_url, args.username, args.password,
