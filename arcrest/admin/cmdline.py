@@ -350,8 +350,6 @@ managecachetilesargs.add_argument('-n', '--name',
                                help='Description: Service name')
 managecachetilesargs.add_argument('-scales',
                                   metavar="scale",
-                                  type=float,
-                                  nargs='+',
                                   help=
                                    "Description: Scales to generate caches")
 managecachetilesargs.add_argument('-mode', '--update-mode' ,
@@ -464,9 +462,7 @@ def createcacheschema(action):
         result_object = create_cache_tool(args.name,
                                           args.cache_directory,
                                           args.tile_origin,
-                                          args.custom_scale_values
-                                                if args.scales_type == 'Custom'
-                                                else args.number_of_scales,
+                                          args.custom_scale_values,
                                           args.tile_storage_format,
                                           args.tile_format,
                                           args.tile_compression,
