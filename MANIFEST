@@ -8,6 +8,7 @@ arcrest\utils.py
 arcrest\admin\__init__.py
 arcrest\admin\admin_objects.py
 arcrest\admin\cmdline.py
+cmdline\convertcachestorageformat.py
 cmdline\createcacheschema.py
 cmdline\createservice.py
 cmdline\deletecache.py

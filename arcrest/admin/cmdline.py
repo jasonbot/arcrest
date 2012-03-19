@@ -412,21 +412,6 @@ createcacheschemaargs.add_argument('-n', '--name',
 createcacheschemaargs.add_argument('-Dc', '--cache_directory',
                                help='Description: ArcGIS Server Cache '
                                     'Directory')
-createcacheschemaargs.add_argument('-scheme', '--tiling-scheme',
-                               help='Description: Tiling scheme',
-                               choices=['New', 'Predefined'])
-createcacheschemaargs.add_argument('-X', '--tiling-scheme-path',
-                               help='Description: Path to tiling scheme (if '
-                                    'Predefined)',
-                               default=None)
-createcacheschemaargs.add_argument('-scales', '--scales-type',
-                               help='Description: Scales',
-                               choices=['Standard', 'Custom'])
-createcacheschemaargs.add_argument('-number', '--number-of-scales',
-                               help='Description: Number of scales (if Standard)',
-                               default=1,
-                               type=int,
-                               metavar='1-20')
 createcacheschemaargs.add_argument('-scale-values', '--custom-scale-values',
                                help='Description: Scales (if Custom)',
                                default="",
