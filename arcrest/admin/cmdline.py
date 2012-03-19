@@ -421,7 +421,8 @@ createcacheschemaargs.add_argument('-TO', '--tile-origin',
                                     'Ex: "-20037508.342787 20037508.342787"')
 createcacheschemaargs.add_argument('-TF', '--tile-format',
                                help='Description: Tile format',
-                               choices=['PNG8', 'PNG24', 'PNG32', 'JPEG', 'MIXED'])
+                               choices=['PNG', 'PNG8', 'PNG24', 'PNG32',
+                                        'JPEG', 'MIXED'])
 createcacheschemaargs.add_argument('-TC', '--tile-compression',
                                help='Description: Compression (if JPEG or MIXED)',
                                default=0,
