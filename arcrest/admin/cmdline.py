@@ -389,9 +389,7 @@ def managecachetiles(action):
                                       ['CachingTools']
                                       ['Manage Map Cache Tiles'])
     with action("managing map cache"):
-        result_object = manage_cache_tool(args.site[:args.site.find('?')]
-                                            if '?' in args.site
-                                            else args.site,
+        result_object = manage_cache_tool(args.name,
                                           args.scales,
                                           args.instances,
                                           args.update_mode,
@@ -410,11 +408,10 @@ createcacheschemaargs.add_argument('-n', '--name',
 createcacheschemaargs.add_argument('-Dc', '--cache_directory',
                                help='Description: ArcGIS Server Cache '
                                     'Directory')
-createcacheschemaargs.add_argument('-scale-values', '--custom-scale-values',
+createcacheschemaargs.add_argument('-scales', '--custom-scale-values',
                                help='Description: Scales (if Custom)',
                                default="",
-                               nargs='+',
-                               metavar='scale')
+                               nargs='+')
 createcacheschemaargs.add_argument('-dpi', '--DPI',
                                help='Description: DPI of tiles [0-100]',
                                type=int,
@@ -437,12 +434,12 @@ createcacheschemaargs.add_argument('-TC', '--tile-compression',
                                metavar='0-100')
 createcacheschemaargs.add_argument('-storage', '--tile-storage-format',
                                help='Description: Tile storage format',
-                               choices=['Compact', 'Exploded'])
+                               choices=['COMPACT', 'EXPLODED'])
 createcacheschemaargs.add_argument('-use', '--use-local-cache-directory',
                                help='Description: Use local cache directory '
                                     '(if Compact)',
                                default='False',
-                               choices=['True', 'False'])
+                               choices=['USE_LOCAL_DIR', 'DO_NOT_USE_LOCAL_DIR'])
 
 createcacheschemaargs._optionals.title = "arguments"
 
@@ -469,7 +466,7 @@ def createcacheschema(action):
                                           args.DPI,
                                           args.tile_size.split("x")[0],
                                           args.tile_size.split("x")[1],
-                                          args.use_local_cache_directory == 'True')
+                                          args.use_local_cache_directory == 'USE_LOCAL_DIR')
         wait_on_tool_run(result_object)
 
 convertcachestorageformatargs = argparse.ArgumentParser(
