@@ -374,8 +374,8 @@ managecachetilesargs.add_argument('-extent', '--cache-extent',
                                   nargs='+')
 managecachetilesargs.add_argument('-wait', '--wait-for-completion',
                             help="Description: Wait for operation to complete",
-                                  choices=['True', 'False'],
-                                  default="True")
+                                  choices=['TRUE', 'FALSE'],
+                                  default="TRUE")
 managecachetilesargs._optionals.title = "arguments"
 
 @provide_narration
@@ -399,7 +399,7 @@ def managecachetiles(action):
                                           args.update_mode,
                                           args.cache_extent,
                                           args.area_of_interest)
-    if args.wait_for_completion.lower() != "true":
+    if args.wait_for_completion.lower() != "false":
         wait_on_tool_run(result_object)
     else:
         print (result_object.url)
