@@ -417,7 +417,8 @@ createcacheschemaargs.add_argument('-TS', '--tile-size',
                                choices=['125x125', '256x256', '512x512', '1024x1024'],
                                default='125x125')
 createcacheschemaargs.add_argument('-TO', '--tile-origin',
-                               help='Description: Tile origin')
+                               help='Description: Tile origin. '
+                                    'Ex: "-20037508.342787 20037508.342787"')
 createcacheschemaargs.add_argument('-TF', '--tile-format',
                                help='Description: Tile format',
                                choices=['PNG8', 'PNG24', 'PNG32', 'JPEG', 'MIXED'])
