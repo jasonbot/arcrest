@@ -79,7 +79,6 @@ createserviceargs.add_argument('-C', '--cluster',
                                help='Name of cluster to act on')
 createserviceargs.add_argument('-f', '--sdfile',
                                 nargs='+',
-                                metavar="FILE",
                                 help='Filename of local Service Definition '
                                      'file')
 createserviceargs.add_argument('-F', '--folder-name',
@@ -321,7 +320,6 @@ deletecacheargs = argparse.ArgumentParser(description=
 deletecacheargs.add_argument('-n', '--name',
                                help='Description: Service name')
 deletecacheargs.add_argument('-i', '--instances',
-                             metavar="instances",
                              help="Number of instances",
                              default=1,
                              type=int)
@@ -349,7 +347,6 @@ managecachetilesargs = argparse.ArgumentParser(description=
 managecachetilesargs.add_argument('-n', '--name',
                                help='Description: Service name')
 managecachetilesargs.add_argument('-scales',
-                                  metavar="scale",
                                   help=
                                    "Description: Scales to generate caches")
 managecachetilesargs.add_argument('-mode', '--update-mode' ,
@@ -358,11 +355,9 @@ managecachetilesargs.add_argument('-mode', '--update-mode' ,
                                            'RECREATE_EMPTY_TILES',
                                            'DELETE_TILES'])
 managecachetilesargs.add_argument('-i', '--instances',
-                                  metavar="instances",
                                   help="Number of instances",
                                   type=int)
 managecachetilesargs.add_argument('-AOI', '--feature-class',
-                                  metavar="PATH_TO_AOI",
                                   default=None,
                                   help="Description: Feature class for "
                                        "area of interest")
@@ -422,8 +417,7 @@ createcacheschemaargs.add_argument('-TS', '--tile-size',
                                choices=['125x125', '256x256', '512x512', '1024x1024'],
                                default='125x125')
 createcacheschemaargs.add_argument('-TO', '--tile-origin',
-                               help='Description: Tile origin',
-                               metavar='"(x, y)"')
+                               help='Description: Tile origin')
 createcacheschemaargs.add_argument('-TF', '--tile-format',
                                help='Description: Tile format',
                                choices=['PNG8', 'PNG24', 'PNG32', 'JPEG', 'MIXED'])
@@ -476,10 +470,8 @@ convertcachestorageformatargs = argparse.ArgumentParser(
                                             parents=[shared_args])
 
 convertcachestorageformatargs.add_argument('-n', '--name',
-                                  metavar="service",
                                   help="Service name")
 convertcachestorageformatargs.add_argument('-i', '--instances',
-                                  metavar="instances",
                                   help="Number of instances",
                                   type=int)
 
@@ -510,10 +502,8 @@ importcacheargs = argparse.ArgumentParser(description=
                                             parents=[shared_args])
 
 importcacheargs.add_argument('-n', '--name',
-                                  metavar="service",
                                   help="Service name")
 importcacheargs.add_argument('-i', '--instances',
-                                  metavar="instances",
                                   help="Number of instances",
                                   type=int)
 importcacheargs.add_argument('-dC', '--cache-directory',
