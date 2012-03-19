@@ -398,7 +398,7 @@ def managecachetiles(action):
                                           args.instances,
                                           args.update_mode,
                                           args.cache_extent,
-                                          args.area_of_interest)
+                                          args.feature_class)
     if args.wait_for_completion.lower() == "wait":
         wait_on_tool_run(result_object)
     else:
