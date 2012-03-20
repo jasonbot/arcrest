@@ -63,7 +63,7 @@ class GPBaseType(object):
         if (name.startswith("GPMultiValue:") and 
                 name not in cls._gp_type_mapping):
             def make_multivalue(name, base_type):
-                new_multivalue_type = type(name, (GPMultiValue,), {})
+                new_multivalue_type = type(str(name), (GPMultiValue,), {})
                 new_multivalue_type._container_type = base_type
                 return new_multivalue_type
             mvs, dtype = name.split(":", 1)
