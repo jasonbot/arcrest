@@ -134,7 +134,7 @@ def createservice(action):
                                                           if args.service_name
                                                           else {}})
                 result_object = publish_tool(id, new_json, "")
-                wait_on_tool_run(result_object, silent=False)
+                wait_on_tool_run(result_object, silent=True)
 
 manageserviceargs = argparse.ArgumentParser(description=
                                                 'Manages/modifies a service',
@@ -346,7 +346,7 @@ def deletecache(action):
                                       ['DeleteCache'])
     with action("deleting map cache"):
         result_object = delete_cache_tool(args.name, args.instances)
-        wait_on_tool_run(result_object)
+        wait_on_tool_run(result_object, silent=True)
 
 managecachetilesargs = argparse.ArgumentParser(description=
                                                 'Manage a map tile cache',
