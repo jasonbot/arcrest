@@ -129,7 +129,8 @@ def createservice(action):
                 if args.folder_name or args.service_name:
                     new_json = json.dumps({'folderName': args.folder_name or '/',
                                            'service': {'serviceName': 
-                                                       args.service_name} 
+                                                       args.service_name,
+                                                       'type': 'MapServer'} 
                                                           if args.service_name
                                                           else {}})
                 result_object = publish_tool(id, new_json, "")
