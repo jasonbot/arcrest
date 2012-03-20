@@ -124,10 +124,8 @@ def createservice(action):
         with action("uploading {0}".format(filename)):
             id = site.uploads.upload(filename)['itemID']
             with action("publishing {0}".format(os.path.basename(filename))):
-                result_object = publish_tool(id,
-                                             site.url[
-                                                 :site.url.find('?')])
-                wait_on_tool_run(result_object, silent=True)
+                result_object = publish_tool(id, "", "")
+                wait_on_tool_run(result_object, silent=False)
 
 manageserviceargs = argparse.ArgumentParser(description=
                                                 'Manages/modifies a service',
