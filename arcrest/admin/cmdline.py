@@ -438,11 +438,6 @@ createcacheschemaargs.add_argument('-TC', '--tile-compression',
 createcacheschemaargs.add_argument('-storage', '--tile-storage-format',
                                help='Description: Tile storage format',
                                choices=['COMPACT', 'EXPLODED'])
-createcacheschemaargs.add_argument('-use', '--use-local-cache-directory',
-                               help='Description: Use local cache directory '
-                                    '(if Compact)',
-                               default='False',
-                               choices=['USE_LOCAL_DIR', 'DO_NOT_USE_LOCAL_DIR'])
 
 createcacheschemaargs._optionals.title = "arguments"
 
@@ -468,8 +463,7 @@ def createcacheschema(action):
                                           args.tile_compression,
                                           args.DPI,
                                           args.tile_size.split("x")[0],
-                                          args.tile_size.split("x")[1],
-                                          args.use_local_cache_directory == 'USE_LOCAL_DIR')
+                                          args.tile_size.split("x")[1])
         wait_on_tool_run(result_object)
 
 convertcachestorageformatargs = argparse.ArgumentParser(
