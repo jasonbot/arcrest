@@ -41,3 +41,12 @@ class AGORoot(server.RestURL):
     @property
     def portals(self):
         return self._get_subfolder("./portals/", Portals)
+
+class Community(server.RestURL):
+    pass
+
+class Content(server.RestURL):
+    pass
+
+class Portals(server.RestURL):
+    pass
