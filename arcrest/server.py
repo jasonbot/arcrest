@@ -240,7 +240,10 @@ class RestURL(object):
         if self.__has_json__:
             if self.__cache_request__:
                 if self.__json_struct__ is Ellipsis:
-                    self.__json_struct__ = json.loads(self._contents)
+                    if self._contents is not Ellipsis:
+                        self.__json_struct__ = json.loads(self._contents or '{}')
+                    else:
+                        return {}
                 return self.__json_struct__
             else:
                 return json.loads(self._contents)
@@ -320,8 +323,6 @@ class GenerateToken(RestURL):
                 # Hack: scrape HTML version for path to /login,
                 ##      then to wherever generateToken lives
                 username, password = self._username, self._password
-                del self._username
-                del self._password
                 payload ={'username': username,
                           'password': password,
                           'redirect': '/'}
