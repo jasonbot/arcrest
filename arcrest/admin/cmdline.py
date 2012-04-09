@@ -125,15 +125,13 @@ def createservice(action):
         with action("uploading {0}".format(filename)):
             id = site.uploads.upload(filename)['itemID']
             with action("publishing {0}".format(os.path.basename(filename))):
-                new_json = None
-                if args.folder_name or args.service_name:
-                    new_json = json.dumps({'folderName': args.folder_name or '/',
-                                           'service': {'serviceName': 
-                                                       args.service_name,
-                                                       'type': 'MapServer'} 
-                                                          if args.service_name
-                                                          else {}})
-                result_object = publish_tool(id, new_json, "")
+                #service_name = (args.service_name or
+                #                os.path.basename(filename).split('.')[0])
+                #new_json = json.dumps({'folderName': args.folder_name or '/',
+                #                       'service': {'serviceName': service_name,
+                #                                   'type': 'MapServer'} 
+                #                      })
+                result_object = publish_tool(id, "", "") #, new_json, "")
                 wait_on_tool_run(result_object, silent=True)
 
 manageserviceargs = argparse.ArgumentParser(description=
