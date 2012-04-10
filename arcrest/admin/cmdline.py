@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import time
+import urllib2
 import urlparse
 
 from arcrest import Catalog
@@ -124,14 +125,21 @@ def createservice(action):
     for filename in all_files:
         with action("uploading {0}".format(filename)):
             id = site.uploads.upload(filename)['itemID']
+            config_url = urlparse.urljoin(my_admin.uploads.url, 
+                                     '{}/serviceconfiguration.json'.format(id))
+            with action("fetching default configuration"):
+                if args.token:
+                    config_url += "?token={}".format(site.__token__)
+                config_json = json.loads(urllib2.urlopen(config_url))
+            with action("adjusting service configuration with user options"):
+                if args.folder_name and 'folderName' in config_json:
+                    config_json['folderName'] = args.folder_name
+                if args.service_name and 'service' in config_json \
+                        and 'serviceName' in config_json['service']:
+                    config_json['service']['serviceName'] = args.service_name
             with action("publishing {0}".format(os.path.basename(filename))):
-                #service_name = (args.service_name or
-                #                os.path.basename(filename).split('.')[0])
-                #new_json = json.dumps({'folderName': args.folder_name or '/',
-                #                       'service': {'serviceName': service_name,
-                #                                   'type': 'MapServer'} 
-                #                      })
-                result_object = publish_tool(id, "", "") #, new_json, "")
+                new_json = json.dumps(config_json)
+                result_object = publish_tool(id, new_json, "")
                 wait_on_tool_run(result_object, silent=True)
 
 manageserviceargs = argparse.ArgumentParser(description=
