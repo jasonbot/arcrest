@@ -125,12 +125,12 @@ def createservice(action):
     for filename in all_files:
         with action("uploading {0}".format(filename)):
             id = site.uploads.upload(filename)['itemID']
-            config_url = urlparse.urljoin(my_admin.uploads.url, 
+            config_url = urlparse.urljoin(site.uploads.url, 
                                      '{}/serviceconfiguration.json'.format(id))
             with action("fetching default configuration"):
                 if args.token:
                     config_url += "?token={}".format(site.__token__)
-                config_json = json.loads(urllib2.urlopen(config_url))
+                config_json = json.load(urllib2.urlopen(config_url))
             with action("adjusting service configuration with user options"):
                 if args.folder_name and 'folderName' in config_json:
                     config_json['folderName'] = args.folder_name
