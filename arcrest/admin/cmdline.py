@@ -81,6 +81,7 @@ createserviceargs.add_argument('-C', '--cluster',
                                help='Name of cluster to act on')
 createserviceargs.add_argument('-f', '--sdfile',
                                 nargs='+',
+                                required=True,
                                 help='Filename of local Service Definition '
                                      'file')
 createserviceargs.add_argument('-F', '--folder-name',
@@ -123,7 +124,8 @@ def createservice(action):
     ids = []
     publish_tool.__post__ = True
     for filename in all_files:
-        with action("uploading {0}".format(filename)):
+        with action("uploading and publishing {0}".format(
+                                                  os.path.basename(filename))):
             id = site.uploads.upload(filename)['itemID']
             config_url = urlparse.urljoin(site.uploads.url, 
                                      '{}/serviceconfiguration.json'.format(id))
@@ -141,6 +143,12 @@ def createservice(action):
                 new_json = json.dumps(config_json)
                 result_object = publish_tool(id, new_json, "")
                 wait_on_tool_run(result_object, silent=True)
+            with action("deleting temporary {0} on server ({1})".format(
+                                                  os.path.basename(filename),
+                                                  id)):
+                delete_url = urlparse.urljoin(site.uploads.url, 
+                                         '{}/delete'.format(id))
+                urllib2.urlopen(delete_url, '').read()
 
 manageserviceargs = argparse.ArgumentParser(description=
                                                 'Manages/modifies a service',
