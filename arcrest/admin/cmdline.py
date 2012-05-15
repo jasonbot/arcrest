@@ -420,7 +420,8 @@ createcacheschemaargs = argparse.ArgumentParser(description=
                                              'Creates a map tile cache schema',
                                             parents=[shared_args])
 createcacheschemaargs.add_argument('-n', '--name',
-                               help='Description: Service name')
+                               help='Description: Service name '
+                                    '(format as ServiceName:ServiceType)')
 createcacheschemaargs.add_argument('-Dc', '--cache_directory',
                                help='Description: ArcGIS Server Cache '
                                     'Directory')
@@ -435,7 +436,10 @@ createcacheschemaargs.add_argument('-dpi', '--DPI',
                                metavar='0-100')
 createcacheschemaargs.add_argument('-TS', '--tile-size',
                                help='Description: Tile size',
-                               choices=['125x125', '256x256', '512x512', '1024x1024'],
+                               choices=['125x125',
+                                        '256x256',
+                                        '512x512',
+                                        '1024x1024'],
                                default='125x125')
 createcacheschemaargs.add_argument('-TO', '--tile-origin',
                                help='Description: Tile origin. '
@@ -445,7 +449,8 @@ createcacheschemaargs.add_argument('-TF', '--tile-format',
                                choices=['PNG', 'PNG8', 'PNG24', 'PNG32',
                                         'JPEG', 'MIXED'])
 createcacheschemaargs.add_argument('-TC', '--tile-compression',
-                               help='Description: Compression (if JPEG or MIXED)',
+                               help='Description: Compression (if JPEG or '
+                                    'MIXED)',
                                default=0,
                                type=int,
                                metavar='0-100')
