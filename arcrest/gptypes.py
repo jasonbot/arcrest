@@ -86,7 +86,12 @@ class GPSimpleType(GPBaseType):
         self.value = val
     @property
     def _json_struct(self):
-        return self.__conversion__(self.value)
+        try:
+            return self.__conversion__(self.value)
+        except:
+            if self.value is None:
+                return None
+            raise
     @classmethod
     def fromJson(cls, value):
         return cls.__conversion__(value)

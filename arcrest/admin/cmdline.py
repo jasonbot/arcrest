@@ -12,7 +12,7 @@ from arcrest import Catalog
 
 __all__ = ['createservice', 'manageservice', 'managesite', 'deletecache',
            'managecachetiles', 'createcacheschema',
-           'convertcachestorageformat', 'importcache', 'exportcache'
+           'convertcachestorageformat', 'importcache', 'exportcache',
            'reportcachestatus']
 
 shared_args = argparse.ArgumentParser(add_help=False)
@@ -133,7 +133,7 @@ def createservice(action):
             with action("fetching default configuration"):
                 if args.token:
                     config_url += "?token={}".format(site.__token__)
-                config_json = json.load(urllib2.urlopen(config_url))
+                config_json = json.load(urllib2.urlopen(creportcachestatus.pyonfig_url))
             with action("adjusting service configuration with user options"):
                 if args.folder_name and 'folderName' in config_json:
                     config_json['folderName'] = args.folder_name
@@ -595,18 +595,15 @@ reportcachestatusargs.add_argument('-mode', '--report-mode' ,
                                    default="esriCacheStatus")
 reportcachestatusargs.add_argument('-job', '--jobID',
                                   help="job ID",
-                                  default=None,
                                   type=int)
 reportcachestatusargs.add_argument('-level', '--levelID',
-                                  default=None,
                                   help="Description: Level ID",
                                   type=int)
 reportcachestatusargs.add_argument('-e', '--errorStart',
-                                  help="Error start", default=None,
+                                  help="Error start",
                                   type=int)
 reportcachestatusargs.add_argument('-c', '--errorCount',
                                    help="Description: error count",
-                                   default=None,
                                    type=int)
 reportcachestatusargs._optionals.title = "arguments"
 
