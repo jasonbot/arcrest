@@ -12,7 +12,8 @@ from arcrest import Catalog
 
 __all__ = ['createservice', 'manageservice', 'managesite', 'deletecache',
            'managecachetiles', 'createcacheschema',
-           'convertcachestorageformat', 'importcache', 'exportcache']
+           'convertcachestorageformat', 'importcache', 'exportcache'
+           'reportcachestatus']
 
 shared_args = argparse.ArgumentParser(add_help=False)
 shared_args.add_argument('-u', '--username', 
@@ -81,6 +82,7 @@ createserviceargs.add_argument('-C', '--cluster',
                                help='Name of cluster to act on')
 createserviceargs.add_argument('-f', '--sdfile',
                                 nargs='+',
+                                required=True,
                                 help='Filename of local Service Definition '
                                      'file')
 createserviceargs.add_argument('-F', '--folder-name',
@@ -123,14 +125,15 @@ def createservice(action):
     ids = []
     publish_tool.__post__ = True
     for filename in all_files:
-        with action("uploading {0}".format(filename)):
+        with action("uploading and publishing {0}".format(
+                                                  os.path.basename(filename))):
             id = site.uploads.upload(filename)['itemID']
-            config_url = urlparse.urljoin(my_admin.uploads.url, 
+            config_url = urlparse.urljoin(site.uploads.url, 
                                      '{}/serviceconfiguration.json'.format(id))
             with action("fetching default configuration"):
                 if args.token:
                     config_url += "?token={}".format(site.__token__)
-                config_json = json.loads(urllib2.urlopen(config_url))
+                config_json = json.load(urllib2.urlopen(config_url))
             with action("adjusting service configuration with user options"):
                 if args.folder_name and 'folderName' in config_json:
                     config_json['folderName'] = args.folder_name
@@ -141,6 +144,12 @@ def createservice(action):
                 new_json = json.dumps(config_json)
                 result_object = publish_tool(id, new_json, "")
                 wait_on_tool_run(result_object, silent=True)
+            with action("deleting temporary {0} on server ({1})".format(
+                                                  os.path.basename(filename),
+                                                  id)):
+                delete_url = urlparse.urljoin(site.uploads.url, 
+                                         '{}/delete'.format(id))
+                urllib2.urlopen(delete_url, '').read()
 
 manageserviceargs = argparse.ArgumentParser(description=
                                                 'Manages/modifies a service',
@@ -412,7 +421,8 @@ createcacheschemaargs = argparse.ArgumentParser(description=
                                              'Creates a map tile cache schema',
                                             parents=[shared_args])
 createcacheschemaargs.add_argument('-n', '--name',
-                               help='Description: Service name')
+                               help='Description: Service name '
+                                    '(format as ServiceName:ServiceType)')
 createcacheschemaargs.add_argument('-Dc', '--cache_directory',
                                help='Description: ArcGIS Server Cache '
                                     'Directory')
@@ -427,7 +437,10 @@ createcacheschemaargs.add_argument('-dpi', '--DPI',
                                metavar='0-100')
 createcacheschemaargs.add_argument('-TS', '--tile-size',
                                help='Description: Tile size',
-                               choices=['125x125', '256x256', '512x512', '1024x1024'],
+                               choices=['125x125',
+                                        '256x256',
+                                        '512x512',
+                                        '1024x1024'],
                                default='125x125')
 createcacheschemaargs.add_argument('-TO', '--tile-origin',
                                help='Description: Tile origin. '
@@ -437,7 +450,8 @@ createcacheschemaargs.add_argument('-TF', '--tile-format',
                                choices=['PNG', 'PNG8', 'PNG24', 'PNG32',
                                         'JPEG', 'MIXED'])
 createcacheschemaargs.add_argument('-TC', '--tile-compression',
-                               help='Description: Compression (if JPEG or MIXED)',
+                               help='Description: Compression (if JPEG or '
+                                    'MIXED)',
                                default=0,
                                type=int,
                                metavar='0-100')
@@ -560,3 +574,62 @@ def exportcache(action):
         while result_object.running:
             time.sleep(0.125)
         print ("\n".join(msg.description for msg in result_object.messages))
+
+
+
+reportcachestatusargs = argparse.ArgumentParser(description=
+                                                'report status of cached service',
+                                            parents=[shared_args])
+reportcachestatusargs.add_argument('-n', '--name',
+                               help='Description: Service name')
+reportcachestatusargs.add_argument('-scales',
+                                  help=
+                                   "Description: Scales to generate caches")
+reportcachestatusargs.add_argument('-mode', '--report-mode' ,
+                                  help="Description: Report mode",
+                                  choices=['esriCacheStatus',
+                                           'esriJobStatus',
+                                           'esriJobSummary',
+                                           'esriJobErrors',
+                                           'esriJobDetails'],
+                                   default="esriCacheStatus")
+reportcachestatusargs.add_argument('-job', '--jobID',
+                                  help="job ID",
+                                  default=None,
+                                  type=int)
+reportcachestatusargs.add_argument('-level', '--levelID',
+                                  default=None,
+                                  help="Description: Level ID",
+                                  type=int)
+reportcachestatusargs.add_argument('-e', '--errorStart',
+                                  help="Error start", default=None,
+                                  type=int)
+reportcachestatusargs.add_argument('-c', '--errorCount',
+                                   help="Description: error count",
+                                   default=None,
+                                   type=int)
+reportcachestatusargs._optionals.title = "arguments"
+
+@provide_narration
+def reportcachestatus(action):
+    import arcrest.admin as admin
+    args = reportcachestatusargs.parse_args()
+    admin_url, rest_url = get_rest_urls(args.site)
+    with action("connecting to REST services {0}".format(rest_url)):
+        rest_site = Catalog(rest_url, args.username, args.password,
+                            generate_token=args.token)
+    with action("fetching reference to Report Cache Status tool"):
+        manage_cache_tool = (rest_site['System']
+                                      ['ReportingTools']
+                                      ['ReportCacheStatus'])
+    with action("reporting cache status"):
+        result_object = manage_cache_tool(args.name,
+                                          args.report_mode,
+                                          args.jobID,
+                                          args.levelID,
+                                          args.errorStart,
+                                          args.errorCount)
+        while result_object.running:
+            time.sleep(0.125)
+        print ("\n".join(msg.description for msg in result_object.messages))
+
