@@ -5,7 +5,7 @@ setup(
     name='arcrest',
     version='10.1',
     description="""Wrapper to the ArcGIS REST API, and a Python analogue to the Javascript APIs""",
-    author="ESRI",
+    author="Esri",
     author_email="jscheirer@esri.com",
     packages=['arcrest', 'arcrest.admin'],
     scripts=[
@@ -16,5 +16,6 @@ setup(
              os.path.join('cmdline', 'createcacheschema.py'),
              os.path.join('cmdline', 'managecachetiles.py'),
              os.path.join('cmdline', 'convertcachestorageformat.py'),
+             os.path.join('cmdline', 'reportcachestatus.py'),
             ]
 )
