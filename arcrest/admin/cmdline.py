@@ -12,7 +12,8 @@ from arcrest import Catalog
 
 __all__ = ['createservice', 'manageservice', 'managesite', 'deletecache',
            'managecachetiles', 'createcacheschema',
-           'convertcachestorageformat', 'importcache', 'exportcache']
+           'convertcachestorageformat', 'importcache', 'exportcache'
+           'reportcachestatus']
 
 shared_args = argparse.ArgumentParser(add_help=False)
 shared_args.add_argument('-u', '--username', 
@@ -573,3 +574,62 @@ def exportcache(action):
         while result_object.running:
             time.sleep(0.125)
         print ("\n".join(msg.description for msg in result_object.messages))
+
+
+
+reportcachestatusargs = argparse.ArgumentParser(description=
+                                                'report status of cached service',
+                                            parents=[shared_args])
+reportcachestatusargs.add_argument('-n', '--name',
+                               help='Description: Service name')
+reportcachestatusargs.add_argument('-scales',
+                                  help=
+                                   "Description: Scales to generate caches")
+reportcachestatusargs.add_argument('-mode', '--report-mode' ,
+                                  help="Description: Report mode",
+                                  choices=['esriCacheStatus',
+                                           'esriJobStatus',
+                                           'esriJobSummary',
+                                           'esriJobErrors',
+                                           'esriJobDetails'],
+                                   default="esriCacheStatus")
+reportcachestatusargs.add_argument('-job', '--jobID',
+                                  help="job ID",
+                                  default=None,
+                                  type=int)
+reportcachestatusargs.add_argument('-level', '--levelID',
+                                  default=None,
+                                  help="Description: Level ID",
+                                  type=int)
+reportcachestatusargs.add_argument('-e', '--errorStart',
+                                  help="Error start", default=None,
+                                  type=int)
+reportcachestatusargs.add_argument('-c', '--errorCount',
+                                   help="Description: error count",
+                                   default=None,
+                                   type=int)
+reportcachestatusargs._optionals.title = "arguments"
+
+@provide_narration
+def reportcachestatus(action):
+    import arcrest.admin as admin
+    args = reportcachestatusargs.parse_args()
+    admin_url, rest_url = get_rest_urls(args.site)
+    with action("connecting to REST services {0}".format(rest_url)):
+        rest_site = Catalog(rest_url, args.username, args.password,
+                            generate_token=args.token)
+    with action("fetching reference to Report Cache Status tool"):
+        manage_cache_tool = (rest_site['System']
+                                      ['ReportingTools']
+                                      ['ReportCacheStatus'])
+    with action("reporting cache status"):
+        result_object = manage_cache_tool(args.name,
+                                          args.report_mode,
+                                          args.jobID,
+                                          args.levelID,
+                                          args.errorStart,
+                                          args.errorCount)
+        while result_object.running:
+            time.sleep(0.125)
+        print ("\n".join(msg.description for msg in result_object.messages))
+
