@@ -22,6 +22,9 @@ import utils
 #: User agent to report when making requests
 USER_AGENT = "Mozilla/4.0 (arcrest)"
 
+#: Magic parameter name for propagating REFERER
+REQUEST_REFERER_MAGIC_NAME = "HTTPREFERERTOKEN"
+
 # Note that nearly every class below derives from this RestURL class.
 # The reasoning is that every object has an underlying URL resource on 
 # the REST server. Some are static or near-static, such as a folder or a
@@ -45,6 +48,7 @@ class RestURL(object):
     __parent_type__ = None     # For automatically generated parent URLs
     __post__ = False           # Move query string to POST
     _parent = None
+    _referer = None
 
     _pwdmgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
     _cookiejar = cookielib.CookieJar()
@@ -77,6 +81,9 @@ class RestURL(object):
             query_dict[k] = v[0]
             if k.lower() == 'token':
                 self.__token__ = v[0]
+            elif k == REQUEST_REFERER_MAGIC_NAME:
+                self._referer = v[0]
+                del query_dict[REQUEST_REFERER_MAGIC_NAME]
         # Set the f= flag to json (so we can interface with it)
         if self.__has_json__ is True:
             query_dict['f'] = 'json'
@@ -103,7 +110,8 @@ class RestURL(object):
         if len(url) > 100:
             url = url[:97] + "..."
         return "<%s(%r)>" % (self.__class__.__name__, url)
-    def _get_subfolder(self, foldername, returntype, params=None, file_data=None):
+    def _get_subfolder(self, foldername, returntype,
+                       params=None, file_data=None):
         """Return an object of the requested type with the path relative
            to the current object's URL. Optionally, query parameters
            may be set."""
@@ -148,6 +156,7 @@ class RestURL(object):
                     query_dict[key] = str(val)
         if self.__token__ is not None:
             query_dict['token'] = self.__token__
+        query_dict[REQUEST_REFERER_MAGIC_NAME] = self._referer or self.url
         # Replace URL query component with newly altered component
         urllist[3] = urllib.urlencode(query_dict)
         newurl = urllist
@@ -204,20 +213,24 @@ class RestURL(object):
                                             (k, fn, ct))
                     multipart_data += v.read() + "\r\n"
                 multipart_data += boundary + "--\r\n\r\n"
-                request = urllib2.Request(self.url, multipart_data,
-                                                   {'User-Agent' : USER_AGENT,
-                                                    'Content-Type': 
-                                                      'multipart/form-data; '
-                                                      'boundary='+boundary[2:],
-                                                    'Content-Length': 
-                                                        str(
-                                                          len(
-                                                            multipart_data))})
+                req_dict = {'User-Agent' : USER_AGENT,
+                            'Content-Type': 
+                                'multipart/form-data; boundary='+boundary[2:],
+                            'Content-Length': str(len(multipart_data))
+                            }
+                if self._referer:
+                    req_dict['Referer'] = self._referer
+                request = urllib2.Request(self.url,
+                                          multipart_data,
+                                          req_dict)
             else:
+                req_dict = {'User-Agent' : USER_AGENT}
+                if self._referer:
+                    req_dict['Referer'] = self._referer
                 request = urllib2.Request(self.url, self.query 
                                                         if self.__post__
                                                         else None,
-                                                   {'User-Agent' : USER_AGENT})
+                                           req_dict)
             handle = urllib2.urlopen(request)
             # Handle the special case of a redirect (only follow once) --
             # Note that only the first 3 components (protocol, hostname, path)
@@ -283,13 +296,14 @@ class GenerateToken(RestURL):
                                       username,
                                       password)
         self._html_login = html_login
-        self._origin_url = origin_url
         self._expiration = expiration
         url1 = urlparse.urljoin(origin_url, '../../tokens/generateToken', False)
         url2 = urlparse.urljoin(origin_url, '../tokens/generateToken', False)
         url3 = urlparse.urljoin(origin_url, './generateToken', False)
+        self._referer = url1
         for url in (url1, url2, url3):
             try:
+                self._referer = url
                 url_tuple = urlparse.urlsplit(url)
                 urllist = list(url_tuple)
                 query_dict = dict((k, v[0]) for k, v in 
@@ -328,15 +342,15 @@ class GenerateToken(RestURL):
                           'redirect': '/'}
                 # Loop through what look like forms
                 for formurl in re.findall('action="(.*?)"',
-                                          urllib2.urlopen(self._origin_url)
+                                          urllib2.urlopen(self._referer)
                                                                       .read()):
-                    relurl = urlparse.urljoin(self._origin_url, formurl)
+                    relurl = urlparse.urljoin(self._referer, formurl)
                     try:
                         html_request = urllib2.Request(relurl,
                                                        urllib.urlencode(
                                                                     payload),
                                                       {'Referer': 
-                                                          self._origin_url})
+                                                          self._referer})
                         html_response = urllib2.urlopen(html_request).read()
 
                         # Seek out what looks like the redirect hidden form
@@ -517,6 +531,7 @@ class Catalog(Folder):
         elif generate_token:
             new_url = urlparse.urlunsplit(url_)
             gentoken = GenerateToken(url, username, password, expiration)
+            self._referer = gentoken._referer
             self.__token__ = gentoken.token
         super(Catalog, self).__init__(url_)
         # Basically a Folder, but do some really, really rudimentary sanity
@@ -640,8 +655,8 @@ class AttachmentInfos(JsonResult):
         for attachment in self._json_struct['attachmentInfos']:
             attachment_dict = attachment.copy()
             attachment_dict['attachment'] = \
-                    self_get_subfolder("%i/" % attachment_dict['id'],
-                                          AttachmentData)
+                    self._get_subfolder("%i/" % attachment_dict['id'],
+                                        AttachmentData)
 
 class MapLayer(Layer):
     """The layer resource represents a single layer or standalone table in a
