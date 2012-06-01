@@ -16,3 +16,4 @@ cmdline\deletecache.py
 cmdline\managecachetiles.py
 cmdline\manageservice.py
 cmdline\managesite.py
+cmdline\reportcachestatus.py
