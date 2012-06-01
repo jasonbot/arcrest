@@ -170,7 +170,7 @@ class GPFeatureRecordSetLayer(GPBaseType):
         self._features = Geometry
         if sr:
             self.spatialReference = geometry.SpatialReference(sr)
-        elif len(self._features):
+        elif getattr(self, '_features', None) and len(self._features):
             self.spatialReference = geometry.SpatialReference(
                                         self._features[0].spatialReference)
         else:
