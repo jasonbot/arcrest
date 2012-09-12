@@ -150,6 +150,9 @@ class RestURL(object):
                     val = ",".join([str(v.id) 
                                     if isinstance(v, Layer)
                                     else str(v) for v in val])
+                # If it's a dictionary, dump as JSON
+                elif isinstance(val, dict):
+                    val = json.dumps(val)
                 # Ignore null values, and coerce string values (hopefully
                 # everything sent in to a query has a sane __str__)
                 elif val is not None:
