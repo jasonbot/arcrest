@@ -1,0 +1,5 @@
+Python bindings for ArcGIS REST APIs
+
+These are Python bindings for consuming services and administering
+an ArcGIS 10.1 Server via its RESTful APIs. There are examples in
+the documentation to get started.
