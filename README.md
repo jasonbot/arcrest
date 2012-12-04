@@ -7,7 +7,7 @@ been wrapped or implemented. If you have a feature that you'd
 like to see working, then by all means feel free to contribute a
 patch. 
 
-![App](https://raw.github.com/Esri/switch-basemaps-js/master/Python_Globe_Icon.png) 
+![App](https://raw.github.com/Esri/arcpy-server-util-rest/master/Python_Globe_Icon.png) 
 
 ## Features
 * Python bindings and utilities for consuming services and administering an ArcGIS 10.1 Server via its RESTful APIs
