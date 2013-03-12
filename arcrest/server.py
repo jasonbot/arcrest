@@ -326,8 +326,8 @@ class GenerateToken(RestURL):
                 pass
             except KeyError:
                 pass
-        raise urllib2.HTTPError("Could not create token using URL {}"
-                                .format(origin_url))
+        raise urllib2.HTTPError(origin_url, 401, "Could not create token using URL {}"
+                                .format(origin_url), None, None)
     @property
     def token(self):
         return self._json_struct['token']
