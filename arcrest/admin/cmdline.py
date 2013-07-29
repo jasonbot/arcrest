@@ -58,9 +58,9 @@ def get_rest_urls(server_url):
                     
     context = d['path']
     admin_url = server_url 
-    if (context is not '/'):
+    if (context != '/'):
         if (not context.endswith('admin/')):
-            admin_url = urlparse.urljoin(server_url, context+'admin/')
+            admin_url = urlparse.urljoin(server_url, context + 'admin/')
         else:
             admin_url = urlparse.urljoin(server_url, context)
         if (not context.endswith('rest/services/')):
