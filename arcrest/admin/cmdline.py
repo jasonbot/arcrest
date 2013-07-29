@@ -12,8 +12,7 @@ from arcrest import Catalog
 
 __all__ = ['createservice', 'manageservice', 'managesite', 'deletecache',
            'managecachetiles', 'createcacheschema',
-           'convertcachestorageformat', 'importcache', 'exportcache',
-           'reportcachestatus']
+           'convertcachestorageformat', 'importcache', 'exportcache']
 
 shared_args = argparse.ArgumentParser(add_help=False)
 shared_args.add_argument('-u', '--username', 
@@ -24,7 +23,7 @@ shared_args.add_argument('-p', '--password',
                          help='Description: Password for Server')
 shared_args.add_argument('-s', '--site', 
                          required=True,
-                         help='Description: URL for admin Server')
+                         help='Description: URL for admin Server, e.g. http://host:6080/arcgis')
 shared_args.add_argument('-t', '--token',
                          required=False,
                          action='store_true',
@@ -48,10 +47,29 @@ class ActionNarrator(object):
             if t is not SystemExit:
                 print("Error {0}: {1}".format(action, str(ex)))
             sys.exit(1)
-
-def get_rest_urls(admin_url):
-    admin_url = urlparse.urljoin(admin_url, '/arcgis/admin/')
-    rest_url = urlparse.urljoin(admin_url, '/arcgis/rest/services/')
+        
+def get_rest_urls(server_url):
+    
+    if not server_url.endswith('/'):
+         server_url += '/'
+         
+    urllist = urlparse.urlsplit(server_url)
+    d = urllist._asdict()
+                    
+    context = d['path']
+    admin_url = server_url 
+    if (context is not '/'):
+        if (not context.endswith('admin/')):
+            admin_url = urlparse.urljoin(server_url, context+'admin/')
+        else:
+            admin_url = urlparse.urljoin(server_url, context)
+        if (not context.endswith('rest/services/')):
+            rest_url = urlparse.urljoin(server_url, context+'rest/services/')
+        else:
+            rest_url = urlparse.urljoin(server_url, context)
+    else:
+        admin_url = urlparse.urljoin(server_url, 'arcgis/admin/')
+        rest_url = urlparse.urljoin(server_url, 'arcgis/rest/services/')
     return (admin_url, rest_url)
 
 def provide_narration(fn):
@@ -133,7 +151,7 @@ def createservice(action):
             with action("fetching default configuration"):
                 if args.token:
                     config_url += "?token={}".format(site.__token__)
-                config_json = json.load(urllib2.urlopen(creportcachestatus.pyonfig_url))
+                config_json = json.load(urllib2.urlopen(config_url))
             with action("adjusting service configuration with user options"):
                 if args.folder_name and 'folderName' in config_json:
                     config_json['folderName'] = args.folder_name
@@ -574,59 +592,3 @@ def exportcache(action):
         while result_object.running:
             time.sleep(0.125)
         print ("\n".join(msg.description for msg in result_object.messages))
-
-
-
-reportcachestatusargs = argparse.ArgumentParser(description=
-                                                'report status of cached service',
-                                            parents=[shared_args])
-reportcachestatusargs.add_argument('-n', '--name',
-                               help='Description: Service name')
-reportcachestatusargs.add_argument('-scales',
-                                  help=
-                                   "Description: Scales to generate caches")
-reportcachestatusargs.add_argument('-mode', '--report-mode' ,
-                                  help="Description: Report mode",
-                                  choices=['esriCacheStatus',
-                                           'esriJobStatus',
-                                           'esriJobSummary',
-                                           'esriJobErrors',
-                                           'esriJobDetails'],
-                                   default="esriCacheStatus")
-reportcachestatusargs.add_argument('-job', '--jobID',
-                                  help="job ID",
-                                  type=int)
-reportcachestatusargs.add_argument('-level', '--levelID',
-                                  help="Description: Level ID",
-                                  type=int)
-reportcachestatusargs.add_argument('-e', '--errorStart',
-                                  help="Error start",
-                                  type=int)
-reportcachestatusargs.add_argument('-c', '--errorCount',
-                                   help="Description: error count",
-                                   type=int)
-reportcachestatusargs._optionals.title = "arguments"
-
-@provide_narration
-def reportcachestatus(action):
-    import arcrest.admin as admin
-    args = reportcachestatusargs.parse_args()
-    admin_url, rest_url = get_rest_urls(args.site)
-    with action("connecting to REST services {0}".format(rest_url)):
-        rest_site = Catalog(rest_url, args.username, args.password,
-                            generate_token=args.token)
-    with action("fetching reference to Report Cache Status tool"):
-        manage_cache_tool = (rest_site['System']
-                                      ['ReportingTools']
-                                      ['ReportCacheStatus'])
-    with action("reporting cache status"):
-        result_object = manage_cache_tool(args.name,
-                                          args.report_mode,
-                                          args.jobID,
-                                          args.levelID,
-                                          args.errorStart,
-                                          args.errorCount)
-        while result_object.running:
-            time.sleep(0.125)
-        print ("\n".join(msg.description for msg in result_object.messages))
-
