@@ -29,7 +29,7 @@ class GPMultiValue(object):
         return cls
     @property
     def _json_struct(self):
-        return [x._json_struct for x in self._values]
+        return [getattr(x, '_json_struct', x) for x in self._values]
     @classmethod
     def fromJson(cls, val):
         return cls(val)
