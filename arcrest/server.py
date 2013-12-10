@@ -1358,8 +1358,9 @@ class GPTask(RestURL):
                 if val is None:
                     parametervalues[param_to_convert['name']] = ''
                 elif not isinstance(val, param_to_convert['datatype']):
+                    conversion = param_to_convert['datatype'](val)
                     parametervalues[param_to_convert['name']] = \
-                        param_to_convert['datatype'](val)._json_struct
+                        getattr(conversion, '_json_struct', conversion)
             elif param_to_convert['parameterType'] != 'esriGPParameterTypeDerived':
                 parametervalues[param_to_convert['name']] = ''
         return parametervalues
