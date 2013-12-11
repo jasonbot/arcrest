@@ -283,6 +283,11 @@ class RestURL(object):
             self._parent = val
         return property(get_, set_)
 
+# For AGO-style authentication
+class AGOLoginToken(RestURL):
+    """Used by Catalog is authentication method is set to """
+    pass
+
 # For token-based authentication
 class GenerateToken(RestURL):
     """Used by the Admin and Catalog class if authentication method is set to
@@ -516,11 +521,13 @@ class Catalog(Folder):
        services published on the host."""
 
     def __init__(self, url, username=None, password=None, token=None,
-                 generate_token=False, expiration=60):
+                 generate_token=False, expiration=60, ago_login=False):
         """If a username/password is provided, AUTH and AUTH_DIGEST
            authentication will be handled automatically. If using
-           token based authentication, either 1. Pass a token in the token
-           argument or 2. Set generate_token and a token will be generated."""
+           token based authentication, either
+                1. Pass a token in the token argument
+                2. Set generate_token to True for generateToken-style auth
+                3. Set ago_login for ArcGIS online-style auth"""
         if username is not None and password is not None:
             self._pwdmgr.add_password(None,
                                       url,
@@ -531,6 +538,13 @@ class Catalog(Folder):
             url_[2] += "/"
         if token is not None:
             self.__token__ = token
+        elif ago_login and generate_token:
+            raise ValueError("Only one authentication method of ago_login or "
+                             "generate_token may be set")
+        elif ago_login:
+            new_url = urlparse.urlunsplit(url_)
+            agologin = AGOLoginToken(url, username, password)
+            self.__token__ = agologin.token
         elif generate_token:
             new_url = urlparse.urlunsplit(url_)
             gentoken = GenerateToken(url, username, password, expiration)
