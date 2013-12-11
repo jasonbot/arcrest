@@ -41,6 +41,7 @@ class RestURL(object):
     __cache_request__ = False  # Fetch every time or just once?
     __urldata__ = Ellipsis     # What actually gets HTTP GETten
     __json_struct__ = Ellipsis # Cache for json.loads(self.__urldata__)
+    __headers__ = Ellipsis     # Response headers
     __has_json__ = True        # Parse the data as a json struct? Set to
                                # false for binary data, html, etc.
     __token__ = None           # For token-based auth
@@ -188,6 +189,13 @@ class RestURL(object):
     def query(self):
         return self._url[3]
     @property
+    def _headers(self):
+        """The request headers as a dictionary. If contents are not lazy, will
+           do one force fetch (non-cached) first."""
+        if self.__headers__ is Ellipsis:
+            self._contents
+        return self.__headers__
+    @property
     def _contents(self):
         """The raw contents of the URL as fetched, this is done lazily.
            For non-lazy fetching this is accessed in the object constructor."""
@@ -244,6 +252,7 @@ class RestURL(object):
                 self._url[:3] = fetched_url
                 return self._contents
             # No redirect, proceed as usual.
+            self.__headers__ = handle.headers.headers
             self.__urldata__ = handle.read()
         data = self.__urldata__
         if self.__cache_request__ is False:
@@ -257,7 +266,8 @@ class RestURL(object):
             if self.__cache_request__:
                 if self.__json_struct__ is Ellipsis:
                     if self._contents is not Ellipsis:
-                        self.__json_struct__ = json.loads(self._contents or '{}')
+                        self.__json_struct__ = json.loads(self._contents
+                                                              .strip() or '{}')
                     else:
                         return {}
                 return self.__json_struct__
@@ -285,7 +295,17 @@ class RestURL(object):
 # For AGO-style authentication
 class AGOLoginToken(RestURL):
     """Used by Catalog is authentication method is set to """
-    pass
+    __post__ = True
+    __cache_request__ = True
+    __lazy_fetch__ = False
+    __has_json__ = False
+    def __init__(self, origin_url, username, password):
+        if username is not None and password is not None:
+            self._pwdmgr.add_password(None,
+                                      origin_url,
+                                      username,
+                                      password)
+
 
 # For token-based authentication
 class GenerateToken(RestURL):
