@@ -139,24 +139,23 @@ class SpatialReference(Geometry):
         if isinstance(other, SpatialReference):
             return self.wkid == other.wkid
         return self.wkid == other
-    @apply
+    @property
     def name():
-        def get_(self):
-            "Get/view the name for the well known ID of a Projection"
-            if self.wkid in projected:
-                return projected[self.wkid]
-            elif self.wkid in geographic:
-                return geographic[self.wkid]
-            else:
-                raise KeyError("Not a known WKID.")
-        def set_(self, wkid):
-            if hasattr(projected, wkid):
-                self.wkid = getattr(projected, wkid)
-            elif hasattr(geographic, wkid):
-                self.wkid = getattr(geographic, wkid)
-            else:
-                raise KeyError("Not a known projection name.")
-        return property(get_, set_)
+        "Get/view the name for the well known ID of a Projection"
+        if self.wkid in projected:
+            return projected[self.wkid]
+        elif self.wkid in geographic:
+            return geographic[self.wkid]
+        else:
+            raise KeyError("Not a known WKID.")
+    @name.setter
+    def name(self, wkid):
+        if hasattr(projected, wkid):
+            self.wkid = getattr(projected, wkid)
+        elif hasattr(geographic, wkid):
+            self.wkid = getattr(geographic, wkid)
+        else:
+            raise KeyError("Not a known projection name.")
     @classmethod
     def fromJson(cls, struct):
         return cls(int(struct['wkid']))
