@@ -267,21 +267,20 @@ class RestURL(object):
             # Return an empty dict for things so they don't have to special
             # case against a None value or anything
             return {}
-    @apply
-    def parent():
-        def get_(self):
-            "Get this object's parent"
-            if self._parent:
-                return self._parent
-            # auto-compute parent if needed
-            elif getattr(self, '__parent_type__', None):
-                return self._get_subfolder('..' if self._url[2].endswith('/')
-                                                else '.', self.__parent_type__)
-            else:
-                raise AttributeError("%r has no parent attribute" % type(self))
-        def set_(self, val):
-            self._parent = val
-        return property(get_, set_)
+    @property
+    def parent(self):
+        "Get this object's parent"
+        if self._parent:
+            return self._parent
+        # auto-compute parent if needed
+        elif getattr(self, '__parent_type__', None):
+            return self._get_subfolder('..' if self._url[2].endswith('/')
+                                            else '.', self.__parent_type__)
+        else:
+            raise AttributeError("%r has no parent attribute" % type(self))
+    @parent.setter
+    def parent(self, val):
+        self._parent = val
 
 # For AGO-style authentication
 class AGOLoginToken(RestURL):
