@@ -327,8 +327,10 @@ class GenerateToken(RestURL):
         url1 = urlparse.urljoin(origin_url, '../../tokens/generateToken', False)
         url2 = urlparse.urljoin(origin_url, '../tokens/generateToken', False)
         url3 = urlparse.urljoin(origin_url, './generateToken', False)
+        url4 = urlparse.urljoin(origin_url, '/admin/generateToken', False)
+        url5 = urlparse.urljoin(origin_url, '/generateToken', False)
         self._referer = url1
-        for url in (url1, url2, url3):
+        for url in (url1, url2, url3, url4, url5):
             try:
                 self._referer = url
                 url_tuple = urlparse.urlsplit(url)
