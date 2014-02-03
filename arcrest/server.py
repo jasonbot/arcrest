@@ -5,7 +5,6 @@
    service published with ArcGIS Server."""
 
 import cgi
-import cookielib
 import json
 import mimetypes
 import os
@@ -50,7 +49,7 @@ class RestURL(object):
     _referer = None
 
     _pwdmgr = compat.urllib2.HTTPPasswordMgrWithDefaultRealm()
-    _cookiejar = cookielib.CookieJar()
+    _cookiejar = compat.cookielib.CookieJar()
     _basic_handler  = compat.urllib2.HTTPBasicAuthHandler(_pwdmgr)
     _digest_handler = compat.urllib2.HTTPDigestAuthHandler(_pwdmgr)
     _cookie_handler = compat.urllib2.HTTPCookieProcessor(_cookiejar)
