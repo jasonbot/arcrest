@@ -5,10 +5,8 @@ import json
 import os
 import sys
 import time
-import urllib2
-import urlparse
 
-from arcrest import Catalog
+from .. import compat, Catalog
 
 __all__ = ['createservice', 'manageservice', 'managesite', 'deletecache',
            'managecachetiles', 'createcacheschema',
@@ -53,23 +51,23 @@ def get_rest_urls(server_url):
     if not server_url.endswith('/'):
          server_url += '/'
          
-    urllist = urlparse.urlsplit(server_url)
+    urllist = compat.urlsplit(server_url)
     d = urllist._asdict()
                     
     context = d['path']
     admin_url = server_url 
     if (context != '/'):
         if (not context.endswith('admin/')):
-            admin_url = urlparse.urljoin(server_url, context + 'admin/')
+            admin_url = compat.urljoin(server_url, context + 'admin/')
         else:
-            admin_url = urlparse.urljoin(server_url, context)
+            admin_url = compat.urljoin(server_url, context)
         if (not context.endswith('rest/services/')):
-            rest_url = urlparse.urljoin(server_url, context+'rest/services/')
+            rest_url = compat.urljoin(server_url, context+'rest/services/')
         else:
-            rest_url = urlparse.urljoin(server_url, context)
+            rest_url = compat.urljoin(server_url, context)
     else:
-        admin_url = urlparse.urljoin(server_url, 'arcgis/admin/')
-        rest_url = urlparse.urljoin(server_url, 'arcgis/rest/services/')
+        admin_url = compat.urljoin(server_url, 'arcgis/admin/')
+        rest_url = compat.urljoin(server_url, 'arcgis/rest/services/')
     return (admin_url, rest_url)
 
 def provide_narration(fn):
@@ -146,12 +144,12 @@ def createservice(action):
         with action("uploading and publishing {0}".format(
                                                   os.path.basename(filename))):
             id = site.uploads.upload(filename)['itemID']
-            config_url = urlparse.urljoin(site.uploads.url, 
+            config_url = compat.urljoin(site.uploads.url, 
                                      '{}/serviceconfiguration.json'.format(id))
             with action("fetching default configuration"):
                 if args.token:
                     config_url += "?token={}".format(site.__token__)
-                config_json = json.load(urllib2.urlopen(config_url))
+                config_json = json.load(compat.urllib2.urlopen(config_url))
             with action("adjusting service configuration with user options"):
                 if args.folder_name and 'folderName' in config_json:
                     config_json['folderName'] = args.folder_name
@@ -165,9 +163,9 @@ def createservice(action):
             with action("deleting temporary {0} on server ({1})".format(
                                                   os.path.basename(filename),
                                                   id)):
-                delete_url = urlparse.urljoin(site.uploads.url, 
+                delete_url = compat.urljoin(site.uploads.url, 
                                          '{}/delete'.format(id))
-                urllib2.urlopen(delete_url, '').read()
+                compat.urllib2.urlopen(delete_url, '').read()
 
 manageserviceargs = argparse.ArgumentParser(description=
                                                 'Manages/modifies a service',

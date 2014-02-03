@@ -1,6 +1,6 @@
 """Represents the ArcGIS online REST APIs"""
 
-from arcrest import server
+from . import compat, server
 
 __all__ = ['AGORoot', 'Community', 'Content', 'Portals']
 
@@ -8,10 +8,10 @@ class AGORoot(server.RestURL):
     def __init__(self, url, username=None, password=None,
                  token=None, generate_token=False,
                  expiration=60):
-        url_list = list(urlparse.urlsplit(url))
+        url_list = list(compat.urlsplit(url))
         if not url_list[2].endswith('/'):
             url_list[2] += "/"
-        url = urlparse.urlunsplit(url_list)
+        url = compat.urlunsplit(url_list)
         if username is not None and password is not None:
             self._pwdmgr.add_password(None,
                                       url,

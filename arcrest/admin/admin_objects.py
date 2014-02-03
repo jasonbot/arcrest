@@ -4,11 +4,8 @@
 import cgi
 import itertools
 import os.path
-import urllib
-import urlparse
-import urllib2
 
-from arcrest import server, GenerateToken
+from .. import compat, server, GenerateToken
 
 __all__ = ['Admin', 'Folder', 'Services', 'Service', 
            'Machine', 'Machines', 'SiteMachines', 'ClusterMachines',
@@ -21,10 +18,10 @@ class Admin(server.RestURL):
     def __init__(self, url, username=None, password=None,
                  token=None, generate_token=False,
                  expiration=60):
-        url_list = list(urlparse.urlsplit(url))
+        url_list = list(compat.urlsplit(url))
         if not url_list[2].endswith('/'):
             url_list[2] += "/"
-        url = urlparse.urlunsplit(url_list)
+        url = compat.urlunsplit(url_list)
         if username is not None and password is not None:
             self._pwdmgr.add_password(None,
                                       url,
@@ -89,7 +86,7 @@ class Admin(server.RestURL):
                                  password,
                                  expiration)
       if token_auth._json_struct.get('status', 'ok').lower() == 'error':
-          raise urllib2.URLError('\n'.join(
+          raise compat.URLError('\n'.join(
                                       token_auth._json_struct.get(
                                           'messages', ['Failed.'])))
       self.__token__ = token_auth.token

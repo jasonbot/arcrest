@@ -2,8 +2,8 @@
    python 2/3 switch use in this library to be located regardless of their
    location in the running Python's standard library."""
 
-__all__ = ['cookielib', 'urllib2', 'HTTPError', 'urlsplit', 'urljoin',
-           'urlunsplit', 'urlencode', 'quote']
+__all__ = ['cookielib', 'urllib2', 'HTTPError', 'URLError', 'urlsplit',
+           'urljoin', 'urlunsplit', 'urlencode', 'quote']
 
 try:
     import cookielib
@@ -16,9 +16,9 @@ except ImportError:
     import urllib.request as urllib2
 
 try:
-    from urllib2 import HTTPError
+    from urllib2 import HTTPError, URLError
 except ImportError:
-    from urllib.error import HTTPError
+    from urllib.error import HTTPError, URLError
 
 try:
     from urlparse import urlsplit, urljoin, urlunsplit
