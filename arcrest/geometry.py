@@ -3,23 +3,9 @@
    as returned by the REST API. The REST API supports 4 geometry types - 
    points, polylines, polygons and envelopes."""
 
-try:
-    import json
-except ImportError:
-    try:
-        import simplejson as json
-    except ImportError:
-        raise ImportError("Please install the simplejson module "\
-                          "from http://www.undefined.org/python/ "\
-                          "or use arcrest with Python 2.6")
+import json
 
-from arcrest.projections import projected, geographic
-
-try:
-    apply
-except NameError:
-    def apply(fn, k=(), a={}):
-        return fn(*k, **a)
+from .projections import projected, geographic
 
 def pointlist(points, sr):
     """Convert a list of the form [[x, y] ...] to a list of Point instances

@@ -3,22 +3,14 @@
    Geoprocessing tasks on an ArcGIS REST server."""
 
 import datetime
-try:
-    import json
-except ImportError:
-    try:
-        import simplejson as json
-    except ImportError:
-        raise ImportError("Please install the simplejson module "\
-                          "from http://www.undefined.org/python/ "\
-                          "or use arcrest with Python 2.6")
+import json
+
+from . import geometry
 
 try:
     long, unicode, basestring
 except NameError:
     long, unicode, basestring = int, str, str
-
-from . import geometry
 
 class GPMultiValue(object):
     """Represents a multivalue Geoprocessing parameter"""
