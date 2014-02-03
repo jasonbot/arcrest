@@ -1,6 +1,9 @@
 """This module provides a conversion layer for data types passed to/from
    Geoprocessing tasks on an ArcGIS REST server."""
 
+import datetime
+from arcrest import geometry
+
 try:
     import json
 except ImportError:
@@ -11,8 +14,10 @@ except ImportError:
                           "from http://www.undefined.org/python/ "\
                           "or use arcrest with Python 2.6")
 
-import datetime
-from arcrest import geometry
+try:
+    long, unicode, basestring
+except NameError:
+    long, unicode, basestring = int, str, str
 
 class GPMultiValue(object):
     """Represents a multivalue Geoprocessing parameter"""

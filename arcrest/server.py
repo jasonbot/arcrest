@@ -5,19 +5,48 @@
    service published with ArcGIS Server."""
 
 import cgi
-import cookielib
 import json
 import mimetypes
 import os
 import re
 import urllib
-import urllib2
-import urlparse
 import uuid
 
-import geometry
-import gptypes
-import utils
+# Lots of try/excepts to handle PYthon 3's standard library reorganization
+try:
+    import cookielib
+except ImportError:
+    import http.cookiejar as cookielib
+
+try:
+    import urllib2
+except ImportError:
+    import urllib.request as urllib2
+
+try:
+    from urllib2 import HTTPError
+except ImportError:
+    from urllib.error import HTTPError
+
+try:
+    from urlparse import urlsplit, urljoin, urlunsplit
+except ImportError:
+    from urllib.parse import urlsplit, urljoin, urlunsplit
+
+try:
+    from urllib import urlencode, quote
+except ImportError:
+    from urllib.parse import urlencode, quote
+
+from . import geometry
+from . import gptypes
+from . import utils
+
+# Python 3 workaround
+try:
+    long, unicode, basestring
+except NameError:
+    long, unicode, basestring = int, str, str
 
 #: User agent to report when making requests
 USER_AGENT = "Mozilla/4.0 (arcrest)"
@@ -62,10 +91,10 @@ class RestURL(object):
     urllib2.install_opener(_opener)
 
     def __init__(self, url, file_data=None):
-        # Expects a urlparse.urlsplitted list as the url, but accepts a
+        # Expects a urlsplitted list as the url, but accepts a
         # string because that is easier/makes more sense everywhere.
         if isinstance(url, basestring):
-            url = urlparse.urlsplit(url)
+            url = urlsplit(url)
         # Ellipsis is used instead of None for the case where no data
         # is returned from the server due to an error condition -- we
         # need to differentiate between 'NULL' and 'UNDEFINED'
@@ -91,7 +120,7 @@ class RestURL(object):
         if self.__token__ is not None:
             query_dict['token'] = self.__token__
         # Hack our modified query string back into URL components
-        urllist[3] = urllib.urlencode(query_dict)
+        urllist[3] = urlencode(query_dict)
         self._url = urllist
         # Finally, set any file data parameters' data to local store.
         # file_data is expected to be a dictionary of name/filehandle
@@ -116,7 +145,7 @@ class RestURL(object):
         """Return an object of the requested type with the path relative
            to the current object's URL. Optionally, query parameters
            may be set."""
-        newurl = urlparse.urljoin(self.url, urllib.quote(foldername), False)
+        newurl = urljoin(self.url, quote(foldername), False)
 
         params = params or {}
         file_data = file_data or {}
@@ -124,7 +153,7 @@ class RestURL(object):
         # Add the key-value pairs sent in params to query string if they
         # are so defined.
         query_dict = {}
-        url_tuple = urlparse.urlsplit(newurl)
+        url_tuple = urlsplit(newurl)
         urllist = list(url_tuple)
 
         if params:
@@ -162,7 +191,7 @@ class RestURL(object):
             query_dict['token'] = self.__token__
         query_dict[REQUEST_REFERER_MAGIC_NAME] = self._referer or self.url
         # Replace URL query component with newly altered component
-        urllist[3] = urllib.urlencode(query_dict)
+        urllist[3] = urlencode(query_dict)
         newurl = urllist
         # Instantiate new RestURL or subclass
         rt = returntype(newurl, file_data)
@@ -183,8 +212,8 @@ class RestURL(object):
             urlparts = list(urlparts)
             urlparts[3] = '' # Clear out query string on POST
             if self.__token__ is not None: # But not the token
-                urlparts[3] = urllib.urlencode({'token': self.__token__})
-        return urlparse.urlunsplit(urlparts)
+                urlparts[3] = urlencode({'token': self.__token__})
+        return urlunsplit(urlparts)
     @property
     def query(self):
         return self._url[3]
@@ -242,12 +271,12 @@ class RestURL(object):
                                                         if self.__post__
                                                         else None,
                                            req_dict)
-            handle = urllib2.urlopen(request)
+            handle = urlopen(request)
             # Handle the special case of a redirect (only follow once) --
             # Note that only the first 3 components (protocol, hostname, path)
             # are altered as component 4 is the query string, which can get
             # clobbered by the server.
-            fetched_url = list(urlparse.urlsplit(handle.url)[:3])
+            fetched_url = list(urlsplit(handle.url)[:3])
             if fetched_url != list(self._url[:3]):
                 self._url[:3] = fetched_url
                 return self._contents
@@ -324,16 +353,16 @@ class GenerateToken(RestURL):
                                       password)
         self._html_login = html_login
         self._expiration = expiration
-        url1 = urlparse.urljoin(origin_url, '../../tokens/generateToken', False)
-        url2 = urlparse.urljoin(origin_url, '../tokens/generateToken', False)
-        url3 = urlparse.urljoin(origin_url, './generateToken', False)
-        url4 = urlparse.urljoin(origin_url, '/admin/generateToken', False)
-        url5 = urlparse.urljoin(origin_url, '/generateToken', False)
+        url1 = urljoin(origin_url, '../../tokens/generateToken', False)
+        url2 = urljoin(origin_url, '../tokens/generateToken', False)
+        url3 = urljoin(origin_url, './generateToken', False)
+        url4 = urljoin(origin_url, '/admin/generateToken', False)
+        url5 = urljoin(origin_url, '/generateToken', False)
         self._referer = url1
         for url in (url1, url2, url3, url4, url5):
             try:
                 self._referer = url
-                url_tuple = urlparse.urlsplit(url)
+                url_tuple = urlsplit(url)
                 urllist = list(url_tuple)
                 query_dict = dict((k, v[0]) for k, v in 
                                   cgi.parse_qs(urllist[3]).iteritems())
@@ -343,16 +372,16 @@ class GenerateToken(RestURL):
                 self._password = password
                 query_dict['expiration'] = str(self._expiration)
                 query_dict['client'] = 'requestip'
-                urllist[3] = urllib.urlencode(query_dict)
-                url = urlparse.urlunsplit(urllist)
+                urllist[3] = urlencode(query_dict)
+                url = urlunsplit(urllist)
                 super(GenerateToken, self).__init__(url)
                 self._json_struct['token']
                 return
-            except urllib2.HTTPError:
+            except HTTPError:
                 pass
             except KeyError:
                 pass
-        raise urllib2.HTTPError(origin_url, 401, "Could not create token using URL {}"
+        raise HTTPError(origin_url, 401, "Could not create token using URL {}"
                                 .format(origin_url), None, None)
     @property
     def token(self):
@@ -361,7 +390,7 @@ class GenerateToken(RestURL):
     def _contents(self):
         try:
             return super(GenerateToken, self)._contents
-        except urllib2.HTTPError:
+        except HTTPError:
             if self._html_login:
                 # Hack: scrape HTML version for path to /login,
                 ##      then to wherever generateToken lives
@@ -371,16 +400,15 @@ class GenerateToken(RestURL):
                           'redirect': '/'}
                 # Loop through what look like forms
                 for formurl in re.findall('action="(.*?)"',
-                                          urllib2.urlopen(self._referer)
+                                          urlopen(self._referer)
                                                                       .read()):
-                    relurl = urlparse.urljoin(self._referer, formurl)
+                    relurl = urljoin(self._referer, formurl)
                     try:
                         html_request = urllib2.Request(relurl,
-                                                       urllib.urlencode(
-                                                                    payload),
+                                                       urlencode(payload),
                                                       {'Referer': 
                                                           self._referer})
-                        html_response = urllib2.urlopen(html_request).read()
+                        html_response = urlopen(html_request).read()
 
                         # Seek out what looks like the redirect hidden form
                         # element in the HTML response
@@ -398,7 +426,7 @@ class GenerateToken(RestURL):
                                                html_response):
                             if 'generatetoken' in href.lower():
                                 try:
-                                    gentokenurl = urlparse.urljoin(relurl,
+                                    gentokenurl = urljoin(relurl,
                                                                    href)
                                     gentokenpayload = {'username': username,
                                                        'password': password,
@@ -409,16 +437,16 @@ class GenerateToken(RestURL):
                                                        'f': 'json'}
                                     if redirect:
                                         gentokenpayload['redirect'] = redirect
-                                    self.__urldata__ = urllib.urlopen(
+                                    self.__urldata__ = urlopen(
                                                           gentokenurl,
-                                                          urllib.urlencode(
+                                                          urlencode(
                                                                gentokenpayload)
                                                           ).read()
                                     if self.__urldata__:
                                         return self.__urldata__
-                                except urllib.HTTPError:
+                                except HTTPError:
                                     pass
-                    except urllib2.HTTPError:
+                    except HTTPError:
                         pass
                 return self.__urldata__ or '{}'
             else:
@@ -554,7 +582,7 @@ class Catalog(Folder):
                                       url,
                                       username,
                                       password)
-        url_ = list(urlparse.urlsplit(url))
+        url_ = list(urlsplit(url))
         if not url_[2].endswith('/'):
             url_[2] += "/"
         if token is not None:
@@ -563,11 +591,11 @@ class Catalog(Folder):
             raise ValueError("Only one authentication method of ago_login or "
                              "generate_token may be set")
         elif ago_login:
-            new_url = urlparse.urlunsplit(url_)
+            new_url = urlunsplit(url_)
             agologin = AGOLoginToken(url, username, password)
             self.__token__ = agologin.token
         elif generate_token:
-            new_url = urlparse.urlunsplit(url_)
+            new_url = urlunsplit(url_)
             gentoken = GenerateToken(url, username, password, expiration)
             self._referer = gentoken._referer
             self.__token__ = gentoken.token
@@ -593,7 +621,7 @@ class Service(RestURL):
 
     def __init__(self, url, file_data=None):
         if not isinstance(url, (tuple, list)):
-            url_ = list(urlparse.urlsplit(url))
+            url_ = list(urlsplit(url))
         else:
             url_ = url
         if not url_[2].endswith('/'):
@@ -840,7 +868,7 @@ class ExportMapResult(JsonResult):
     @property
     def data(self):
         if not hasattr(self, '_data'):
-            self._data = urllib2.urlopen(self.href).read()
+            self._data = urlopen(self.href).read()
         return self._data
     def save(self, outfile):
         """Save the image data to a file or file-like object"""
@@ -1374,7 +1402,7 @@ class GPTask(RestURL):
     def __init__(self, url, file_data=None):
         # Need to force final slash
         if isinstance(url, basestring):
-            url = list(urlparse.urlsplit(url))
+            url = list(urlsplit(url))
         if not url[2].endswith('/'):
             url[2] += '/'
         super(GPTask, self).__init__(url, file_data)
@@ -1885,7 +1913,7 @@ class ExportImageResult(JsonResult):
         """Save the image data to a file or file-like object"""
         if isinstance(outfile, basestring):
             outfile = open(outfile, 'wb')
-        outfile.write(urllib2.urlopen(self.href).read())
+        outfile.write(urlopen(self.href).read())
 
 @Folder._register_service_type
 class ImageService(Service):

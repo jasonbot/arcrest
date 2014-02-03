@@ -6,6 +6,11 @@ import time
 
 __all__ = ['timetopythonvalue', 'pythonvaluetotime']
 
+try:
+    long, unicode, basestring
+except NameError:
+    long, unicode, basestring = int, str, str
+
 numeric = (int, long, float)
 sequence = (list, tuple)
 date = (datetime.datetime, datetime.date)
