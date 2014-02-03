@@ -4,9 +4,11 @@
 import cgi
 import itertools
 import os.path
+import urllib
+import urlparse
+import urllib2
 
-from . import server, GenerateToken
-from . import libcompat
+from arcrest import server, GenerateToken
 
 __all__ = ['Admin', 'Folder', 'Services', 'Service', 
            'Machine', 'Machines', 'SiteMachines', 'ClusterMachines',

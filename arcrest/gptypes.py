@@ -2,8 +2,6 @@
    Geoprocessing tasks on an ArcGIS REST server."""
 
 import datetime
-from arcrest import geometry
-
 try:
     import json
 except ImportError:
@@ -18,6 +16,8 @@ try:
     long, unicode, basestring
 except NameError:
     long, unicode, basestring = int, str, str
+
+from . import geometry
 
 class GPMultiValue(object):
     """Represents a multivalue Geoprocessing parameter"""
