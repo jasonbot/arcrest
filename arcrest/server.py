@@ -12,7 +12,7 @@ import re
 import urllib
 import uuid
 
-# Lots of try/excepts to handle PYthon 3's standard library reorganization
+# Lots of try/excepts to handle Python 3's standard library reorganization
 try:
     import cookielib
 except ImportError:
