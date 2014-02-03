@@ -1,3 +1,4 @@
+# coding: utf-8
 """The ArcGIS Server REST API, short for Representational State Transfer, 
    provides a simple, open Web interface to services hosted by ArcGIS Server.
    All resources and operations exposed by the REST API are accessible through

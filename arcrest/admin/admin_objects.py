@@ -1,3 +1,4 @@
+# coding: utf-8
 """Implementation of the objects for the ArcGIS Server REST 
    Administration API"""
 

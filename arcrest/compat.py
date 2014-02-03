@@ -1,3 +1,4 @@
+# coding: utf-8
 """Provides a place for functions/modules which have been reogranized in the
    python 2/3 switch use in this library to be located regardless of their
    location in the running Python's standard library."""

@@ -1,3 +1,4 @@
+# coding: utf-8
 """Represents the ArcGIS online REST APIs"""
 
 from . import compat, server

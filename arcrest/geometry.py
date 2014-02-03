@@ -1,3 +1,4 @@
+# coding: utf-8
 """This module implements the JSON geometry and spatial reference objects 
    as returned by the REST API. The REST API supports 4 geometry types - 
    points, polylines, polygons and envelopes."""

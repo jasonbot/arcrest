@@ -1,3 +1,4 @@
+# coding: utf-8
 """This module provides a conversion layer for data types passed to/from
    Geoprocessing tasks on an ArcGIS REST server."""
 
