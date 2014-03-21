@@ -21,7 +21,7 @@ PROG_NAME = os.path.basename((sys.argv[0]
                               if not IN_WINE
                               else os.path.splitext(sys.argv[0])[0]))
 
-shared_args = argparse.ArgumentParser(prog=PROG_NAME,add_help=False)
+shared_args = argparse.ArgumentParser(prog=PROG_NAME, add_help=False)
 shared_args.add_argument('-u', '--username', 
                          required=True,
                          help='Description: Username for Server')
@@ -99,7 +99,7 @@ def wait_on_tool_run(result_object, silent=False):
         for message_object in messages[message_length:]:
             print (message_object.description)
 
-createserviceargs = argparse.ArgumentParser(prog=PROG_NAME,description='Creates a service',
+createserviceargs = argparse.ArgumentParser(prog=PROG_NAME, description='Creates a service',
                                             parents=[shared_args])
 createserviceargs.add_argument('-C', '--cluster',
                                nargs='?',
@@ -176,7 +176,7 @@ def createservice(action):
                                          '{}/delete'.format(id))
                 compat.urllib2.urlopen(delete_url, '').read()
 
-manageserviceargs = argparse.ArgumentParser(prog=PROG_NAME,description=
+manageserviceargs = argparse.ArgumentParser(prog=PROG_NAME, description=
                                                 'Manages/modifies a service',
                                             parents=[shared_args])
 manageserviceargs.add_argument('-n', '--name',
@@ -253,7 +253,7 @@ def manageservice(action):
             with action("deleting service"):
                 return service.delete()
 
-managesiteargs = argparse.ArgumentParser(prog=PROG_NAME,description=
+managesiteargs = argparse.ArgumentParser(prog=PROG_NAME, description=
                                                 'Manages/modifies a site',
                                             parents=[shared_args])
 managesiteargs.add_argument('-A', '--add-machines',
@@ -361,7 +361,7 @@ def managesite(action):
                     print("-", cluster)
                 print()
 
-deletecacheargs = argparse.ArgumentParser(prog=PROG_NAME,description=
+deletecacheargs = argparse.ArgumentParser(prog=PROG_NAME, description=
                                                 'Deletes a map tile cache',
                                             parents=[shared_args])
 deletecacheargs.add_argument('-n', '--name',
@@ -388,7 +388,7 @@ def deletecache(action):
         result_object = delete_cache_tool(args.name, args.instances)
         wait_on_tool_run(result_object, silent=True)
 
-managecachetilesargs = argparse.ArgumentParser(prog=PROG_NAME,description=
+managecachetilesargs = argparse.ArgumentParser(prog=PROG_NAME, description=
                                                 'Manage a map tile cache',
                                             parents=[shared_args])
 managecachetilesargs.add_argument('-n', '--name',
@@ -442,7 +442,7 @@ def managecachetiles(action):
     else:
         print (result_object.url)
 
-createcacheschemaargs = argparse.ArgumentParser(prog=PROG_NAME,description=
+createcacheschemaargs = argparse.ArgumentParser(prog=PROG_NAME, description=
                                              'Creates a map tile cache schema',
                                             parents=[shared_args])
 createcacheschemaargs.add_argument('-n', '--name',
@@ -544,7 +544,7 @@ def convertcachestorageformat(action):
             time.sleep(0.125)
         print ("\n".join(msg.description for msg in result_object.messages))
 
-importcacheargs = argparse.ArgumentParser(prog=PROG_NAME,description=
+importcacheargs = argparse.ArgumentParser(prog=PROG_NAME, description=
                                              'Import a stored '
                                              'map cache',
                                             parents=[shared_args])
