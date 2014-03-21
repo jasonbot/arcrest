@@ -13,7 +13,11 @@ __all__ = ['createservice', 'manageservice', 'managesite', 'deletecache',
            'managecachetiles', 'createcacheschema',
            'convertcachestorageformat', 'importcache', 'exportcache']
 
-shared_args = argparse.ArgumentParser(add_help=False)
+IN_WINE = any(e in os.environ for e in ('WINELOADERNOEXEC', 'DOTWINE', 'WINEPREFIX', 'WINEDEBUG'))
+PROG_NAME = (sys.argv[0] if not IN_WINE else os.path.splitext(sys.argv[0])[0])
+
+shared_args = argparse.ArgumentParser(prog=PROG_NAME,
+                                      add_help=False)
 shared_args.add_argument('-u', '--username', 
                          required=True,
                          help='Description: Username for Server')
