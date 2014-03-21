@@ -30,7 +30,8 @@ shared_args.add_argument('-p', '--password',
                          help='Description: Password for Server')
 shared_args.add_argument('-s', '--site', 
                          required=True,
-                         help='Description: URL for admin Server, e.g. http://host:6080/arcgis')
+                         help='Description: URL for admin Server, '
+                              'e.g. http://host:6080/arcgis')
 shared_args.add_argument('-t', '--token',
                          required=False,
                          action='store_true',
@@ -99,7 +100,8 @@ def wait_on_tool_run(result_object, silent=False):
         for message_object in messages[message_length:]:
             print (message_object.description)
 
-createserviceargs = argparse.ArgumentParser(prog=PROG_NAME, description='Creates a service',
+createserviceargs = argparse.ArgumentParser(prog=PROG_NAME,
+                                            description='Creates a service',
                                             parents=[shared_args])
 createserviceargs.add_argument('-C', '--cluster',
                                nargs='?',
@@ -253,7 +255,8 @@ def manageservice(action):
             with action("deleting service"):
                 return service.delete()
 
-managesiteargs = argparse.ArgumentParser(prog=PROG_NAME, description=
+managesiteargs = argparse.ArgumentParser(prog=PROG_NAME,
+                                         description=
                                                 'Manages/modifies a site',
                                             parents=[shared_args])
 managesiteargs.add_argument('-A', '--add-machines',
@@ -361,7 +364,8 @@ def managesite(action):
                     print("-", cluster)
                 print()
 
-deletecacheargs = argparse.ArgumentParser(prog=PROG_NAME, description=
+deletecacheargs = argparse.ArgumentParser(prog=PROG_NAME,
+                                          description=
                                                 'Deletes a map tile cache',
                                             parents=[shared_args])
 deletecacheargs.add_argument('-n', '--name',
@@ -388,9 +392,10 @@ def deletecache(action):
         result_object = delete_cache_tool(args.name, args.instances)
         wait_on_tool_run(result_object, silent=True)
 
-managecachetilesargs = argparse.ArgumentParser(prog=PROG_NAME, description=
+managecachetilesargs = argparse.ArgumentParser(prog=PROG_NAME,
+                                               description=
                                                 'Manage a map tile cache',
-                                            parents=[shared_args])
+                                               parents=[shared_args])
 managecachetilesargs.add_argument('-n', '--name',
                                help='Description: Service name')
 managecachetilesargs.add_argument('-scales',
@@ -442,9 +447,10 @@ def managecachetiles(action):
     else:
         print (result_object.url)
 
-createcacheschemaargs = argparse.ArgumentParser(prog=PROG_NAME, description=
+createcacheschemaargs = argparse.ArgumentParser(prog=PROG_NAME,
+                                                description=
                                              'Creates a map tile cache schema',
-                                            parents=[shared_args])
+                                                parents=[shared_args])
 createcacheschemaargs.add_argument('-n', '--name',
                                help='Description: Service name '
                                     '(format as ServiceName:ServiceType)')
@@ -544,9 +550,9 @@ def convertcachestorageformat(action):
             time.sleep(0.125)
         print ("\n".join(msg.description for msg in result_object.messages))
 
-importcacheargs = argparse.ArgumentParser(prog=PROG_NAME, description=
-                                             'Import a stored '
-                                             'map cache',
+importcacheargs = argparse.ArgumentParser(prog=PROG_NAME,
+                                          description=
+                                             'Import a stored map cache',
                                             parents=[shared_args])
 
 importcacheargs.add_argument('-n', '--name',
