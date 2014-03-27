@@ -7,9 +7,12 @@ import os
 setup(
     name='arcrest',
     version='10.2.2-beta',
+    summary="ArcGIS for Server REST API wrapper",
     description="""Wrapper to the ArcGIS REST API, and a Python analogue to the Javascript APIs""",
     author="Esri",
     author_email="jscheirer@esri.com",
+    platform="any",
+    license="Apache Software License",
     packages=['arcrest', 'arcrest.admin'],
     scripts=[
              os.path.join('cmdline', 'createservice.py'),
