@@ -6,7 +6,7 @@ import os
 
 setup(
     name='arcrest',
-    version='10.1',
+    version='10.2.2-beta',
     description="""Wrapper to the ArcGIS REST API, and a Python analogue to the Javascript APIs""",
     author="Esri",
     author_email="jscheirer@esri.com",
@@ -20,5 +20,19 @@ setup(
              os.path.join('cmdline', 'managecachetiles.py'),
              os.path.join('cmdline', 'convertcachestorageformat.py'),
              os.path.join('cmdline', 'reportcachestatus.py'),
-            ]
+            ],
+    classifiers=[
+        'Development Status :: 4 - Beta',
+        'Environment :: Console',
+        'Environment :: Web Environment',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: Apache Software License',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Topic :: Internet :: WWW/HTTP',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: Utilities'
+    ]
 )
