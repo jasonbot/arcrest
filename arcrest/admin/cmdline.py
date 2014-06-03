@@ -408,6 +408,7 @@ managecachetilesargs.add_argument('-mode', '--update-mode' ,
                                            'DELETE_TILES'])
 managecachetilesargs.add_argument('-i', '--instances',
                                   help="Number of instances",
+                                  default=1,
                                   type=int)
 managecachetilesargs.add_argument('-AOI', '--feature-class',
                                   default=None,
