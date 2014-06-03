@@ -372,7 +372,7 @@ deletecacheargs.add_argument('-n', '--name',
                                help='Description: Service name')
 deletecacheargs.add_argument('-i', '--instances',
                              help="Number of instances",
-                             default=1,
+                             default=3,
                              type=int)
 deletecacheargs._optionals.title = "arguments"
 
@@ -528,6 +528,7 @@ convertcachestorageformatargs.add_argument('-n', '--name',
                                   help="Service name")
 convertcachestorageformatargs.add_argument('-i', '--instances',
                                   help="Number of instances",
+                                  default=3,
                                   type=int)
 
 convertcachestorageformatargs._optionals.title = "arguments"
