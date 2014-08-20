@@ -176,7 +176,12 @@ def createservice(action):
                                                   id)):
                 delete_url = compat.urljoin(site.uploads.url, 
                                          '{}/delete'.format(id))
-                compat.urllib2.urlopen(delete_url, '').read()
+                try:
+                    compat.urllib2.urlopen(delete_url, '').read()
+                except compat.HTTPError as err:
+                    # Re-raise if not a 404
+                    if compat.code != 404:
+                        raise
 
 manageserviceargs = argparse.ArgumentParser(prog=PROG_NAME, description=
                                                 'Manages/modifies a service',
