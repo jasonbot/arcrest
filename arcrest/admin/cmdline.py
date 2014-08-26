@@ -296,6 +296,10 @@ managesiteargs.add_argument('-cr', '--create-cluster',
                                action='store_true',
                                help=('Create cluster specified with -c '
                                      'if it does not exist'))
+managesiteargs.add_argument('-cp', '--cluster-port',
+                               type=int, nargs=1, default=4004, required=False,
+                               help=('Port to use for cluster (if '
+                                     'creating new)'))
 managesiteargs._optionals.title = "arguments"
 
 @provide_narration
@@ -326,7 +330,9 @@ def managesite(action):
                 cluster = site.clusters[args.cluster] if args.cluster else None
             except KeyError:
                 if args.create_cluster:
-                    cluster = site.clusters.create(args.cluster)
+                    cluster = site.clusters.create(args.cluster,
+                                                   tcpClusterPort=
+                                                        args.cluster_port)
                 else:
                     raise
         with action("performing {0}".format(operation or '')):
