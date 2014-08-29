@@ -180,7 +180,7 @@ def createservice(action):
                     compat.urllib2.urlopen(delete_url, '').read()
                 except compat.HTTPError as err:
                     # Re-raise if not a 404
-                    if compat.code != 404:
+                    if err.code != 404:
                         raise
 
 manageserviceargs = argparse.ArgumentParser(prog=PROG_NAME, description=
