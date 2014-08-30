@@ -175,7 +175,7 @@ def createservice(action):
                                                   os.path.basename(filename),
                                                   id)):
                 delete_url = compat.urljoin(site.uploads.url, 
-                                         '{}/delete'.format(id))
+                                         '{}/delete?f=json'.format(id))
                 try:
                     compat.urllib2.urlopen(delete_url, '').read()
                 except compat.HTTPError as err:
