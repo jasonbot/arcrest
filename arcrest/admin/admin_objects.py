@@ -387,5 +387,7 @@ class Clusters(server.RestURL):
                                       'multicastPort': multicastPort
                                                             if type == "UDP" 
                                                             else None})
+        if 'error' in res._json_struct:
+            raise Exception(repr(res._json_struct))
         return self._get_subfolder('./%s/' % clusterName, Cluster)
 
