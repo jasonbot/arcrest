@@ -6,7 +6,7 @@ import os
 
 setup(
     name='arcrest',
-    version='10.2.2-beta',
+    version='10.3',
     summary="ArcGIS for Server REST API wrapper",
     description="""Wrapper to the ArcGIS REST API, and a Python analogue to the Javascript APIs""",
     author="Esri",
