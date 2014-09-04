@@ -70,14 +70,14 @@ class Admin(server.RestURL):
         self.__generateToken(self.url, username, password, 60)
         return res
     def joinSite(self, adminURL, username, password):
-        res = self._get_subfolder("./joinSite?f=json", 
+        res = self._get_subfolder("./joinSite", 
                                   server.JsonPostResult,
                                   {'username': username,
                                    'password': password,
                                    'adminURL': adminURL})
         return res
     def deleteSite(self):
-        res = self._get_subfolder("./deleteSite?f=json", 
+        res = self._get_subfolder("./deleteSite", 
                                   server.JsonPostResult)
         self.__token__ = None
         return res
@@ -375,7 +375,7 @@ class Clusters(server.RestURL):
                multicastAddress=10, multicastPort=-1):
         if type not in ("TCP", "UDP"):
             raise ValueError("Got %r. Valid choices are: TCP, UDP" % type)
-        res = self._get_subfolder('./create?f=json', server.JsonPostResult,
+        res = self._get_subfolder('./create', server.JsonPostResult,
                                      {'clusterName': clusterName,
                                       'type': type,
                                       'tcpClusterPort': tcpClusterPort 
