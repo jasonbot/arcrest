@@ -62,7 +62,7 @@ class RestURL(object):
     def __init__(self, url, file_data=None):
         # Expects a compat.urlsplitted list as the url, but accepts a
         # string because that is easier/makes more sense everywhere.
-        if isinstance(url, basestring):
+        if isinstance(url, compat.string_type):
             url = compat.urlsplit(url)
         # Ellipsis is used instead of None for the case where no data
         # is returned from the server due to an error condition -- we
@@ -185,7 +185,7 @@ class RestURL(object):
         return compat.urlunsplit(urlparts)
     @property
     def query(self):
-        return self._url[3]
+        return compat.ensure_bytes(self._url[3])
     @property
     def _headers(self):
         """The request headers as a dictionary. If contents are not lazy, will
@@ -250,7 +250,7 @@ class RestURL(object):
                 self._url[:3] = fetched_url
                 return self._contents
             # No redirect, proceed as usual.
-            self.__headers__ = handle.headers.headers
+            self.__headers__ = compat.get_headers(handle)
             self.__urldata__ = handle.read()
         data = self.__urldata__
         if self.__cache_request__ is False:
@@ -264,13 +264,14 @@ class RestURL(object):
             if self.__cache_request__:
                 if self.__json_struct__ is Ellipsis:
                     if self._contents is not Ellipsis:
-                        self.__json_struct__ = json.loads(self._contents
+                        self.__json_struct__ = json.loads(
+                                           compat.ensure_string(self._contents)
                                                               .strip() or '{}')
                     else:
                         return {}
                 return self.__json_struct__
             else:
-                return json.loads(self._contents)
+                return json.loads(compat.ensure_string(self._contents))
         else:
             # Return an empty dict for things so they don't have to special
             # case against a None value or anything
@@ -631,7 +632,7 @@ class BinaryResult(Result):
 
     def save(self, outfile):
         """Save the image data to a file or file-like object"""
-        if isinstance(outfile, basestring):
+        if isinstance(outfile, compat.string_type):
             outfile = open(outfile, 'wb')
         outfile.write(self._contents)
 
@@ -842,7 +843,7 @@ class ExportMapResult(JsonResult):
         return self._data
     def save(self, outfile):
         """Save the image data to a file or file-like object"""
-        if isinstance(outfile, basestring):
+        if isinstance(outfile, compat.string_type):
             outfile = open(outfile, 'wb')
         assert hasattr(outfile, 'write') and callable(outfile.write), \
             "Expect a file or file-like object with a .write() method"
@@ -1371,7 +1372,7 @@ class GPTask(RestURL):
 
     def __init__(self, url, file_data=None):
         # Need to force final slash
-        if isinstance(url, basestring):
+        if isinstance(url, compat.string_type):
             url = list(compat.urlsplit(url))
         if not url[2].endswith('/'):
             url[2] += '/'
@@ -1881,7 +1882,7 @@ class ExportImageResult(JsonResult):
         return geometry.fromJson(self._json_struct['extent'])
     def save(self, outfile):
         """Save the image data to a file or file-like object"""
-        if isinstance(outfile, basestring):
+        if isinstance(outfile, compat.string_type):
             outfile = open(outfile, 'wb')
         outfile.write(compat.urllib2.urlopen(self.href).read())
 
