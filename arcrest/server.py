@@ -76,7 +76,7 @@ class RestURL(object):
         # is probably useful somewhere, but not here). Pull out the first
         # element of every list so when we convert back to a query string
         # it doesn't enclose all values in []
-        for k, v in cgi.parse_qs(urllist[3]).iteritems():
+        for k, v in cgi.parse_qs(urllist[3]).items():
             query_dict[k] = v[0]
             if k.lower() == 'token':
                 self.__token__ = v[0]
@@ -128,8 +128,8 @@ class RestURL(object):
         if params:
             # As above, pull out first element from parse_qs' values
             query_dict = dict((k, v[0]) for k, v in 
-                               cgi.parse_qs(urllist[3]).iteritems())
-            for key, val in params.iteritems():
+                               cgi.parse_qs(urllist[3]).items())
+            for key, val in params.items():
                 # Lowercase bool string
                 if isinstance(val, bool):
                     query_dict[key] = str(val).lower()
@@ -203,7 +203,7 @@ class RestURL(object):
                 self.__post__ = True
                 boundary = "-"*12+str(uuid.uuid4())+"$"
                 multipart_data = ''
-                for k, v in cgi.parse_qs(self.query).iteritems():
+                for k, v in cgi.parse_qs(self.query).items():
                     if not isinstance(v, list):
                         v = [v]
                     for val in v:
@@ -211,7 +211,7 @@ class RestURL(object):
                         multipart_data += ('Content-Disposition: form-data; '
                                            'name="%s"\r\n\r\n' % k)
                         multipart_data += val + "\r\n"
-                for k, v in self._file_data.iteritems():
+                for k, v in self._file_data.items():
                     fn = os.path.basename(getattr(v, 'name', 'file'))
                     ct = (mimetypes.guess_type(fn) 
                             or ("application/octet-stream",))[0]
@@ -334,7 +334,7 @@ class GenerateToken(RestURL):
                 url_tuple = compat.urlsplit(url)
                 urllist = list(url_tuple)
                 query_dict = dict((k, v[0]) for k, v in 
-                                  cgi.parse_qs(urllist[3]).iteritems())
+                                  cgi.parse_qs(urllist[3]).items())
                 query_dict['username'] = username
                 query_dict['password'] = password
                 self._username = username
@@ -1381,7 +1381,7 @@ class GPTask(RestURL):
         self_parameters = self.parameters
         parametervalues = dict(zip((p['name'] for p in self_parameters),
                                     params))
-        for kw, kwval in kw.iteritems():
+        for kw, kwval in kw.items():
             if kw in parametervalues:
                 raise KeyError("Multiple definitions of parameter %r" % kw)
             parametervalues[kw] = kwval
