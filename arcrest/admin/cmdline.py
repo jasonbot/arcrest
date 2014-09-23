@@ -171,17 +171,6 @@ def createservice(action):
                 new_json = json.dumps(config_json)
                 result_object = publish_tool(id, new_json, "")
                 wait_on_tool_run(result_object, silent=True)
-            with action("deleting temporary {0} on server ({1})".format(
-                                                  os.path.basename(filename),
-                                                  id)):
-                delete_url = compat.urljoin(site.uploads.url, 
-                                         '{}/delete?f=json'.format(id))
-                try:
-                    compat.urllib2.urlopen(delete_url, '').read()
-                except compat.HTTPError as err:
-                    # Re-raise if not a 404
-                    if err.code != 404:
-                        raise
 
 manageserviceargs = argparse.ArgumentParser(prog=PROG_NAME, description=
                                                 'Manages/modifies a service',
