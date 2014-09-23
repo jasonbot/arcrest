@@ -1286,7 +1286,7 @@ class GPJobStatus(RestURL):
     def __getattr__(self, attr):
         return self.__class__.results.__get__(self)[attr]
 
-class GPJob(JsonResult):
+class GPJob(JsonPostResult):
     """The GP job resource represents a job submitted using the submit job
        operation. It provides basic information about the job such as the job
        ID, status and messages. Additionally, if the job has successfully
