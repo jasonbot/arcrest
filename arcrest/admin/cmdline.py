@@ -32,12 +32,6 @@ shared_args.add_argument('-s', '--site',
                          required=True,
                          help='Description: URL for admin Server, '
                               'e.g. http://host:6080/arcgis')
-shared_args.add_argument('-t', '--token',
-                         required=False,
-                         action='store_true',
-                         help='Description: Use token authentication '
-                              '(if -t is not set, command will use HTTP auth)',
-                         default=False)
 
 class ActionNarrator(object):
     def __init__(self):
@@ -130,13 +124,13 @@ def createservice(action):
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to admin site {0}".format(admin_url)):
         site = admin.Admin(admin_url, args.username, args.password,
-                           generate_token=args.token)
+                           generate_token=True)
         assert site._json_struct.get('status', 'ok') != 'error',\
                ' '.join(site._json_struct.get('messages',
                    ['Could not connect to site.']))
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = Catalog(rest_url, args.username, args.password,
-                            generate_token=args.token)
+                            generate_token=True)
     with action("looking up Publish Tool"):
         publish_tool = (rest_site['System']
                                  ['PublishingTools']
@@ -202,7 +196,7 @@ def manageservice(action):
             assert not args.name, "name cannot be set if listing services"
         with action("connecting to admin site {0}".format(admin_url)):
             site = admin.Admin(admin_url, args.username, args.password,
-                                          generate_token=args.token)
+                                          generate_token=True)
             assert site._json_struct.get('status', 'ok') != 'error',\
                    ' '.join(site._json_struct.get('messages',
                        ['Could not connect to site.']))
@@ -227,7 +221,7 @@ def manageservice(action):
             assert args.name, "Service name not specified"
         with action("connecting to admin site {0}".format(admin_url)):
             site = admin.Admin(admin_url, args.username, args.password,
-                               generate_token=args.token)
+                               generate_token=True)
             assert site._json_struct.get('status', 'ok') != 'error',\
                    ' '.join(site._json_struct.get('messages',
                        ['Could not connect to site.']))
@@ -298,7 +292,7 @@ def managesite(action):
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to admin site {0}".format(admin_url)):
         site = admin.Admin(admin_url, args.username, args.password,
-                           generate_token=args.token)
+                           generate_token=True)
         assert site._json_struct.get('status', 'ok') != 'error',\
                ' '.join(site._json_struct.get('messages',
                    ['Could not connect to site.']))
@@ -383,7 +377,7 @@ def deletecache(action):
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = Catalog(rest_url, args.username, args.password,
-                            generate_token=args.token)
+                            generate_token=True)
     with action("fetching reference to Delete Cache tool"):
         delete_cache_tool = (rest_site['System']
                                       ['CachingTools']
@@ -431,7 +425,7 @@ def managecachetiles(action):
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = Catalog(rest_url, args.username, args.password,
-                            generate_token=args.token)
+                            generate_token=True)
     with action("fetching reference to Manage Cache tool"):
         manage_cache_tool = (rest_site['System']
                                       ['CachingTools']
@@ -500,7 +494,7 @@ def createcacheschema(action):
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = Catalog(rest_url, args.username, args.password,
-                            generate_token=args.token)
+                            generate_token=True)
     with action("fetching reference to Import Cache tool"):
         create_cache_tool = (rest_site['System']
                                       ['CachingTools']
@@ -540,7 +534,7 @@ def convertcachestorageformat(action):
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = Catalog(rest_url, args.username, args.password,
-                            generate_token=args.token)
+                            generate_token=True)
     with action("fetching reference to Convert Cache Storage Format tool"):
         convert_cache_tool = (rest_site['System']
                                        ['CachingTools']
@@ -572,7 +566,7 @@ def importcache(action):
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = Catalog(rest_url, args.username, args.password,
-                            generate_token=args.token)
+                            generate_token=True)
     with action("fetching reference to Import Cache tool"):
         convert_cache_tool = (rest_site['System']
                                        ['CachingTools']
@@ -596,7 +590,7 @@ def exportcache(action):
     admin_url, rest_url = get_rest_urls(args.site)
     with action("connecting to REST services {0}".format(rest_url)):
         rest_site = Catalog(rest_url, args.username, args.password,
-                            generate_token=args.token)
+                            generate_token=True)
     with action("fetching reference to Convert Cache Storage Format tool"):
         convert_cache_tool = (rest_site['System']
                                        ['CachingTools']
