@@ -152,8 +152,7 @@ def createservice(action):
             config_url = compat.urljoin(site.uploads.url, 
                                      '{}/serviceconfiguration.json'.format(id))
             with action("fetching default configuration"):
-                if args.token:
-                    config_url += "?token={}".format(site.__token__)
+                config_url += "?token={}".format(site.__token__)
                 config_json = json.load(compat.urllib2.urlopen(config_url))
             with action("adjusting service configuration with user options"):
                 if args.folder_name and 'folderName' in config_json:
