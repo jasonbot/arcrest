@@ -7,8 +7,6 @@ been wrapped or implemented. If you have a feature that you'd
 like to see working, then by all means feel free to contribute a
 patch. 
 
-![Team Python Logo](https://raw.github.com/Esri/arcpy-server-util-rest/hg/default/Python_Globe_Icon.png) 
-
 ## Features
 * Python bindings and utilities for consuming services and administering an ArcGIS 10.1 Server via its RESTful APIs
 * There are examples in the documentation folder to get started
